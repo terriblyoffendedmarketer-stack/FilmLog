@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="tonight-layout">
+
+  {# ── Heading ─────────────────────────────────────────────────────────────── #}
+  <div class="tonight-heading-block">
+    <h1 class="tonight-heading">What are we watching tonight?</h1>
+    <p class="tonight-sub">Answer a few things and I'll pull the right film from your list.</p>
+  </div>
+
+  {# ── Calibration form ─────────────────────────────────────────────────────── #}
+  <form id="calibration-form" class="calibration-form"
+    hx-post="/tonight/generate"
+    hx-target="#recommendation-result"
+    hx-swap="innerHTML"
+    hx-indicator="#gen-indicator">
+
+    {# Q1: Who's watching #}
+    <div class="question-block">
+      <div class="question-label">Who's watching?</div>
+      <div class="option-pills" data-field="watch_context">
+        <input type="hidden" name="watch_context" value="">
+        {% for val, label in [
+          ('solo',    'Just me'),
+          ('partner', 'With my partner'),
+          ('family',  'With family'),
+          ('friends', 'With friends'),
+        ] %}
+        <button type="button" class="pill" data-value="{{ val }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Q2: Energy #}
+    <div class="question-block">
+      <div class="question-label">Tonight's energy?</div>
+      <div class="option-pills" data-field="mood">
+        <input type="hidden" name="mood" value="">
+        {% for val, label in [
+          ('engaged', 'I want to feel something'),
+          ('casual',  'Switch off'),
+          ('mid',     'Somewhere in between'),
+        ] %}
+        <button type="button" class="pill" data-value="{{ val }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Q3: Attention #}
+    <div class="question-block">
+      <div class="question-label">How present are you?</div>
+      <div class="option-pills" data-field="attention">
+        <input type="hidden" name="attention" value="">
+        {% for val, label in [
+          ('full', 'Full attention'),
+          ('half', 'Half watching'),
+        ] %}
+        <button type="button" class="pill" data-value="{{ val }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Q4: Ending preference — optional #}
+    <div class="question-block">
+      <div class="question-label">
+        Endings?
+        <span class="question-optional">(optional)</span>
+      </div>
+      <div class="option-pills" data-field="ending">
+        <input type="hidden" name="ending" value="none">
+        {% for val, label in [
+          ('clean', 'Clean resolution'),
+          ('open',  'Open ending is fine'),
+          ('none',  'No preference'),
+        ] %}
+        <button type="button" class="pill{% if val == 'none' %} selected{% endif %}" data-value="{{ val }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Submit #}
+    <div class="generate-row">
+      <button type="submit" class="btn-generate" id="generate-btn" disabled>
+        Generate recommendation
+      </button>
+      <span id="gen-indicator" class="gen-indicator htmx-indicator">
+        <span class="gen-dots"><span></span><span></span><span></span></span>
+        Asking Claude…
+      </span>
+    </div>
+
+  </form>
+
+  {# ── Result area (populated by HTMX) ──────────────────────────────────────── #}
+  <div id="recommendation-result"></div>
+
+  {# ── Past issues ──────────────────────────────────────────────────────────── #}
+  {% if past_issues %}
+  <div class="past-issues-section">
+    <div class="section-divider">
+      <div class="divider-line"></div>
+      <span class="divider-label">Past issues</span>
+      <div class="divider-line"></div>
+    </div>
+
+    {% for issue in past_issues %}
+    <div class="past-issue-card">
+      <div class="past-issue-meta">
+        Issue #{{ issue.issue_number }}
+        <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
+      </div>
+      <div class="past-issue-preview" id="preview-{{ issue.id }}">{{ issue.issue_text }}</div>
+      <div class="past-issue-full" id="full-{{ issue.id }}">{{ issue.issue_text }}</div>
+      <button class="past-issue-toggle" onclick="toggleIssue({{ issue.id }}, this)">
+        Read more
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+// ── Pill selection ──────────────────────────────────────────────────────────
+document.querySelectorAll('.option-pills').forEach(function(group) {
+  var input = group.querySelector('input[type=hidden]');
+  group.querySelectorAll('.pill').forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      group.querySelectorAll('.pill').forEach(function(p) { p.classList.remove('selected'); });
+      pill.classList.add('selected');
+      input.value = pill.dataset.value;
+      checkReady();
+    });
+  });
+});
+
+function checkReady() {
+  var required = ['watch_context', 'mood', 'attention'];
+  var allFilled = required.every(function(name) {
+    var el = document.querySelector('[name=' + name + ']');
+    return el && el.value;
+  });
+  document.getElementById('generate-btn').disabled = !allFilled;
+}
+
+// ── Request lifecycle ───────────────────────────────────────────────────────
+var form = document.getElementById('calibration-form');
+
+form.addEventListener('htmx:beforeRequest', function() {
+  var btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+});
+
+form.addEventListener('htmx:afterRequest', function() {
+  var btn = document.getElementById('generate-btn');
+  btn.disabled = false;
+  btn.textContent = 'Generate recommendation';
+});
+
+form.addEventListener('htmx:afterSwap', function() {
+  var result = document.getElementById('recommendation-result');
+  if (result && result.children.length > 0) {
+    setTimeout(function() {
+      result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+});
+
+// ── Past issue toggle ───────────────────────────────────────────────────────
+function toggleIssue(id, btn) {
+  var preview = document.getElementById('preview-' + id);
+  var full = document.getElementById('full-' + id);
+  var open = full.style.display === 'block';
+  full.style.display    = open ? 'none'         : 'block';
+  preview.style.display = open ? '-webkit-box'  : 'none';
+  btn.textContent       = open ? 'Read more'    : 'Show less';
+}
+</script>
+
+{% endblock %}

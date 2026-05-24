@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="search-layout">
+
+  {# ── Hero search bar ─────────────────────────────────────────────────────── #}
+  <div class="search-hero">
+    <h1 class="search-hero-title">Search</h1>
+    <form class="search-hero-form" action="/search" method="GET" role="search">
+      <div class="search-hero-field">
+        <input type="search" name="q" class="search-hero-input"
+               value="{{ q }}"
+               placeholder="Films, journal entries, notes, tags…"
+               autofocus autocomplete="off">
+        <button type="submit" class="btn-primary search-hero-btn">Search</button>
+      </div>
+    </form>
+    {% if q %}
+    <p class="search-summary">
+      {% set total = results.films|length + results.journals|length %}
+      {% if total %}
+        <strong>{{ total }}</strong> result{{ 's' if total != 1 }} for
+        <em>"{{ q }}"</em>
+        — <span>{{ results.films|length }} film{{ 's' if results.films|length != 1 }}</span>,
+        <span>{{ results.journals|length }} journal entr{{ 'ies' if results.journals|length != 1 else 'y' }}</span>
+      {% else %}
+        No results for <em>"{{ q }}"</em>
+      {% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  {% if q %}
+
+  {# ── Film results ─────────────────────────────────────────────────────────── #}
+  {% if results.films %}
+  <section class="search-section">
+    <h2 class="search-section-title">
+      Films
+      <span class="search-count">{{ results.films|length }}</span>
+    </h2>
+
+    <div class="search-film-grid">
+      {% for film in results.films %}
+      <a href="/films/{{ film.tmdb_id }}" class="search-film-card">
+        <div class="search-film-poster">
+          {% if film.poster_url %}
+          <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+          {% else %}
+          <div class="search-film-placeholder">
+            {{ (film.title or '?')[:1] }}
+          </div>
+          {% endif %}
+          {% if film.status %}
+          <span class="status-badge status-{{ film.status }}">
+            {% if film.status == 'watched' %}✓
+            {% elif film.status == 'watchlist' %}+
+            {% else %}↺
+            {% endif %}
+          </span>
+          {% endif %}
+        </div>
+        <div class="search-film-meta">
+          <div class="search-film-title">{{ film.title }}</div>
+          <div class="search-film-year">{{ film.year or '' }}{% if film.language %} · {{ film.language }}{% endif %}</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ── Journal results ──────────────────────────────────────────────────────── #}
+  {% if results.journals %}
+  <section class="search-section">
+    <h2 class="search-section-title">
+      Journal
+      <span class="search-count">{{ results.journals|length }}</span>
+    </h2>
+
+    <div class="search-journal-list">
+      {% for entry in results.journals %}
+      <a href="/journal/{{ entry.journal_id }}" class="journal-card search-journal-card">
+        <div class="journal-card-top">
+          <span class="type-badge type-{{ entry.type }}">{{ entry.type }}</span>
+          <span class="journal-date">{{ entry.created_at[:10] }}</span>
+        </div>
+        <div class="journal-card-title">{{ entry.title }}</div>
+        {% set preview = entry.content[:160] %}
+        {% if preview %}
+        <div class="search-journal-preview">{{ preview }}{% if entry.content|length > 160 %}…{% endif %}</div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if not results.films and not results.journals %}
+  <div class="search-empty">
+    <p>Nothing matched <em>"{{ q }}"</em>.</p>
+    <p class="search-empty-hint">Try a film title, director, tag, or phrase from a journal entry.</p>
+  </div>
+  {% endif %}
+
+  {% else %}
+  {# Idle state — no query yet #}
+  <div class="search-idle">
+    <p>Search your film library and journal entries.</p>
+    <ul class="search-idle-tips">
+      <li>Film titles, directors, genres</li>
+      <li>Words from your personal notes</li>
+      <li>Journal entry titles, tags, or full text</li>
+      <li>Taste attributes (e.g. <em>slow cinema</em>, <em>grief</em>)</li>
+    </ul>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

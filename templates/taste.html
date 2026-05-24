@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="taste-layout">
+
+  {# ── Header ────────────────────────────────────────────────────────────────── #}
+  <div class="taste-header">
+    <h1 class="taste-title">Taste Profile</h1>
+    {% if stats.taste_model_version %}
+    <div class="taste-version">
+      v{{ stats.taste_model_version.version_number }}
+      · {{ stats.taste_model_version.generated_at[:10] }}
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Stats overview ────────────────────────────────────────────────────────── #}
+  <div class="taste-stats-grid">
+    <div class="taste-stat">
+      <div class="taste-stat-number">{{ stats.watched }}</div>
+      <div class="taste-stat-label">watched</div>
+    </div>
+    <div class="taste-stat">
+      <div class="taste-stat-number">{{ stats.watchlist }}</div>
+      <div class="taste-stat-label">on list</div>
+    </div>
+    <div class="taste-stat">
+      <div class="taste-stat-number">{{ stats.total }}</div>
+      <div class="taste-stat-label">total films</div>
+    </div>
+    <div class="taste-stat">
+      <div class="taste-stat-number">{{ (positive_attrs|length) + (negative_attrs|length) }}</div>
+      <div class="taste-stat-label">taste signals</div>
+    </div>
+  </div>
+
+  {% if not positive_attrs and not negative_attrs %}
+  {# ── Empty state ────────────────────────────────────────────────────────────── #}
+  <div class="taste-empty">
+    <h2>No taste signals yet</h2>
+    <p>
+      Run <code>python main.py rescan</code> to build the taste model from your film log,<br>
+      then refresh this page.
+    </p>
+  </div>
+
+  {% else %}
+
+  {# ── Positive signals ──────────────────────────────────────────────────────── #}
+  <section class="taste-section">
+    <div class="taste-section-header">
+      <span class="taste-section-label">Positive signals</span>
+      <span class="taste-section-count">{{ positive_attrs|length }}</span>
+    </div>
+
+    <div class="signal-list">
+      {% for attr in positive_attrs %}
+      <div class="signal-row">
+        <div class="signal-name">{{ attr.attribute_name }}</div>
+
+        <div class="signal-bar-wrap">
+          <div class="signal-bar-fill"
+               style="--score: {{ attr.confidence_score }}"
+               title="{{ '%.0f'|format(attr.confidence_score * 100) }}% confidence">
+          </div>
+        </div>
+
+        <div class="signal-score">{{ '%.2f'|format(attr.confidence_score) }}</div>
+
+        <div class="signal-evidence">
+          {% if attr.evidence_film_ids %}
+            {% set shown = namespace(n=0) %}
+            {% for eid in attr.evidence_film_ids[:3] %}
+              {% if eid in evidence_films %}
+              {% set shown.n = shown.n + 1 %}
+              <a href="/films/{{ eid }}" class="evidence-link"
+                 title="{{ evidence_films[eid].title }}">
+                {{ evidence_films[eid].title | truncate(22, true, '…') }}
+              </a>
+              {% endif %}
+            {% endfor %}
+            {% if attr.evidence_film_ids|length > 3 %}
+            <span class="evidence-more">+{{ attr.evidence_film_ids|length - 3 }}</span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ── Anti-signals ──────────────────────────────────────────────────────────── #}
+  {% if negative_attrs %}
+  <section class="taste-section">
+    <div class="taste-section-header">
+      <span class="taste-section-label">Anti-signals</span>
+      <span class="taste-section-count">{{ negative_attrs|length }}</span>
+    </div>
+
+    <div class="signal-list">
+      {% for attr in negative_attrs %}
+      <div class="signal-row signal-row-negative">
+        <div class="signal-name">{{ attr.attribute_name }}</div>
+        <div class="signal-bar-wrap">
+          <div class="signal-bar-fill signal-bar-negative"
+               style="--score: {{ attr.confidence_score }}"
+               title="{{ '%.0f'|format(attr.confidence_score * 100) }}% confidence">
+          </div>
+        </div>
+        <div class="signal-score">{{ '%.2f'|format(attr.confidence_score) }}</div>
+        <div class="signal-evidence">
+          {% for eid in attr.evidence_film_ids[:2] %}
+            {% if eid in evidence_films %}
+            <a href="/films/{{ eid }}" class="evidence-link evidence-link-neg">
+              {{ evidence_films[eid].title | truncate(22, true, '…') }}
+            </a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ── Taste clusters ────────────────────────────────────────────────────────── #}
+  {% if clusters %}
+  <section class="taste-section">
+    <div class="taste-section-header">
+      <span class="taste-section-label">Clusters</span>
+      <span class="taste-section-count">{{ clusters|length }}</span>
+    </div>
+
+    <div class="cluster-grid">
+      {% for cluster_key, attrs in clusters.items() %}
+      <div class="cluster-card">
+        <div class="cluster-name">
+          {{ cluster_labels.get(cluster_key, cluster_key) }}
+        </div>
+        <div class="cluster-count-label">{{ attrs|length }} signals</div>
+        <div class="cluster-chips">
+          {% for attr in attrs | sort(attribute='confidence_score', reverse=True) %}
+          <span class="cluster-chip"
+                style="--conf: {{ attr.confidence_score }}"
+                title="{{ '%.0f'|format(attr.confidence_score * 100) }}% confidence">
+            {{ attr.attribute_name }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      {# General (no cluster) signals #}
+      {% if general_attrs %}
+      <div class="cluster-card cluster-card-general">
+        <div class="cluster-name">General</div>
+        <div class="cluster-count-label">{{ general_attrs|length }} signals</div>
+        <div class="cluster-chips">
+          {% for attr in general_attrs | sort(attribute='confidence_score', reverse=True) | list %}
+          <span class="cluster-chip" style="--conf: {{ attr.confidence_score }}">
+            {{ attr.attribute_name }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ── Full taste model ──────────────────────────────────────────────────────── #}
+  {% if taste_model_text %}
+  <section class="taste-section">
+    <details class="model-details">
+      <summary class="model-summary">
+        <span>Full taste model</span>
+        {% if stats.taste_model_version %}
+        <span class="model-meta">v{{ stats.taste_model_version.version_number }} · {{ stats.taste_model_version.generated_at[:10] }}</span>
+        {% endif %}
+      </summary>
+      <div class="model-body">
+        <pre class="model-text">{{ taste_model_text }}</pre>
+      </div>
+    </details>
+  </section>
+  {% endif %}
+
+  {% endif %} {# end if positive_attrs or negative_attrs #}
+
+</div>
+
+{% endblock %}

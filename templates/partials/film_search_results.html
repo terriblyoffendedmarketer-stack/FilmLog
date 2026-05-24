@@ -1,0 +1,18 @@
+{% if films %}
+  {% for film in films %}
+  <div class="film-search-item"
+    onclick="pickerSelect({{ film.tmdb_id }}, {{ film.title | tojson }}, {{ film.year | tojson }}, {{ film.poster_url | tojson }})">
+    {% if film.poster_url %}
+    <img src="{{ film.poster_url }}" alt="{{ film.title }}" class="film-search-thumb">
+    {% else %}
+    <div class="film-search-thumb film-search-placeholder">{{ (film.title or '?')[:1] }}</div>
+    {% endif %}
+    <div class="film-search-info">
+      <div class="film-search-title">{{ film.title }}</div>
+      <div class="film-search-year">{{ film.year or '' }} {% if film.language %}· {{ film.language }}{% endif %}</div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="film-search-empty">No films found</div>
+{% endif %}

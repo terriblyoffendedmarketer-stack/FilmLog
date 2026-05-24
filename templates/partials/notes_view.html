@@ -1,0 +1,10 @@
+{% if notes %}
+  <p class="notes-content">{{ notes }}</p>
+{% else %}
+  <p class="notes-empty">No notes yet. Add your thoughts about this film.</p>
+{% endif %}
+
+<button class="notes-edit-btn"
+  hx-get="/films/{{ tmdb_id }}/notes/edit"
+  hx-target="#notes-section"
+  hx-swap="innerHTML">{{ 'Edit notes' if notes else 'Add notes' }}</button>

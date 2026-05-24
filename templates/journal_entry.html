@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="journal-entry-layout">
+
+  {# ── Sidebar ─────────────────────────────────────────────────────────────── #}
+  <aside class="journal-entry-sidebar">
+    <a href="/journal" class="detail-back">← Journal</a>
+
+    <div class="journal-entry-meta-block">
+      <span class="journal-type-badge type-{{ entry.type }}">{{ entry.type }}</span>
+      <div class="journal-meta-date">{{ entry.created_at[:10] }}</div>
+      {% if entry.updated_at[:10] != entry.created_at[:10] %}
+      <div class="journal-meta-updated">Updated {{ entry.updated_at[:10] }}</div>
+      {% endif %}
+    </div>
+
+    {% if entry.tags %}
+    <div class="journal-sidebar-tags">
+      {% for tag in entry.tags %}
+      <span class="journal-tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if linked_films %}
+    <div class="journal-sidebar-section">
+      <div class="section-label">Films mentioned</div>
+      <div class="journal-linked-films">
+        {% for film in linked_films %}
+        <a href="/films/{{ film.tmdb_id }}" class="journal-film-link">
+          {% if film.poster_url %}
+          <img src="{{ film.poster_url }}" alt="{{ film.title }}" class="journal-film-thumb">
+          {% endif %}
+          <span>{{ film.title }}{% if film.year %} <em>({{ film.year }})</em>{% endif %}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="journal-entry-actions">
+      <a href="/journal/{{ entry.id }}/edit" class="btn-ghost">Edit</a>
+      <form method="POST" action="/journal/{{ entry.id }}/delete"
+            onsubmit="return confirm('Delete this entry?')">
+        <button type="submit" class="btn-ghost btn-danger">Delete</button>
+      </form>
+    </div>
+  </aside>
+
+  {# ── Main content ─────────────────────────────────────────────────────────── #}
+  <article class="journal-entry-content">
+    <h1 class="journal-entry-title">{{ entry.title }}</h1>
+    <div class="journal-entry-body">
+      {{ content_html }}
+    </div>
+  </article>
+
+</div>
+
+{% endblock %}

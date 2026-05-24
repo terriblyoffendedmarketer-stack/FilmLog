@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+
+{# Convenience shortcuts used by partials #}
+{% set tmdb_id      = film.tmdb_id %}
+{% set notes        = user_film.get('personal_notes', '') if user_film else '' %}
+{% set curr_status  = user_film.get('status', 'watchlist') if user_film else 'watchlist' %}
+
+<div class="detail-layout">
+
+  {# ── Sidebar ─────────────────────────────────────────────────────────────── #}
+  <aside class="detail-sidebar">
+
+    {# Poster #}
+    <div class="detail-poster">
+      {% if film.poster_url %}
+        <img src="{{ film.poster_url }}" alt="{{ film.title }}">
+      {% else %}
+        <div class="detail-poster-placeholder">{{ (film.title or '?')[:2] }}</div>
+      {% endif %}
+    </div>
+
+    {# Status control — HTMX swap target #}
+    {% if user_film %}
+    {% with current_status = curr_status %}
+    {% include 'partials/status_control.html' %}
+    {% endwith %}
+    {% endif %}
+
+    {# Metadata #}
+    <div class="detail-meta-list">
+      {% if film.runtime %}<div class="detail-meta-item">⏱ {{ film.runtime }} min</div>{% endif %}
+      {% if film.language %}<div class="detail-meta-item">🌍 {{ film.language | upper }}</div>{% endif %}
+      {% if film.country %}<div class="detail-meta-item">📍 {{ film.country }}</div>{% endif %}
+      {% if film.year %}<div class="detail-meta-item">📅 {{ film.year }}</div>{% endif %}
+    </div>
+
+    {# Genres #}
+    {% if film.genres %}
+    <div class="detail-genres">
+      {% for genre in film.genres %}
+      <span class="genre-chip">{{ genre }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </aside>
+
+  {# ── Main content ─────────────────────────────────────────────────────────── #}
+  <div class="detail-content">
+
+    <a href="/films" class="detail-back">← Films</a>
+
+    {# Title block #}
+    <div>
+      <h1 class="detail-title">{{ film.title }}</h1>
+      {% if film.year %}<div class="detail-year-line">{{ film.year }}</div>{% endif %}
+    </div>
+
+    {# Taste attributes #}
+    {% if film.taste_attrs %}
+    <div>
+      <div class="section-label">Taste attributes</div>
+      <div class="detail-taste-attrs">
+        {% for attr in film.taste_attrs %}
+        <span class="detail-attr-chip">{{ attr }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Notes — HTMX edit-in-place #}
+    <div>
+      <div class="section-label">Your notes</div>
+      <div class="notes-section" id="notes-section">
+        {% include 'partials/notes_view.html' %}
+      </div>
+    </div>
+
+    {# Linked recommendation issues #}
+    {% if linked_recs %}
+    <div>
+      <div class="section-label">Linked recommendations ({{ linked_recs | length }})</div>
+      <div class="rec-list">
+        {% for issue in linked_recs %}
+        <div class="rec-card">
+          <div class="rec-meta">Issue #{{ issue.issue_number }} · {{ issue.generated_at[:10] }}</div>
+          <div class="rec-text">{{ issue.issue_text }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Linked journal entries #}
+    {% if linked_journals %}
+    <div>
+      <div class="section-label">Journal mentions ({{ linked_journals | length }})</div>
+      <div class="rec-list">
+        {% for je in linked_journals %}
+        <a href="/journal/{{ je.id }}" class="rec-card rec-card-link">
+          <div class="rec-meta">
+            <span class="journal-type-badge type-{{ je.type }}">{{ je.type }}</span>
+            {{ je.created_at[:10] }}
+          </div>
+          <div class="rec-card-title">{{ je.title }}</div>
+          <div class="rec-text">{{ je.content | truncate(160, true, '…') }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

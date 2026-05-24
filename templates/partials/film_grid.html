@@ -1,0 +1,61 @@
+<div class="film-grid">
+  {% if films %}
+    {% for film in films %}
+    <div class="film-card">
+      <a href="/films/{{ film.tmdb_id }}">
+
+        {# Poster #}
+        <div class="film-poster">
+          {% if film.poster_url %}
+            <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+          {% else %}
+            <div class="film-poster-placeholder">
+              {{ (film.title or '?')[:1] }}
+            </div>
+          {% endif %}
+
+          {# Status badge #}
+          <span class="status-badge status-{{ film.status or 'watchlist' }}"
+                title="{{ film.status_label }}">
+            {%- if film.status == 'watched' -%}✓
+            {%- elif film.status == 'rewatch_candidate' -%}↩
+            {%- else -%}◯
+            {%- endif -%}
+          </span>
+        </div>
+
+        {# Text #}
+        <div class="film-info">
+          <div class="film-title">{{ film.title }}</div>
+          <div class="film-meta-row">
+            <span>{{ film.year or '' }}</span>
+            {% if film.language %}<span>[{{ film.language }}]</span>{% endif %}
+          </div>
+          {% if film.taste_attrs %}
+          <div class="film-attrs">
+            {% for attr in film.taste_attrs[:2] %}
+            <span class="attr-chip">{{ attr }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+      </a>
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <div class="empty-state">
+      {% if total_count == 0 %}
+        <h2>Your library is empty</h2>
+        <p>
+          First run <code>python main.py setup</code> to initialise the database,<br>
+          then <code>python main.py ingest-all</code> to import your film lists.
+        </p>
+      {% else %}
+        <h2>No films match these filters</h2>
+        <p>Try removing a filter to see more results.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>

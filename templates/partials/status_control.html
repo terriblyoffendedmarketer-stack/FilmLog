@@ -1,0 +1,14 @@
+<div id="status-control" class="detail-status-control">
+  {% for val, label in [
+    ('watchlist',         'Watchlist'),
+    ('watched',           'Watched'),
+    ('rewatch_candidate', 'Rewatch'),
+  ] %}
+  <button
+    class="status-btn{% if current_status == val %} active-{{ val }}{% endif %}"
+    hx-post="/films/{{ tmdb_id }}/status"
+    hx-vals='{"status": "{{ val }}"}'
+    hx-target="#status-control"
+    hx-swap="outerHTML">{{ label }}</button>
+  {% endfor %}
+</div>

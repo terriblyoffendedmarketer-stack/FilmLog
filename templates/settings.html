@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="settings-layout">
+
+  <div class="settings-header">
+    <h1 class="settings-title">Settings</h1>
+    <p class="settings-subtitle">
+      API keys are stored in your browser's <code>localStorage</code> — they
+      never leave your machine and are never sent to any server except the API
+      providers directly.
+    </p>
+  </div>
+
+  {# ── Anthropic API key ─────────────────────────────────────────────────── #}
+  <div class="settings-card">
+    <div class="settings-card-header">
+      <div>
+        <h2 class="settings-card-title">Anthropic API key</h2>
+        <p class="settings-card-desc">
+          Powers recommendations, taste model generation, and attribute inference.
+          Get a key at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>.
+        </p>
+      </div>
+      <span id="anthropic-status" class="key-status key-status-unknown">—</span>
+    </div>
+
+    <div class="settings-key-row">
+      <input type="password" id="anthropic-key" class="form-input settings-key-input"
+             placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+      <button class="btn-ghost" onclick="toggleKeyVis('anthropic-key', this)">Show</button>
+      <button class="btn-primary" onclick="testKey('anthropic')">Test</button>
+      <button class="btn-ghost" onclick="clearKey('anthropic')">Clear</button>
+    </div>
+    <p id="anthropic-msg" class="settings-key-msg"></p>
+  </div>
+
+  {# ── TMDB API key ──────────────────────────────────────────────────────── #}
+  <div class="settings-card">
+    <div class="settings-card-header">
+      <div>
+        <h2 class="settings-card-title">TMDB API key</h2>
+        <p class="settings-card-desc">
+          Fetches film metadata, posters, and watch providers.
+          Get a free key at <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org</a>.
+        </p>
+      </div>
+      <span id="tmdb-status" class="key-status key-status-unknown">—</span>
+    </div>
+
+    <div class="settings-key-row">
+      <input type="password" id="tmdb-key" class="form-input settings-key-input"
+             placeholder="Your TMDB API key…" autocomplete="off" spellcheck="false">
+      <button class="btn-ghost" onclick="toggleKeyVis('tmdb-key', this)">Show</button>
+      <button class="btn-primary" onclick="testKey('tmdb')">Test</button>
+      <button class="btn-ghost" onclick="clearKey('tmdb')">Clear</button>
+    </div>
+    <p id="tmdb-msg" class="settings-key-msg"></p>
+  </div>
+
+  {# ── Library stats ─────────────────────────────────────────────────────── #}
+  {% if stats %}
+  <div class="settings-card settings-card-info">
+    <h2 class="settings-card-title">Library</h2>
+    <div class="settings-stats">
+      <div class="settings-stat">
+        <span class="settings-stat-n">{{ stats.watched }}</span>
+        <span class="settings-stat-l">Watched</span>
+      </div>
+      <div class="settings-stat">
+        <span class="settings-stat-n">{{ stats.watchlist }}</span>
+        <span class="settings-stat-l">Watchlist</span>
+      </div>
+      <div class="settings-stat">
+        <span class="settings-stat-n">{{ stats.rewatch_candidate }}</span>
+        <span class="settings-stat-l">Rewatch</span>
+      </div>
+      <div class="settings-stat">
+        <span class="settings-stat-n">{{ stats.total }}</span>
+        <span class="settings-stat-l">Films total</span>
+      </div>
+    </div>
+    {% if stats.taste_model_version %}
+    <p class="settings-model-version">
+      Taste model v{{ stats.taste_model_version.version_number }}
+      — generated {{ stats.taste_model_version.generated_at[:10] }}
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+// ── Key storage in localStorage ──────────────────────────────────────────────
+var KEYS = { anthropic: 'filmlog_anthropic_key', tmdb: 'filmlog_tmdb_key' };
+
+function loadKeys() {
+  var ak = localStorage.getItem(KEYS.anthropic) || '';
+  var tk = localStorage.getItem(KEYS.tmdb) || '';
+  if (ak) {
+    document.getElementById('anthropic-key').value = ak;
+    updateStatus('anthropic', null); // show as set but untested
+  }
+  if (tk) {
+    document.getElementById('tmdb-key').value = tk;
+    updateStatus('tmdb', null);
+  }
+}
+
+function updateStatus(type, ok) {
+  var el = document.getElementById(type + '-status');
+  if (ok === true)  { el.textContent = 'Valid'; el.className = 'key-status key-status-ok'; }
+  else if (ok === false) { el.textContent = 'Invalid'; el.className = 'key-status key-status-err'; }
+  else {
+    var val = document.getElementById(type + '-key').value;
+    if (val) { el.textContent = 'Set'; el.className = 'key-status key-status-set'; }
+    else      { el.textContent = '—';   el.className = 'key-status key-status-unknown'; }
+  }
+}
+
+function toggleKeyVis(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  var show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? 'Hide' : 'Show';
+}
+
+function clearKey(type) {
+  localStorage.removeItem(KEYS[type]);
+  document.getElementById(type + '-key').value = '';
+  document.getElementById(type + '-msg').textContent = 'Key cleared.';
+  updateStatus(type, null);
+}
+
+function saveKey(type) {
+  var val = document.getElementById(type + '-key').value.trim();
+  if (val) localStorage.setItem(KEYS[type], val);
+}
+
+async function testKey(type) {
+  var key = document.getElementById(type + '-key').value.trim();
+  var msgEl = document.getElementById(type + '-msg');
+  if (!key) {
+    msgEl.textContent = 'Enter a key first.';
+    return;
+  }
+  msgEl.textContent = 'Testing…';
+  try {
+    var resp = await fetch('/api/test-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: type, key: key }),
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      saveKey(type);
+      updateStatus(type, true);
+      msgEl.textContent = data.message;
+      msgEl.style.color = 'var(--watched)';
+    } else {
+      updateStatus(type, false);
+      msgEl.textContent = data.error || 'Test failed.';
+      msgEl.style.color = '#ef4444';
+    }
+  } catch (e) {
+    updateStatus(type, false);
+    msgEl.textContent = 'Network error: ' + e.message;
+    msgEl.style.color = '#ef4444';
+  }
+}
+
+// Auto-save key value on blur
+['anthropic', 'tmdb'].forEach(function(type) {
+  var inp = document.getElementById(type + '-key');
+  inp.addEventListener('blur', function() { saveKey(type); });
+  inp.addEventListener('input', function() { updateStatus(type, null); });
+});
+
+loadKeys();
+</script>
+
+{% endblock %}

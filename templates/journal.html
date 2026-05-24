@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="journal-layout">
+
+  <div class="journal-header">
+    <h1 class="journal-title">Journal</h1>
+    <a href="/journal/new" class="btn-primary">New entry</a>
+  </div>
+
+  {% if entries %}
+  <div class="journal-list">
+    {% for entry in entries %}
+    <a href="/journal/{{ entry.id }}" class="journal-card">
+      <div class="journal-card-top">
+        <span class="journal-type-badge type-{{ entry.type }}">{{ entry.type }}</span>
+        <span class="journal-date">{{ entry.created_at[:10] }}</span>
+      </div>
+      <div class="journal-card-title">{{ entry.title }}</div>
+      <div class="journal-card-preview">{{ entry.content | truncate(180, true, '…') }}</div>
+      {% if entry.tags %}
+      <div class="journal-card-tags">
+        {% for tag in entry.tags[:4] %}
+        <span class="journal-tag">{{ tag }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if entry.linked_film_ids %}
+      <div class="journal-card-films">
+        🎬 {{ entry.linked_film_ids | length }} film{{ 's' if entry.linked_film_ids | length != 1 }}
+      </div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="journal-empty">
+    <h2>No entries yet</h2>
+    <p>
+      The journal is for stated preferences — what you think and value about film.<br>
+      Write about a director, a theme, a reaction, a question.<br>
+      These become the context layer that sharpens recommendations.
+    </p>
+    <a href="/journal/new" class="btn-primary" style="display:inline-block; margin-top:20px;">
+      Write first entry
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

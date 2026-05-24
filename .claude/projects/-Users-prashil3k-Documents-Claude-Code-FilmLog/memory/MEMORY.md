@@ -1,0 +1,4 @@
+- [Prashil profile](user_profile.md) — non-coder, product thinker, wants persistent film intelligence
+- [Progress indicators](feedback_progress.md) — always show N/M progress and time estimates for batch ops
+- [Diagnose first](feedback_diagnose_first.md) — read the code and understand root cause before retrying
+- [Core problem](project_core_problem.md) — masterpiece avoidance, mood-realistic matching, why watchlists fail

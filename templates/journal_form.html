@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="journal-form-layout">
+
+  <div class="journal-form-header">
+    <a href="{{ '/journal/' + entry.id|string if entry else '/journal' }}" class="detail-back">
+      {{ '← Back' if entry else '← Journal' }}
+    </a>
+    <h1 class="journal-form-title">{{ 'Edit entry' if entry else 'New entry' }}</h1>
+  </div>
+
+  {% if error %}
+  <div class="form-error">{{ error }}</div>
+  {% endif %}
+
+  <form class="journal-form" method="POST" id="journal-form">
+
+    {# Title #}
+    <div class="form-field">
+      <label class="form-label" for="f-title">Title</label>
+      <input type="text" id="f-title" name="title" class="form-input"
+             value="{{ form_values.get('title', '') if form_values else (entry.title if entry else '') }}"
+             placeholder="What's this about?" required autofocus>
+    </div>
+
+    {# Type #}
+    <div class="form-field form-field-small">
+      <label class="form-label" for="f-type">Type</label>
+      <select id="f-type" name="type" class="filter-select form-select">
+        {% set cur_type = (form_values.get('type') if form_values else None) or (entry.type if entry else 'musing') %}
+        {% for val, label, desc in [
+          ('musing',     'Musing',     'Personal reflection, opinion'),
+          ('newsletter', 'Newsletter', 'Essay or longer piece'),
+          ('note',       'Note',       'Quick observation'),
+        ] %}
+        <option value="{{ val }}"{% if cur_type == val %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {# Content #}
+    <div class="form-field">
+      <label class="form-label" for="f-content">
+        Content
+        <span class="form-label-hint">Markdown supported</span>
+      </label>
+      <textarea id="f-content" name="content" class="form-textarea" required
+                placeholder="Write whatever you're thinking about film. Directors, themes, a scene that stuck with you, a question about your own taste. The more honest, the more useful.">{{ form_values.get('content', '') if form_values else (entry.content if entry else '') }}</textarea>
+    </div>
+
+    {# ── Film linker ───────────────────────────────────────────────────────── #}
+    <div class="form-field">
+      <label class="form-label">
+        Films mentioned
+        <span class="form-label-hint">Search your library and link films discussed in this entry</span>
+      </label>
+
+      {# Film picker #}
+      <div class="film-picker">
+
+        {# Linked film chips (populated by JS) #}
+        <div id="linked-films-display" class="linked-films-display"></div>
+
+        {# Hidden input sent with the form #}
+        <input type="hidden" name="linked_film_ids" id="linked-film-ids-input" value="">
+
+        {# Search box #}
+        <div class="film-picker-search">
+          <input type="text"
+            class="form-input film-picker-input"
+            placeholder="Type a film title to search…"
+            autocomplete="off"
+            hx-get="/api/films/search"
+            hx-trigger="keyup changed delay:250ms"
+            hx-target="#film-search-results"
+            hx-include="this"
+            name="q">
+          <div id="film-search-results" class="film-search-results"></div>
+        </div>
+
+      </div>
+    </div>
+
+    {# Tags #}
+    <div class="form-field">
+      <label class="form-label" for="f-tags">
+        Tags
+        <span class="form-label-hint">Comma-separated</span>
+      </label>
+      <input type="text" id="f-tags" name="tags" class="form-input"
+             value="{{ form_values.get('tags', '') if form_values else (entry.tags|join(', ') if entry else '') }}"
+             placeholder="slow cinema, grief, Bergman, …">
+    </div>
+
+    {# Submit #}
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">
+        {{ 'Save changes' if entry else 'Create entry' }}
+      </button>
+      <a href="{{ '/journal/' + entry.id|string if entry else '/journal' }}" class="btn-ghost">
+        Cancel
+      </a>
+    </div>
+
+  </form>
+</div>
+
+{# Pre-linked films from the entry (edit mode) — serialised into JS #}
+<script>
+// ── Film picker state ───────────────────────────────────────────────────────
+var pickerFilms = {};  // tmdb_id (int) → {id, title, year, poster_url}
+
+{% if prelinked_films %}
+{% for film in prelinked_films %}
+pickerFilms[{{ film.tmdb_id }}] = {
+  id: {{ film.tmdb_id }},
+  title: {{ film.title | tojson }},
+  year: {{ film.year | tojson }},
+  poster_url: {{ film.poster_url | tojson }}
+};
+{% endfor %}
+{% endif %}
+
+// Render on page load
+renderLinkedFilms();
+
+// Called by search result items
+function pickerSelect(id, title, year, poster_url) {
+  pickerFilms[id] = {id, title, year, poster_url};
+  renderLinkedFilms();
+  // Clear search
+  document.querySelector('.film-picker-input').value = '';
+  document.getElementById('film-search-results').innerHTML = '';
+}
+
+// Remove a linked film
+function pickerRemove(id) {
+  delete pickerFilms[id];
+  renderLinkedFilms();
+}
+
+// Rebuild the chips and update hidden input
+function renderLinkedFilms() {
+  var display = document.getElementById('linked-films-display');
+  var hidden  = document.getElementById('linked-film-ids-input');
+  var ids     = Object.keys(pickerFilms).map(Number);
+
+  display.innerHTML = '';
+  ids.forEach(function(id) {
+    var f = pickerFilms[id];
+    var chip = document.createElement('div');
+    chip.className = 'linked-film-chip';
+    chip.innerHTML =
+      (f.poster_url
+        ? '<img src="' + f.poster_url + '" class="chip-thumb">'
+        : '<div class="chip-thumb chip-placeholder">' + (f.title||'?')[0] + '</div>') +
+      '<span class="chip-label">' + f.title +
+        (f.year ? ' <em>(' + f.year + ')</em>' : '') +
+      '</span>' +
+      '<button type="button" class="chip-remove" onclick="pickerRemove(' + id + ')">×</button>';
+    display.appendChild(chip);
+  });
+
+  hidden.value = ids.join(',');
+}
+
+// Close search results when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.film-picker-search')) {
+    document.getElementById('film-search-results').innerHTML = '';
+  }
+});
+</script>
+
+{% endblock %}

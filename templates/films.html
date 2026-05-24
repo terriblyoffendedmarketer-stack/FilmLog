@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div id="films-page">
+
+  {# ── Filter bar ──────────────────────────────────────────────────────────── #}
+  <div class="filter-bar">
+    <form id="filter-form" method="GET" action="/films">
+
+      {# Status tabs #}
+      <div class="filter-group">
+        {% for val, label in [
+          ('all',                'All'),
+          ('watchlist',          'Watchlist'),
+          ('watched',            'Watched'),
+          ('rewatch_candidate',  'Rewatch'),
+        ] %}
+        <button type="button"
+          class="filter-btn{% if current_status == val %} active{% endif %}"
+          onclick="setStatusFilter('{{ val }}')">{{ label }}</button>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="status-val" name="status" value="{{ current_status }}">
+
+      <div class="filter-divider"></div>
+
+      {# Sort #}
+      <select name="sort" class="filter-select" onchange="this.form.submit()">
+        <option value="taste" {% if current_sort == 'taste' %}selected{% endif %}>Taste match</option>
+        <option value="year"  {% if current_sort == 'year'  %}selected{% endif %}>Year ↓</option>
+        <option value="title" {% if current_sort == 'title' %}selected{% endif %}>A – Z</option>
+        <option value="added" {% if current_sort == 'added' %}selected{% endif %}>Recently added</option>
+      </select>
+
+      {# Media type #}
+      <select name="media_type" class="filter-select" onchange="this.form.submit()">
+        <option value="">All types</option>
+        <option value="movie"{% if current_media_type == 'movie' %} selected{% endif %}>Films</option>
+        <option value="tv"{% if current_media_type == 'tv' %} selected{% endif %}>K-drama / Series</option>
+        <option value="anime"{% if current_media_type == 'anime' %} selected{% endif %}>Anime</option>
+        <option value="series"{% if current_media_type == 'series' %} selected{% endif %}>All series</option>
+      </select>
+
+      {# Language #}
+      <select name="language" class="filter-select" onchange="this.form.submit()">
+        <option value="">All languages</option>
+        {% for code, label in [
+          ('ko','Korean'), ('ja','Japanese'), ('ml','Malayalam'),
+          ('ta','Tamil'),  ('hi','Hindi'),    ('en','English'),
+          ('fr','French'), ('zh','Chinese'),
+        ] %}
+        <option value="{{ code }}"{% if current_language == code %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      {# Era #}
+      <select name="era" class="filter-select" onchange="this.form.submit()">
+        <option value="">All eras</option>
+        {% for era_val in ['2020s', '2010s', '2000s', '90s', '80s', '70s', '60s'] %}
+        <option value="{{ era_val }}"{% if current_era == era_val %} selected{% endif %}>{{ era_val }}</option>
+        {% endfor %}
+      </select>
+
+      <span class="results-count">{{ films|length }} film{{ 's' if films|length != 1 }}</span>
+
+    </form>
+  </div>
+
+  {# ── Film grid ────────────────────────────────────────────────────────────── #}
+  {% include 'partials/film_grid.html' %}
+
+</div>
+
+<script>
+function setStatusFilter(val) {
+  document.getElementById('status-val').value = val;
+  document.getElementById('filter-form').submit();
+}
+</script>
+
+{% endblock %}

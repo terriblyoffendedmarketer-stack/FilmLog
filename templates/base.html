@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>filmlog{% if title %} · {{ title }}{% endif %}</title>
+  <script src="https://unpkg.com/htmx.org@2.0.3/dist/htmx.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-logo">filmlog</a>
+
+    <div class="nav-links">
+      <a href="/tonight"  class="nav-link{% if page == 'tonight'  %} active{% endif %}">Tonight</a>
+      <a href="/films"    class="nav-link{% if page == 'films'    %} active{% endif %}">Films</a>
+      <a href="/taste"    class="nav-link{% if page == 'taste'    %} active{% endif %}">Taste</a>
+      <a href="/journal"  class="nav-link{% if page == 'journal'  %} active{% endif %}">Journal</a>
+    </div>
+
+    <form class="nav-search" action="/search" method="GET" role="search">
+      <input type="search" name="q" class="nav-search-input"
+             value="{{ request.args.get('q', '') if page == 'search' else '' }}"
+             placeholder="Search films, journal…" autocomplete="off">
+      <button type="submit" class="nav-search-btn" aria-label="Search">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="6.5" cy="6.5" r="5"/><path d="M11 11l3 3"/>
+        </svg>
+      </button>
+    </form>
+
+    {% if stats %}
+    <div class="nav-stats">
+      <span><strong>{{ stats.watched }}</strong> watched</span>
+      <span><strong>{{ stats.watchlist }}</strong> on list</span>
+      <a href="/settings" class="nav-settings-link{% if page == 'settings' %} active{% endif %}"
+         title="Settings" aria-label="Settings">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="10" cy="10" r="3"/>
+          <path d="M10 2v2M10 16v2M2 10h2M16 10h2
+                   M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42
+                   M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/>
+        </svg>
+      </a>
+    </div>
+    {% endif %}
+  </nav>
+
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{% if error %}
+{# ── Error state ─────────────────────────────────────────────────────────── #}
+<div class="rec-result-error">
+  <p>{{ error }}</p>
+</div>
+
+{% else %}
+{# ── Success: editorial ───────────────────────────────────────────────────── #}
+<div class="rec-result">
+
+  <div class="rec-result-meta">
+    Issue #{{ issue_number }}
+    {% if tier2 %}<span class="tier2-badge">offline mode</span>{% endif %}
+  </div>
+
+  <div class="rec-result-text">{{ issue_text }}</div>
+
+  {% if film_cards %}
+  <div class="rec-result-films">
+    {% for film in film_cards %}
+    <a href="/films/{{ film.tmdb_id }}" class="rec-film-chip">
+      {% if film.poster_url %}
+      <img src="{{ film.poster_url }}" alt="{{ film.title }}" class="rec-film-thumb">
+      {% endif %}
+      <span class="rec-film-title">{{ film.title }}{% if film.year %} <em>({{ film.year }})</em>{% endif %}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="rec-result-actions">
+    <a href="/tonight" class="btn-ghost rec-again-link">Generate again</a>
+  </div>
+
+</div>
+{% endif %}
