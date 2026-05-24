@@ -2,3 +2,5 @@
 - [Progress indicators](feedback_progress.md) — always show N/M progress and time estimates for batch ops
 - [Diagnose first](feedback_diagnose_first.md) — read the code and understand root cause before retrying
 - [Core problem](project_core_problem.md) — masterpiece avoidance, mood-realistic matching, why watchlists fail
+- [Project status](project_status.md) — current state, what's built, what's next (as of 2026-05-25)
+- [Queued ideas](project_ideas_queued.md) — feature ideas from first session organized by category
