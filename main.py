@@ -12,6 +12,7 @@ from filmlog import log as log_module
 from filmlog import model as model_module
 from filmlog import recommend as recommend_module
 from filmlog import browse as browse_module
+from filmlog import journal_ingest
 
 
 @click.group()
@@ -123,6 +124,22 @@ def browse(language, context, mood, length, era, query, limit, watched):
         limit=limit,
         show_watched=watched,
     )
+
+
+@cli.command("import-journal")
+@click.argument("file", type=click.Path(exists=True))
+@click.option("--dry-run", is_flag=True, help="Parse and preview without importing.")
+def import_journal(file, dry_run):
+    """Import a raw markdown journal dump into structured entries."""
+    entries = journal_ingest.ingest_journal_dump(file, dry_run=dry_run)
+    if dry_run:
+        click.echo(f"\n── Dry run: {len(entries)} entries parsed ──────────────")
+        for e in entries:
+            films_n = len(e.get("linked_film_ids", []))
+            tags = ", ".join(e.get("tags", [])) or "—"
+            click.echo(f"  [{e['type']:10s}] {e['title'][:55]}")
+            click.echo(f"             {len(e['content']):,} chars · {films_n} films · {tags}")
+        click.echo("\nRun without --dry-run to import.")
 
 
 @cli.command()

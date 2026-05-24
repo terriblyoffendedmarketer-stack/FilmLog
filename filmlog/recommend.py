@@ -248,6 +248,17 @@ def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
         if attention == "half" and runtime > 150:
             score -= 0.4
 
+        # Cognitive load matching
+        cog_load = film.get("cognitive_load") or "medium"
+        if mood == "casual" and cog_load == "high":
+            score -= 0.6
+        elif mood == "casual" and cog_load == "low":
+            score += 0.3
+        elif mood == "engaged" and cog_load == "high":
+            score += 0.2
+        if attention == "half" and cog_load == "high":
+            score -= 0.5
+
         # Rewatch candidates get a small boost (they stuck for a reason)
         if film.get("status") == "rewatch_candidate":
             score += 0.3
@@ -333,11 +344,13 @@ def _format_candidates(candidates: list[dict]) -> str:
         else:
             attrs = raw_attrs or []
 
+        cog_load = film.get("cognitive_load") or "medium"
         line = f"• {title} ({year})"
         if lang:
             line += f" [{lang}]"
         if runtime:
             line += f" {runtime}min"
+        line += f" [energy: {cog_load}]"
         if status == "rewatch_candidate":
             line += " [REWATCH CANDIDATE]"
         if attrs:

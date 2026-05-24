@@ -90,6 +90,22 @@ def _extract_film_ids_from_text(text: str) -> list[int]:
     return ids
 
 
+def _strip_md(text: str) -> str:
+    """Strip markdown syntax for plain-text previews."""
+    t = text
+    t = re.sub(r"^\*Originally published:.*?\*\n*", "", t)
+    t = re.sub(r"^#{1,6}\s+", "", t, flags=re.MULTILINE)
+    t = re.sub(r"\*{1,3}(.+?)\*{1,3}", r"\1", t)
+    t = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", t)
+    t = re.sub(r"[…\.·]{3,}", "", t)
+    t = re.sub(r"\n{2,}", " ", t)
+    t = re.sub(r"\s+", " ", t)
+    return t.strip()
+
+
+app.jinja_env.filters["strip_md"] = _strip_md
+
+
 def _get_stats() -> dict:
     """Load library stats for the nav bar. Returns zeros on error."""
     try:

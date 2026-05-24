@@ -32,6 +32,7 @@
           <div class="film-meta-row">
             <span>{{ film.year or '' }}</span>
             {% if film.language %}<span>[{{ film.language }}]</span>{% endif %}
+            {% if film.cognitive_load %}<span class="cog-dot cog-{{ film.cognitive_load }}" title="{{ film.cognitive_load }} energy"></span>{% endif %}
           </div>
           {% if film.taste_attrs %}
           <div class="film-attrs">

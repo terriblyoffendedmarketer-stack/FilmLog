@@ -6,41 +6,46 @@ type: project
 
 ## Current state (2026-05-25)
 
-**Database:** 503 entries — 126 watched, 377 watchlist. SQLite at `filmlog.db` (committed to git).
+**Database:** 503 entries — 126 watched, 377 watchlist. SQLite at `filmlog.db`.
 
-**Taste model:** v1 generated with 23 taste signals. Top signals include "high-concept structure that delivers emotional payload" (0.97), "constrained-setting thriller intensity" (0.95), "ensemble slice-of-life with dignity" (0.94).
+**Journal:** 19 entries imported from `data/raw/journal_dump.md` via `filmlog/journal_ingest.py`. 3 newsletters (ThreeK #1, #2, #4), 16 musings/notes. Auto-linked films via title matching with common-word filtering. Tags extracted (craft, diary, newsletter, kdrama, anime, threek-N).
+
+**Taste model:** v1 generated with 23 taste signals.
 
 **Media types in DB:** 368 movies, 101 TV series (K-drama etc), 34 anime. Column `media_type` on `films` table.
 
-**Rewatch model:** Rewatch is a boolean flag on `user_films`, NOT a separate status. Status is only `watched` or `watchlist`. A film can be watched AND flagged for rewatch. Purple ↩ badge on cards.
+**Rewatch model:** Rewatch is a boolean flag on `user_films`, NOT a separate status.
 
-**Unresolved imports:** 117 entries in `watchlist_unresolved` table — genuinely ambiguous titles that need manual review.
+**Unresolved imports:** 117 entries in `watchlist_unresolved`.
 
-**GitHub:** `prashil3k/FilmLog` — 2 commits on main, up to date. `push.command` and `pull.command` files for Prashil to double-click.
+**GitHub:** `prashil3k/FilmLog` — main branch, up to date.
 
-**Flask server:** Runs on port 5001 (`flask --app app run --debug --port 5001`). Auto-reloads on code changes.
+**Flask server:** Runs on port 5001. All 13 build steps + journal import complete.
 
-## Key fixes made this session
+## Web UI pages built
 
-- `load_dotenv(override=True)` across all modules — shell had empty `ANTHROPIC_API_KEY` that blocked `.env`
-- Added TV series search to TMDB client (`search_tv`, `get_tv_details`, `fetch_tv_data`)
-- Ingest pipeline uses TV search when `is_series=True` with scoring boost
-- Progress bars with time estimates on TMDB matching and DB writing
-- `ingest_all_raw` respects `non_interactive` flag to skip confirmation prompt
-- `media_type` column + migration in db.py
+- **Films** — tile grid with poster cards, status/language/era/length/media_type filters, taste-based sorting
+- **Film detail** — poster, metadata, notes (HTMX edit-in-place), status toggle, taste attributes, linked recommendations, linked journal entries
+- **Tonight** — mood calibration form → Claude-generated recommendation editorial
+- **Taste Profile** — confidence bars, clusters, evidence films, anti-signals
+- **Journal** — card list with type badges, tag chips, film counts. Detail view renders markdown. New/edit forms with film search picker.
+- **Search** — FTS5 full-text search across films and journals
+- **Settings** — API key entry and test
+
+## Key files added this session
+
+- `filmlog/journal_ingest.py` — journal dump parser (split on H1 headers + bold-link-after-separator, common-word film title filtering, tag extraction)
+- `strip_md` Jinja filter in `app.py` — strips markdown for card previews
+- `import-journal` CLI command in `main.py`
 
 ## What's next
 
-1. **Journal bulk import** — Prashil will drop a markdown file in `data/raw/`. Build a journal ingestion pipeline that parses unstructured notes (Notion, Keep, Substack) into journal entries, auto-links mentioned films, extracts tags.
-2. **Phone access via Tailscale** — deferred, but keep in mind during builds (don't hardcode localhost assumptions). Also consider PWA manifest for "add to homescreen" on mobile.
-3. **Taste-based mixed views** — cross-media recommendations by theme (an anime, a K-drama, and a film could appear together if they share taste attributes)
-4. **The "sell" refinements** — mood calibration should detect tired-but-not-mindless state. The editorial should actively reframe masterpieces as tonight-watchable.
-5. **Cognitive load scoring** — each film gets a `cognitive_load: low/medium/high` attribute so recommendations can match energy level
+1. **Taste-based mixed views** — cross-media recommendations by theme
+2. **The "sell" refinements** — mood calibration detecting tired-but-not-mindless
+3. **Cognitive load scoring** — per-film `cognitive_load: low/medium/high` attribute
+4. **Phone access via Tailscale** — PWA manifest for mobile homescreen
+5. **FTS index rebuild** — run `db.rebuild_fts_index()` to index the new journal entries
 
 ## API keys
 
-Stored in `.env` (gitignored). Keys:
-- `ANTHROPIC_API_KEY` — for Claude Haiku (parsing, metadata) and Opus (taste model, recommendations)
-- `TMDB_API_KEY` — for film metadata and posters
-
-**Why:** Prashil's shell has an empty `ANTHROPIC_API_KEY` env var (from Claude Code itself). All modules use `load_dotenv(override=True)` to work around this.
+Stored in `.env` (gitignored). All modules use `load_dotenv(override=True)` because Prashil's shell has an empty `ANTHROPIC_API_KEY` from Claude Code itself.

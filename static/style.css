@@ -2070,3 +2070,15 @@ html, body {
     gap: 10px;
   }
 }
+
+/* ── Cognitive load dots ──────────────────────────────────────────────────── */
+.cog-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.cog-low    { background: #4ade80; }
+.cog-medium { background: #facc15; }
+.cog-high   { background: #f87171; }

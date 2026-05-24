@@ -17,7 +17,7 @@
         <span class="journal-date">{{ entry.created_at[:10] }}</span>
       </div>
       <div class="journal-card-title">{{ entry.title }}</div>
-      <div class="journal-card-preview">{{ entry.content | truncate(180, true, '…') }}</div>
+      <div class="journal-card-preview">{{ entry.content | strip_md | truncate(180, true, '…') }}</div>
       {% if entry.tags %}
       <div class="journal-card-tags">
         {% for tag in entry.tags[:4] %}

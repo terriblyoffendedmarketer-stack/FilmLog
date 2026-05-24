@@ -155,6 +155,8 @@ def _run_migrations(conn) -> None:
     film_cols = {r[1] for r in conn.execute("PRAGMA table_info(films)").fetchall()}
     if "media_type" not in film_cols:
         conn.execute("ALTER TABLE films ADD COLUMN media_type TEXT DEFAULT 'movie'")
+    if "cognitive_load" not in film_cols:
+        conn.execute("ALTER TABLE films ADD COLUMN cognitive_load TEXT")
 
     uf_cols = {r[1] for r in conn.execute("PRAGMA table_info(user_films)").fetchall()}
     if "rewatch" not in uf_cols:
@@ -905,6 +907,89 @@ def fts_search(query: str, limit: int = 20) -> dict:
             journals = [dict(r) for r in rows]
 
     return {"films": films, "journals": journals}
+
+
+def infer_cognitive_load(
+    runtime: int | None,
+    genres: list[str] | None,
+    taste_attrs: list[str] | None,
+    media_type: str = "movie",
+) -> str:
+    """
+    Infer cognitive load (low/medium/high) from film metadata.
+    No API call — pure heuristic based on genre, runtime, and attributes.
+    """
+    score = 0.0  # negative = lighter, positive = heavier
+
+    genres_lower = {g.lower() for g in (genres or [])}
+    attrs_lower = " ".join(a.lower() for a in (taste_attrs or []))
+
+    # Genre signals
+    light_genres = {"comedy", "animation", "family", "music", "romance"}
+    heavy_genres = {"war", "history", "documentary", "crime", "thriller"}
+    mid_genres = {"drama", "mystery", "sci-fi & fantasy", "science fiction", "fantasy"}
+
+    if genres_lower & light_genres:
+        score -= 1.0
+    if genres_lower & heavy_genres:
+        score += 1.0
+    if genres_lower & mid_genres:
+        score += 0.3
+
+    # Runtime signals
+    if runtime:
+        if runtime < 95:
+            score -= 0.5
+        elif runtime > 150:
+            score += 0.8
+        elif runtime > 130:
+            score += 0.3
+
+    # Attribute signals — keywords that indicate weight
+    heavy_words = ["existential", "dread", "grief", "trauma", "war", "cerebral",
+                   "philosophical", "bleak", "devastating", "harrowing", "slow",
+                   "meditative", "arthouse", "non-linear", "ambiguous"]
+    light_words = ["fun", "entertaining", "lighthearted", "heartwarming", "feel-good",
+                   "whimsical", "playful", "colorful", "adventure", "action-packed",
+                   "fast-paced", "comedic"]
+
+    for w in heavy_words:
+        if w in attrs_lower:
+            score += 0.4
+    for w in light_words:
+        if w in attrs_lower:
+            score -= 0.4
+
+    # Anime/series adjustment — episodes are individually lighter than a 3hr film
+    if media_type in ("anime", "tv"):
+        score -= 0.3
+
+    if score <= -0.5:
+        return "low"
+    elif score >= 1.0:
+        return "high"
+    return "medium"
+
+
+def compute_all_cognitive_loads() -> int:
+    """Compute and store cognitive_load for all films. Returns count updated."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT tmdb_id, runtime, tmdb_genres, default_taste_attributes, media_type FROM films"
+        ).fetchall()
+
+        updated = 0
+        for r in rows:
+            genres = json.loads(r["tmdb_genres"]) if r["tmdb_genres"] else []
+            attrs = json.loads(r["default_taste_attributes"]) if r["default_taste_attributes"] else []
+            load = infer_cognitive_load(r["runtime"], genres, attrs, r["media_type"] or "movie")
+            conn.execute(
+                "UPDATE films SET cognitive_load = ? WHERE tmdb_id = ?",
+                (load, r["tmdb_id"]),
+            )
+            updated += 1
+
+    return updated
 
 
 def get_library_stats() -> dict:

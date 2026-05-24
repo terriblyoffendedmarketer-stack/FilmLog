@@ -31,6 +31,7 @@
     {# Metadata #}
     <div class="detail-meta-list">
       {% if film.runtime %}<div class="detail-meta-item">⏱ {{ film.runtime }} min</div>{% endif %}
+      {% if film.cognitive_load %}<div class="detail-meta-item"><span class="cog-dot cog-{{ film.cognitive_load }}"></span> {{ film.cognitive_load }} energy</div>{% endif %}
       {% if film.language %}<div class="detail-meta-item">🌍 {{ film.language | upper }}</div>{% endif %}
       {% if film.country %}<div class="detail-meta-item">📍 {{ film.country }}</div>{% endif %}
       {% if film.year %}<div class="detail-meta-item">📅 {{ film.year }}</div>{% endif %}
@@ -105,7 +106,7 @@
             {{ je.created_at[:10] }}
           </div>
           <div class="rec-card-title">{{ je.title }}</div>
-          <div class="rec-text">{{ je.content | truncate(160, true, '…') }}</div>
+          <div class="rec-text">{{ je.content | strip_md | truncate(160, true, '…') }}</div>
         </a>
         {% endfor %}
       </div>

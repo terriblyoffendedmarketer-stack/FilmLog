@@ -86,10 +86,7 @@
           <span class="journal-date">{{ entry.created_at[:10] }}</span>
         </div>
         <div class="journal-card-title">{{ entry.title }}</div>
-        {% set preview = entry.content[:160] %}
-        {% if preview %}
-        <div class="search-journal-preview">{{ preview }}{% if entry.content|length > 160 %}…{% endif %}</div>
-        {% endif %}
+        <div class="search-journal-preview">{{ entry.content | strip_md | truncate(160, true, '…') }}</div>
       </a>
       {% endfor %}
     </div>
