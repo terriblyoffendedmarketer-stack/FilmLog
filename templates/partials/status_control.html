@@ -1,8 +1,7 @@
 <div id="status-control" class="detail-status-control">
   {% for val, label in [
-    ('watchlist',         'Watchlist'),
-    ('watched',           'Watched'),
-    ('rewatch_candidate', 'Rewatch'),
+    ('watchlist',  'Watchlist'),
+    ('watched',    'Watched'),
   ] %}
   <button
     class="status-btn{% if current_status == val %} active-{{ val }}{% endif %}"
@@ -11,4 +10,12 @@
     hx-target="#status-control"
     hx-swap="outerHTML">{{ label }}</button>
   {% endfor %}
+
+  <button
+    class="status-btn rewatch-toggle{% if current_rewatch %} active-rewatch{% endif %}"
+    hx-post="/films/{{ tmdb_id }}/status"
+    hx-vals='{"rewatch": "{{ 0 if current_rewatch else 1 }}"}'
+    hx-target="#status-control"
+    hx-swap="outerHTML"
+    title="Mark for rewatch">↩ Rewatch</button>
 </div>

@@ -5,6 +5,7 @@
 {% set tmdb_id      = film.tmdb_id %}
 {% set notes        = user_film.get('personal_notes', '') if user_film else '' %}
 {% set curr_status  = user_film.get('status', 'watchlist') if user_film else 'watchlist' %}
+{% set curr_rewatch = user_film.get('rewatch', 0) if user_film else 0 %}
 
 <div class="detail-layout">
 
@@ -22,7 +23,7 @@
 
     {# Status control — HTMX swap target #}
     {% if user_film %}
-    {% with current_status = curr_status %}
+    {% with current_status = curr_status, current_rewatch = curr_rewatch %}
     {% include 'partials/status_control.html' %}
     {% endwith %}
     {% endif %}

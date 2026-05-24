@@ -116,7 +116,7 @@ def index():
 @app.route("/films")
 def films():
     # ── Filter params from query string ─────────────────────────────────────
-    status_filter = request.args.get("status", "all")
+    status_filter = request.args.get("status", "watchlist")
     language = request.args.get("language") or None
     era = request.args.get("era") or None
     length_filter = request.args.get("length") or None
@@ -245,19 +245,25 @@ def update_notes(tmdb_id: int):
 
 @app.route("/films/<int:tmdb_id>/status", methods=["POST"])
 def update_status(tmdb_id: int):
-    """Change film status and return updated status control (HTMX partial)."""
+    """Change film status or toggle rewatch flag (HTMX partial)."""
+    user_film = db.get_user_film_by_tmdb(tmdb_id)
+    if not user_film:
+        abort(404)
+
     new_status = request.form.get("status")
-    if new_status not in {"watched", "watchlist", "rewatch_candidate"}:
-        abort(400)
+    rewatch_val = request.form.get("rewatch")
+
+    if new_status and new_status in {"watched", "watchlist"}:
+        db.update_user_film(user_film["id"], status=new_status)
+    if rewatch_val is not None:
+        db.update_user_film(user_film["id"], rewatch=int(rewatch_val))
 
     user_film = db.get_user_film_by_tmdb(tmdb_id)
-    if user_film:
-        db.update_user_film(user_film["id"], status=new_status)
-
     return render_template(
         "partials/status_control.html",
         tmdb_id=tmdb_id,
-        current_status=new_status,
+        current_status=user_film["status"],
+        current_rewatch=user_film.get("rewatch", 0),
     )
 
 

@@ -10,10 +10,9 @@
       {# Status tabs #}
       <div class="filter-group">
         {% for val, label in [
-          ('all',                'All'),
-          ('watchlist',          'Watchlist'),
-          ('watched',            'Watched'),
-          ('rewatch_candidate',  'Rewatch'),
+          ('watchlist',  'Watchlist'),
+          ('watched',    'Watched'),
+          ('all',        'All'),
         ] %}
         <button type="button"
           class="filter-btn{% if current_status == val %} active{% endif %}"

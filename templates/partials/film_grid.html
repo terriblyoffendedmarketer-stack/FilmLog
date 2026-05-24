@@ -18,10 +18,12 @@
           <span class="status-badge status-{{ film.status or 'watchlist' }}"
                 title="{{ film.status_label }}">
             {%- if film.status == 'watched' -%}✓
-            {%- elif film.status == 'rewatch_candidate' -%}↩
             {%- else -%}◯
             {%- endif -%}
           </span>
+          {% if film.rewatch %}
+          <span class="rewatch-badge" title="Want to rewatch">↩</span>
+          {% endif %}
         </div>
 
         {# Text #}

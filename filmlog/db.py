@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS films (
 CREATE TABLE IF NOT EXISTS user_films (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tmdb_id INTEGER NOT NULL REFERENCES films(tmdb_id),
-    status TEXT NOT NULL CHECK(status IN ('watched', 'watchlist', 'rewatch_candidate')),
+    status TEXT NOT NULL CHECK(status IN ('watched', 'watchlist')),
+    rewatch INTEGER NOT NULL DEFAULT 0,  -- 1 = want to rewatch
     date_added TEXT,
     date_watched TEXT,
     personal_notes TEXT,
@@ -151,9 +152,17 @@ def _ensure_fts_tables(conn) -> None:
 
 def _run_migrations(conn) -> None:
     """Add columns that may not exist in older databases."""
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(films)").fetchall()}
-    if "media_type" not in cols:
+    film_cols = {r[1] for r in conn.execute("PRAGMA table_info(films)").fetchall()}
+    if "media_type" not in film_cols:
         conn.execute("ALTER TABLE films ADD COLUMN media_type TEXT DEFAULT 'movie'")
+
+    uf_cols = {r[1] for r in conn.execute("PRAGMA table_info(user_films)").fetchall()}
+    if "rewatch" not in uf_cols:
+        conn.execute("ALTER TABLE user_films ADD COLUMN rewatch INTEGER NOT NULL DEFAULT 0")
+        conn.execute("""
+            UPDATE user_films SET rewatch = 1, status = 'watched'
+            WHERE status = 'rewatch_candidate'
+        """)
 
 
 def init_db() -> None:
@@ -256,17 +265,21 @@ def add_user_film(
     watch_context: str | None = None,
     source: str = "manual",
     date_watched: str | None = None,
+    rewatch: bool = False,
 ) -> int:
     """Add a user_film entry. Returns the new row id."""
+    if status == "rewatch_candidate":
+        status = "watched"
+        rewatch = True
     now = datetime.now(timezone.utc).date().isoformat()
     with get_connection() as conn:
         cursor = conn.execute(
             """
             INSERT INTO user_films
-                (tmdb_id, status, date_added, date_watched, personal_notes, watch_context, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (tmdb_id, status, rewatch, date_added, date_watched, personal_notes, watch_context, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (tmdb_id, status, now, date_watched, personal_notes, watch_context, source),
+            (tmdb_id, status, int(rewatch), now, date_watched, personal_notes, watch_context, source),
         )
         return cursor.lastrowid
 
@@ -274,7 +287,7 @@ def add_user_film(
 def update_user_film(row_id: int, **kwargs) -> None:
     """Update specific fields on a user_film row."""
     allowed = {
-        "status", "date_watched", "personal_notes", "watch_context", "source"
+        "status", "rewatch", "date_watched", "personal_notes", "watch_context", "source"
     }
     updates = {k: v for k, v in kwargs.items() if k in allowed}
     if not updates:
@@ -543,13 +556,13 @@ def mark_resolved(row_id: int) -> None:
 def get_all_films_with_status(status_filter: str | None = None) -> list[dict]:
     """
     Return all films joined with their latest user_film row.
-    Optionally filter by status ('watched', 'watchlist', 'rewatch_candidate').
+    Optionally filter by status ('watched', 'watchlist').
     """
     with get_connection() as conn:
         if status_filter and status_filter != "all":
             rows = conn.execute(
                 """
-                SELECT f.*, uf.id as user_film_id, uf.status, uf.date_added,
+                SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
                        uf.date_watched, uf.personal_notes, uf.watch_context, uf.source
                 FROM user_films uf
                 JOIN films f ON uf.tmdb_id = f.tmdb_id
@@ -565,7 +578,7 @@ def get_all_films_with_status(status_filter: str | None = None) -> list[dict]:
         else:
             rows = conn.execute(
                 """
-                SELECT f.*, uf.id as user_film_id, uf.status, uf.date_added,
+                SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
                        uf.date_watched, uf.personal_notes, uf.watch_context, uf.source
                 FROM user_films uf
                 JOIN films f ON uf.tmdb_id = f.tmdb_id
@@ -907,10 +920,12 @@ def get_library_stats() -> dict:
         ).fetchone()
 
     counts = {row["status"]: row["n"] for row in count_rows}
+    rewatch_row = conn.execute(
+        "SELECT COUNT(*) as n FROM user_films WHERE rewatch = 1"
+    ).fetchone() if False else None
     return {
         "watched": counts.get("watched", 0),
         "watchlist": counts.get("watchlist", 0),
-        "rewatch_candidate": counts.get("rewatch_candidate", 0),
         "total": total_row["n"] if total_row else 0,
         "taste_model_version": dict(model_row) if model_row else None,
     }
