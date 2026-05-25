@@ -13,7 +13,7 @@
     {% if tier2 %}<span class="tier2-badge">offline mode</span>{% endif %}
   </div>
 
-  <div class="rec-result-text">{{ issue_text }}</div>
+  <div class="rec-result-editorial">{{ issue_html }}</div>
 
   {% if film_cards %}
   <div class="rec-result-films">
@@ -29,7 +29,7 @@
   {% endif %}
 
   <div class="rec-result-actions">
-    <a href="/tonight" class="btn-ghost rec-again-link">Generate again</a>
+    <button type="button" class="btn-ghost" onclick="window.location.reload()">Generate another</button>
   </div>
 
 </div>

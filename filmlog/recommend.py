@@ -118,25 +118,20 @@ def _ask_calibration_questions() -> dict:
 def _determine_cluster(answers: dict) -> str | None:
     """Map calibration answers to a taste cluster for DB queries."""
     ctx = answers.get("watch_context", "solo")
-    mood = answers.get("mood", "engaged")
 
-    if ctx == "solo" and mood == "engaged":
+    if ctx == "solo":
         return "solo_late_night"
-    if ctx == "solo" and mood == "casual":
-        return None  # general pool
     if ctx == "family":
         return "family"
-    if ctx in ("partner", "friends"):
-        return "partner" if ctx == "partner" else None
+    if ctx == "partner":
+        return "partner"
     return None
 
 
 def _context_summary(answers: dict) -> str:
     """One-paragraph summary of tonight's context for the Claude prompt."""
     ctx = answers.get("watch_context", "solo")
-    mood = answers.get("mood", "engaged")
-    attention = answers.get("attention", "full")
-    ending = answers.get("ending")
+    free_text = answers.get("free_text", "").strip()
 
     parts = []
 
@@ -149,26 +144,10 @@ def _context_summary(answers: dict) -> str:
     else:
         parts.append("Watching with friends.")
 
-    if mood == "engaged":
-        parts.append("In the mood to feel something — a film that lands and stays.")
-    elif mood == "casual":
-        parts.append("Wants to switch off — entertained but not challenged.")
-    elif mood == "mid":
-        parts.append("Somewhere between engaged and casual — something enjoyable without being heavy.")
-    elif mood == "family_mixed":
-        parts.append("Mixed ages in the room — needs to work for everyone.")
-    elif mood == "family_adults":
-        parts.append("Family but all adults — can go anywhere.")
-
-    if attention == "half":
-        parts.append("Half-watching — doesn't need full concentration.")
+    if free_text:
+        parts.append(f"Additional context from Prashil: \"{free_text}\"")
     else:
-        parts.append("Full attention available.")
-
-    if ending == "clean":
-        parts.append("Wants something that wraps up cleanly tonight.")
-    elif ending == "open":
-        parts.append("Fine with ambiguity and open endings.")
+        parts.append("No specific mood stated — surprise him with variety.")
 
     return " ".join(parts)
 
@@ -180,11 +159,11 @@ def _context_summary(answers: dict) -> str:
 def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
     """
     Score the full watchlist against tonight's context.
-    Returns up to 8 best candidates for Claude to choose from.
+    Returns up to 10 best candidates for Claude to choose from.
+    Claude picks the final 2-3 — we give it a generous pool.
     """
     watchlist = db.get_watchlist()
-    rewatch = [f for f in db.get_watched_films()
-               if f.get("status") == "rewatch_candidate"]
+    rewatch = [f for f in db.get_watched_films() if f.get("rewatch", 0)]
     candidates = watchlist + rewatch
 
     if not candidates:
@@ -207,10 +186,6 @@ def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
     recently_recommended_ids = set()
     for issue in recent_issues:
         recently_recommended_ids.update(issue.get("films_referenced", []))
-
-    # Attention filter — for half-watching, deprioritise very long or very demanding films
-    attention = answers.get("attention", "full")
-    mood = answers.get("mood", "engaged")
 
     scored = []
     for film in candidates:
@@ -243,60 +218,80 @@ def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
         if film.get("tmdb_id") in recently_recommended_ids:
             score -= 0.5
 
-        # Runtime consideration for half-watching
-        runtime = film.get("runtime") or 0
-        if attention == "half" and runtime > 150:
-            score -= 0.4
-
-        # Cognitive load matching
-        cog_load = film.get("cognitive_load") or "medium"
-        if mood == "casual" and cog_load == "high":
-            score -= 0.6
-        elif mood == "casual" and cog_load == "low":
-            score += 0.3
-        elif mood == "engaged" and cog_load == "high":
-            score += 0.2
-        if attention == "half" and cog_load == "high":
-            score -= 0.5
-
         # Rewatch candidates get a small boost (they stuck for a reason)
-        if film.get("status") == "rewatch_candidate":
+        if film.get("rewatch", 0):
             score += 0.3
 
         if score > 0:
             scored.append((score, film))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    return [film for _, film in scored[:8]]
+    return [film for _, film in scored[:10]]
+
+
+def _format_hall_of_fame(limit: int = 20) -> str:
+    """Format hall of fame films for the Claude prompt."""
+    try:
+        hof = db.get_hall_of_fame()
+    except Exception:
+        hof = db.get_watched_films()
+
+    if not hof:
+        return "No hall of fame films logged yet."
+
+    lines = []
+    for film in hof[:limit]:
+        title = film.get("title", "Unknown")
+        year = film.get("year", "")
+        notes = film.get("personal_notes", "") or ""
+        raw_attrs = film.get("default_taste_attributes") or "[]"
+        if isinstance(raw_attrs, str):
+            try:
+                attrs = json.loads(raw_attrs)
+            except Exception:
+                attrs = []
+        else:
+            attrs = raw_attrs or []
+
+        line = f"• {title} ({year})"
+        if attrs:
+            line += f" — {', '.join(attrs[:3])}"
+        if notes:
+            short = notes[:60] + "…" if len(notes) > 60 else notes
+            line += f' ["{short}"]'
+        lines.append(line)
+
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
 # Claude Opus recommendation issue
 # ---------------------------------------------------------------------------
 
-RECOMMENDATION_PROMPT = """You are writing a personalised film recommendation for Prashil.
+RECOMMENDATION_PROMPT = """You are the writer of a personalised film magazine for one reader: Prashil.
 
-You know his taste deeply — you have his full taste model and his watch history.
-Your job is to write a recommendation issue: a 300–400 word editorial, written like a
-recommendation from a close friend who has seen all these films and knows exactly what lands
-for Prashil.
+You know his taste. You have his taste model, his hall of fame, and his watchlist. You're the friend who's seen everything and knows what lands for him.
 
-NOT a list. Flowing prose. The voice is warm, specific, and direct.
+Write a recommendation issue — 300–500 words of warm, specific editorial prose. The voice of someone who loves film and knows Prashil.
 
-For each film you recommend (2–3 maximum):
-1. The sell — 3–4 sentences about the film itself. Non-spoilery. Written like someone who loves it.
-2. The why-you-specifically — reference a specific film from Prashil's log and the *exact quality*
-   that connects them. Not the genre — the actual quality. "Like the way X worked for you, this
-   has that same [specific thing]."
-3. A brief context note — who it's right for, what energy it needs.
+## RULES
 
-PRIORITY ORDER:
-1. Films from his watchlist that match tonight's context — always check watchlist first
-2. Rewatch candidates if the mood is right (frame it as: "you've seen this and it stuck —
-   tonight might be exactly the right time to go back")
-3. Only suggest films outside his watchlist if nothing fits
+**Format:**
+- **Bold film titles** every time: **The Wailing**, **Coherence**, etc.
+- Paragraph breaks between films. Breathing room.
+- *Italics* for emphasis on feelings or qualities.
+- Prose, not a listicle. No numbered lists or bullet points for the recommendations.
+- End with a short closing line.
 
-End with one sentence that is an honest read of tonight — why these picks, why now.
+**Recommend exactly 2–3 films. Only write about films you are recommending.** Do not mention films you're choosing not to recommend. Do not say "save X for another night." Every film you name should be a pick for tonight.
+
+**The sell is everything.** For each film, write 3–4 sentences that make someone want to watch it. Not a plot synopsis — a sell. What does it feel like? What's the texture? Why is it exciting? Write like you love this film and want to hand it to someone.
+
+**Spoilers:** Never reveal twists, turns, or structural surprises. But don't let caution make the sell bland. You can describe mood, craft, performances, the world of the film, what it does to you — just don't describe what happens. A great sell makes you feel something without knowing the plot.
+
+**Connections to Prashil's taste:** If a film genuinely connects to something in his hall of fame — a shared quality, not just the same genre — mention it. But this is optional. A film can stand entirely on its own. Don't force connections for every pick. Sometimes the sell is enough.
+
+**Source:** Primarily pick from the watchlist candidates below, but you can recommend any film you think fits — even if it's not on his list. You can also suggest a hall-of-fame rewatch if it fits tonight perfectly.
 
 ---
 
@@ -310,18 +305,22 @@ TASTE MODEL:
 
 ---
 
-CANDIDATE FILMS FROM WATCHLIST:
+HALL OF FAME:
+{hall_of_fame}
+
+---
+
+WATCHLIST CANDIDATES:
 {candidates}
 
 ---
 
-RECENT WATCHES (for context and avoiding repetition):
+RECENT WATCHES (avoid repeating):
 {recent_watches}
 
 ---
 
-Write the recommendation issue now. Remember: prose, not a list. Specific, not generic.
-The "why you specifically" for each film is the most important sentence you will write."""
+Write the issue now."""
 
 
 def _format_candidates(candidates: list[dict]) -> str:
@@ -535,13 +534,11 @@ def generate_web_recommendation(answers: dict) -> dict:
 
     answers keys:
       watch_context  — 'solo' | 'partner' | 'family' | 'friends'
-      mood           — 'engaged' | 'casual' | 'mid'
-      attention      — 'full' | 'half'
-      ending         — 'clean' | 'open' | None
+      free_text      — optional freeform context ("I'm tired but want something good")
 
     Returns:
       {
-        "issue_text":       str,         # editorial prose (or fallback list)
+        "issue_text":       str,         # editorial prose (markdown formatted)
         "issue_number":     int | None,  # saved issue number
         "films_referenced": list[int],   # tmdb_ids mentioned
         "tier2":            bool,        # True if offline fallback was used
@@ -552,19 +549,6 @@ def generate_web_recommendation(answers: dict) -> dict:
     context_summary = _context_summary(answers)
     taste_model = _load_taste_model()
     candidates = _score_candidates(cluster, answers)
-
-    # ── No watchlist ─────────────────────────────────────────────────────────
-    if not candidates:
-        return {
-            "issue_text": "",
-            "issue_number": None,
-            "films_referenced": [],
-            "tier2": False,
-            "error": (
-                "Your watchlist is empty — there's nothing to recommend from. "
-                "Run python main.py ingest-all to import your film lists."
-            ),
-        }
 
     # ── No taste model ────────────────────────────────────────────────────────
     if not taste_model:
@@ -607,8 +591,8 @@ def generate_web_recommendation(answers: dict) -> dict:
                 attrs = raw_attrs or []
             attr_str = " · ".join(attrs[:3]) if attrs else ""
             lines.append(
-                f"{i}. {title} ({year})\n   {attr_str}"
-                if attr_str else f"{i}. {title} ({year})"
+                f"{i}. **{title}** ({year})\n   {attr_str}"
+                if attr_str else f"{i}. **{title}** ({year})"
             )
 
         issue_text = (
@@ -637,7 +621,8 @@ def generate_web_recommendation(answers: dict) -> dict:
     prompt = RECOMMENDATION_PROMPT.format(
         context_summary=context_summary,
         taste_model=taste_model[:3000],
-        candidates=_format_candidates(candidates),
+        hall_of_fame=_format_hall_of_fame(limit=20),
+        candidates=_format_candidates(candidates) if candidates else "Watchlist is empty — recommend films from your knowledge that match the taste model.",
         recent_watches=_format_recent_watches(),
     )
 

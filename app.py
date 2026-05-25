@@ -17,7 +17,7 @@ from flask import Flask, abort, redirect, render_template, request, url_for
 from markupsafe import Markup
 from dotenv import load_dotenv
 
-from filmlog import db
+from filmlog import db, tmdb
 from filmlog.browse import _apply_filters, _score_by_taste
 
 load_dotenv(override=True)
@@ -68,6 +68,17 @@ def _parse_film(film: dict) -> dict:
         "watchlist": "Watchlist",
         "rewatch_candidate": "Rewatch",
     }.get(status, status or "—")
+
+    # One-liner tagline from overview (first sentence, capped)
+    overview = f.get("overview") or ""
+    if overview:
+        # Take first sentence (up to first period, question mark, or exclamation)
+        first_sentence = re.split(r'(?<=[.!?])\s', overview, maxsplit=1)[0]
+        if len(first_sentence) > 120:
+            first_sentence = first_sentence[:117].rsplit(" ", 1)[0] + "…"
+        f["tagline"] = first_sentence
+    else:
+        f["tagline"] = ""
 
     return f
 
@@ -272,7 +283,8 @@ def update_status(tmdb_id: int):
     if new_status and new_status in {"watched", "watchlist"}:
         db.update_user_film(user_film["id"], status=new_status)
     if rewatch_val is not None:
-        db.update_user_film(user_film["id"], rewatch=int(rewatch_val))
+        rewatch_int = int(rewatch_val)
+        db.update_user_film(user_film["id"], rewatch=rewatch_int)
 
     user_film = db.get_user_film_by_tmdb(tmdb_id)
     return render_template(
@@ -288,6 +300,9 @@ def update_status(tmdb_id: int):
 @app.route("/tonight")
 def tonight():
     past_issues = db.get_recommendation_history(limit=5)
+    # Pre-render markdown for past issues so they display properly
+    for issue in past_issues:
+        issue["issue_html"] = _render_md(issue.get("issue_text", ""))
     return render_template(
         "tonight.html",
         page="tonight",
@@ -304,14 +319,15 @@ def tonight_generate():
 
     answers = {
         "watch_context": request.form.get("watch_context", "solo"),
-        "mood": request.form.get("mood", "engaged"),
-        "attention": request.form.get("attention", "full"),
-        "ending": request.form.get("ending") or None,
+        "free_text": request.form.get("free_text", "").strip(),
     }
-    if answers["ending"] == "none":
-        answers["ending"] = None
 
     result = generate_web_recommendation(answers)
+
+    # Render the editorial markdown as HTML
+    issue_html = ""
+    if result.get("issue_text"):
+        issue_html = _render_md(result["issue_text"])
 
     # Fetch referenced films for the mini-poster strip
     film_cards = []
@@ -322,8 +338,9 @@ def tonight_generate():
 
     return render_template(
         "partials/recommendation_result.html",
-        **result,
+        issue_html=issue_html,
         film_cards=film_cards,
+        **{k: v for k, v in result.items() if k != "issue_text"},
     )
 
 
@@ -618,6 +635,153 @@ def api_test_key():
             return {"ok": False, "error": str(e)[:200]}, 400
 
     return {"ok": False, "error": "Unknown key type"}, 400
+
+
+# ── Add Film ─────────────────────────────────────────────────────────────────
+
+@app.route("/add")
+def add_film_page():
+    return render_template(
+        "add_film.html",
+        page="add",
+        title="Add a film",
+        stats=_get_stats(),
+    )
+
+
+@app.route("/api/tmdb/search")
+def api_tmdb_search():
+    """HTMX endpoint: search TMDB for films/TV, return HTML results."""
+    q = request.args.get("q", "").strip()
+    media = request.args.get("media_type", "movie")
+    if not q or len(q) < 2:
+        return ""
+    try:
+        if media == "tv":
+            results = tmdb.search_tv(q)[:8]
+        else:
+            results = tmdb.search_multi(q)[:8]
+    except Exception:
+        results = []
+
+    # Mark which ones are already in the local DB
+    for r in results:
+        r["in_db"] = db.get_film(r["tmdb_id"]) is not None
+
+    return render_template("partials/tmdb_search_results.html", results=results)
+
+
+@app.route("/add/confirm/<int:tmdb_id>")
+def add_film_confirm(tmdb_id: int):
+    """Show the add/log form for a specific TMDB film, fetching details if needed."""
+    media_type = request.args.get("media_type", "movie")
+
+    # Check if already in local DB
+    film = db.get_film(tmdb_id)
+
+    if not film:
+        # Fetch from TMDB
+        try:
+            if media_type == "tv":
+                details = tmdb.fetch_tv_data(tmdb_id)
+            else:
+                details = tmdb.fetch_film_data(tmdb_id)
+            # Save to films table
+            db.upsert_film(**details)
+            film = db.get_film(tmdb_id)
+        except Exception as e:
+            abort(404)
+
+    film = _parse_film(film)
+    user_film = db.get_user_film_by_tmdb(tmdb_id)
+
+    return render_template(
+        "add_film_confirm.html",
+        page="add",
+        title=f"Log — {film['title']}",
+        stats=_get_stats(),
+        film=film,
+        user_film=user_film,
+    )
+
+
+@app.route("/add/save", methods=["POST"])
+def add_film_save():
+    """Save/update a film log entry with status, rating, and notes."""
+    tmdb_id = int(request.form.get("tmdb_id", 0))
+    status = request.form.get("status", "watched")
+    rating_str = request.form.get("rating", "")
+    notes = request.form.get("personal_notes", "").strip()
+    watch_context = request.form.get("watch_context") or None
+
+    rating = int(rating_str) if rating_str and rating_str.isdigit() else None
+
+    film = db.get_film(tmdb_id)
+    if not film:
+        abort(404)
+
+    user_film = db.get_user_film_by_tmdb(tmdb_id)
+    if user_film:
+        # Update existing
+        db.update_user_film(
+            user_film["id"],
+            status=status,
+            rating=rating,
+            personal_notes=notes,
+            watch_context=watch_context,
+        )
+    else:
+        # New entry
+        db.add_user_film(
+            tmdb_id=tmdb_id,
+            status=status,
+            personal_notes=notes or None,
+            watch_context=watch_context,
+            source="manual",
+            rating=rating,
+        )
+
+    return redirect(url_for("film_detail", tmdb_id=tmdb_id))
+
+
+# ── Hall of Fame ─────────────────────────────────────────────────────────────
+
+@app.route("/hall-of-fame")
+def hall_of_fame():
+    try:
+        hof_films = db.get_hall_of_fame()
+    except Exception:
+        hof_films = []
+
+    hof_films = [_parse_film(f) for f in hof_films]
+
+    return render_template(
+        "hall_of_fame.html",
+        page="hall_of_fame",
+        title="Hall of Fame",
+        stats=_get_stats(),
+        films=hof_films,
+    )
+
+
+# ── Film detail: rating update (HTMX) ───────────────────────────────────────
+
+@app.route("/films/<int:tmdb_id>/rating", methods=["POST"])
+def update_rating(tmdb_id: int):
+    """Update film rating via HTMX."""
+    user_film = db.get_user_film_by_tmdb(tmdb_id)
+    if not user_film:
+        abort(404)
+
+    rating_str = request.form.get("rating", "")
+    rating = int(rating_str) if rating_str and rating_str.isdigit() else None
+    db.update_user_film(user_film["id"], rating=rating)
+
+    return render_template(
+        "partials/rating_control.html",
+        tmdb_id=tmdb_id,
+        current_rating=rating,
+    )
 
 
 # ---------------------------------------------------------------------------

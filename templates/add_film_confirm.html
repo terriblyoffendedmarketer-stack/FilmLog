@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="add-confirm-layout">
+
+  <a href="/add" class="detail-back">&larr; Search again</a>
+
+  <div class="add-confirm-header">
+    <div class="add-confirm-poster">
+      {% if film.poster_url %}
+      <img src="{{ film.poster_url }}" alt="{{ film.title }}">
+      {% else %}
+      <div class="detail-poster-placeholder">{{ (film.title or '?')[:2] }}</div>
+      {% endif %}
+    </div>
+
+    <div class="add-confirm-info">
+      <h1 class="add-confirm-title">{{ film.title }}</h1>
+      <div class="add-confirm-meta">
+        {% if film.year %}{{ film.year }}{% endif %}
+        {% if film.runtime %} · {{ film.runtime }} min{% endif %}
+        {% if film.language %} · {{ film.language | upper }}{% endif %}
+      </div>
+
+      {% if film.genres %}
+      <div class="add-confirm-genres">
+        {% for genre in film.genres %}
+        <span class="genre-chip">{{ genre }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if film.taste_attrs %}
+      <div class="add-confirm-attrs">
+        {% for attr in film.taste_attrs[:5] %}
+        <span class="detail-attr-chip">{{ attr }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if user_film %}
+      <div class="add-confirm-existing">
+        Already in your library as <strong>{{ user_film.status }}</strong>
+        {% if user_film.rating %} · {{ user_film.rating }}★{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Log form ────────────────────────────────────────────────────────────── #}
+  <form method="POST" action="/add/save" class="add-confirm-form">
+    <input type="hidden" name="tmdb_id" value="{{ film.tmdb_id }}">
+
+    {# Status #}
+    <div class="form-field">
+      <label class="form-label">Status</label>
+      <div class="option-pills" data-field="status">
+        <input type="hidden" name="status" value="{{ user_film.status if user_film else 'watched' }}">
+        {% for val, label in [('watched', 'Watched'), ('watchlist', 'Watchlist')] %}
+        <button type="button" class="pill{% if (user_film and user_film.status == val) or (not user_film and val == 'watched') %} selected{% endif %}"
+                data-value="{{ val }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Watch context #}
+    <div class="form-field" id="context-field">
+      <label class="form-label">Who did you watch with? <span class="form-label-hint">(optional)</span></label>
+      <div class="option-pills" data-field="watch_context">
+        <input type="hidden" name="watch_context" value="{{ user_film.watch_context if user_film and user_film.watch_context else '' }}">
+        {% for val, label in [('solo', 'Solo'), ('partner', 'Partner'), ('family', 'Family'), ('friends', 'Friends')] %}
+        <button type="button" class="pill pill-sm{% if user_film and user_film.watch_context == val %} selected{% endif %}"
+                data-value="{{ val }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Notes #}
+    <div class="form-field">
+      <label class="form-label">Your notes <span class="form-label-hint">(optional — what stood out, what you felt)</span></label>
+      <textarea name="personal_notes" class="form-textarea add-notes-textarea"
+                placeholder="What made this film work for you? Or not work? Be as specific or vague as you like…">{{ user_film.personal_notes if user_film and user_film.personal_notes else '' }}</textarea>
+    </div>
+
+    {# Submit #}
+    <div class="form-actions">
+      <button type="submit" class="btn-primary btn-lg">
+        {% if user_film %}Update{% else %}Log this film{% endif %}
+      </button>
+      <a href="/films/{{ film.tmdb_id }}" class="btn-ghost">
+        {% if user_film %}View in library{% else %}Cancel{% endif %}
+      </a>
+    </div>
+
+  </form>
+
+</div>
+
+<script>
+// ── Pill selection ────────────────────────────────────────────────────────
+document.querySelectorAll('.option-pills').forEach(function(group) {
+  var input = group.querySelector('input[type=hidden]');
+  group.querySelectorAll('.pill').forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      group.querySelectorAll('.pill').forEach(function(p) { p.classList.remove('selected'); });
+      pill.classList.add('selected');
+      input.value = pill.dataset.value;
+
+      // Show/hide context based on status
+      if (input.name === 'status') {
+        var contextField = document.getElementById('context-field');
+        if (pill.dataset.value === 'watchlist') {
+          contextField.style.display = 'none';
+        } else {
+          contextField.style.display = '';
+        }
+      }
+    });
+  });
+});
+
+// Initial state: hide context if status is watchlist
+(function() {
+  var statusInput = document.querySelector('[name=status]');
+  if (statusInput && statusInput.value === 'watchlist') {
+    var cf = document.getElementById('context-field');
+    if (cf) cf.style.display = 'none';
+  }
+})();
+</script>
+
+{% endblock %}

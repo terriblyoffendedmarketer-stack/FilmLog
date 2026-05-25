@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hof-layout">
+
+  <div class="hof-header">
+    <div>
+      <h1 class="hof-title">Hall of Fame</h1>
+      <p class="hof-sub">{{ films|length }} film{{ 's' if films|length != 1 }} you loved — the ones that define your taste.</p>
+    </div>
+  </div>
+
+  {% if films %}
+  <div class="film-grid hof-grid">
+    {% for film in films %}
+    <div class="film-card hof-card">
+      <a href="/films/{{ film.tmdb_id }}">
+        <div class="film-poster">
+          {% if film.poster_url %}
+          <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+          {% else %}
+          <div class="film-poster-placeholder">{{ (film.title or '?')[:2] }}</div>
+          {% endif %}
+
+          {# Gold star badge #}
+          <div class="hof-badge">★</div>
+        </div>
+        <div class="film-info">
+          <div class="film-title">{{ film.title }}</div>
+          <div class="film-meta-row">
+            {% if film.year %}<span>{{ film.year }}</span>{% endif %}
+            {% if film.language %}<span>{{ film.language | upper }}</span>{% endif %}
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h2>No hall of fame films yet</h2>
+    <p>Films that define your taste live here. Mark a film as loved in your notes and it'll appear here.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

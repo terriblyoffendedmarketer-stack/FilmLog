@@ -6,10 +6,10 @@
   {# ── Heading ─────────────────────────────────────────────────────────────── #}
   <div class="tonight-heading-block">
     <h1 class="tonight-heading">What are we watching tonight?</h1>
-    <p class="tonight-sub">Answer a few things and I'll pull the right film from your list.</p>
+    <p class="tonight-sub">Your personalised issue — based on everything I know about your taste.</p>
   </div>
 
-  {# ── Calibration form ─────────────────────────────────────────────────────── #}
+  {# ── Simplified calibration form ──────────────────────────────────────────── #}
   <form id="calibration-form" class="calibration-form"
     hx-post="/tonight/generate"
     hx-target="#recommendation-result"
@@ -32,61 +32,25 @@
       </div>
     </div>
 
-    {# Q2: Energy #}
-    <div class="question-block">
-      <div class="question-label">Tonight's energy?</div>
-      <div class="option-pills" data-field="mood">
-        <input type="hidden" name="mood" value="">
-        {% for val, label in [
-          ('engaged', 'I want to feel something'),
-          ('casual',  'Switch off'),
-          ('mid',     'Somewhere in between'),
-        ] %}
-        <button type="button" class="pill" data-value="{{ val }}">{{ label }}</button>
-        {% endfor %}
-      </div>
-    </div>
-
-    {# Q3: Attention #}
-    <div class="question-block">
-      <div class="question-label">How present are you?</div>
-      <div class="option-pills" data-field="attention">
-        <input type="hidden" name="attention" value="">
-        {% for val, label in [
-          ('full', 'Full attention'),
-          ('half', 'Half watching'),
-        ] %}
-        <button type="button" class="pill" data-value="{{ val }}">{{ label }}</button>
-        {% endfor %}
-      </div>
-    </div>
-
-    {# Q4: Ending preference — optional #}
+    {# Optional: say what you're feeling #}
     <div class="question-block">
       <div class="question-label">
-        Endings?
-        <span class="question-optional">(optional)</span>
+        Anything on your mind?
+        <span class="question-optional">(optional — leave blank for a surprise)</span>
       </div>
-      <div class="option-pills" data-field="ending">
-        <input type="hidden" name="ending" value="none">
-        {% for val, label in [
-          ('clean', 'Clean resolution'),
-          ('open',  'Open ending is fine'),
-          ('none',  'No preference'),
-        ] %}
-        <button type="button" class="pill{% if val == 'none' %} selected{% endif %}" data-value="{{ val }}">{{ label }}</button>
-        {% endfor %}
-      </div>
+      <input type="text" name="free_text" class="form-input tonight-free-text"
+             placeholder="e.g. tired but want something good, not mindless…"
+             autocomplete="off">
     </div>
 
     {# Submit #}
     <div class="generate-row">
       <button type="submit" class="btn-generate" id="generate-btn" disabled>
-        Generate recommendation
+        Generate issue
       </button>
       <span id="gen-indicator" class="gen-indicator htmx-indicator">
         <span class="gen-dots"><span></span><span></span><span></span></span>
-        Asking Claude…
+        Writing your issue…
       </span>
     </div>
 
@@ -110,8 +74,8 @@
         Issue #{{ issue.issue_number }}
         <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
       </div>
-      <div class="past-issue-preview" id="preview-{{ issue.id }}">{{ issue.issue_text }}</div>
-      <div class="past-issue-full" id="full-{{ issue.id }}">{{ issue.issue_text }}</div>
+      <div class="past-issue-preview" id="preview-{{ issue.id }}">{{ issue.issue_text | strip_md | truncate(200, true, '…') }}</div>
+      <div class="past-issue-full rec-result-editorial" id="full-{{ issue.id }}" style="display:none">{{ issue.issue_html }}</div>
       <button class="past-issue-toggle" onclick="toggleIssue({{ issue.id }}, this)">
         Read more
       </button>
@@ -137,12 +101,8 @@ document.querySelectorAll('.option-pills').forEach(function(group) {
 });
 
 function checkReady() {
-  var required = ['watch_context', 'mood', 'attention'];
-  var allFilled = required.every(function(name) {
-    var el = document.querySelector('[name=' + name + ']');
-    return el && el.value;
-  });
-  document.getElementById('generate-btn').disabled = !allFilled;
+  var ctx = document.querySelector('[name=watch_context]');
+  document.getElementById('generate-btn').disabled = !(ctx && ctx.value);
 }
 
 // ── Request lifecycle ───────────────────────────────────────────────────────
@@ -151,13 +111,13 @@ var form = document.getElementById('calibration-form');
 form.addEventListener('htmx:beforeRequest', function() {
   var btn = document.getElementById('generate-btn');
   btn.disabled = true;
-  btn.textContent = 'Generating…';
+  btn.textContent = 'Writing…';
 });
 
 form.addEventListener('htmx:afterRequest', function() {
   var btn = document.getElementById('generate-btn');
   btn.disabled = false;
-  btn.textContent = 'Generate recommendation';
+  btn.textContent = 'Generate issue';
 });
 
 form.addEventListener('htmx:afterSwap', function() {

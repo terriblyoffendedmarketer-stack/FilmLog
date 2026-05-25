@@ -12,10 +12,12 @@
     <a href="/" class="nav-logo">filmlog</a>
 
     <div class="nav-links">
-      <a href="/tonight"  class="nav-link{% if page == 'tonight'  %} active{% endif %}">Tonight</a>
-      <a href="/films"    class="nav-link{% if page == 'films'    %} active{% endif %}">Films</a>
-      <a href="/taste"    class="nav-link{% if page == 'taste'    %} active{% endif %}">Taste</a>
-      <a href="/journal"  class="nav-link{% if page == 'journal'  %} active{% endif %}">Journal</a>
+      <a href="/tonight"       class="nav-link{% if page == 'tonight'      %} active{% endif %}">Tonight</a>
+      <a href="/films"         class="nav-link{% if page == 'films'        %} active{% endif %}">Films</a>
+      <a href="/hall-of-fame"  class="nav-link{% if page == 'hall_of_fame' %} active{% endif %}">Hall of Fame</a>
+      <a href="/taste"         class="nav-link{% if page == 'taste'        %} active{% endif %}">Taste</a>
+      <a href="/journal"       class="nav-link{% if page == 'journal'      %} active{% endif %}">Journal</a>
+      <a href="/add"           class="nav-link nav-link-add{% if page == 'add' %} active{% endif %}" title="Add a film">+</a>
     </div>
 
     <form class="nav-search" action="/search" method="GET" role="search">

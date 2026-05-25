@@ -305,6 +305,22 @@ html, body {
   color: var(--text-dim);
 }
 
+.film-tagline {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  line-height: 1.35;
+  margin-top: 2px;
+  opacity: 0.7;
+}
+
+/* Overview on film detail page */
+.detail-overview {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin-top: 4px;
+}
+
 .film-attrs {
   display: flex;
   flex-wrap: wrap;
@@ -798,12 +814,48 @@ html, body {
   letter-spacing: 0;
 }
 
-.rec-result-text {
+/* Editorial text — rendered markdown */
+.rec-result-editorial {
   font-size: 1rem;
-  line-height: 1.82;
+  line-height: 1.85;
   color: var(--text);
-  white-space: pre-wrap;
-  word-break: break-word;
+}
+
+.rec-result-editorial p {
+  margin: 0 0 1.1em;
+}
+
+.rec-result-editorial p:last-child {
+  margin-bottom: 0;
+}
+
+.rec-result-editorial strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.rec-result-editorial em {
+  color: inherit;
+  font-style: italic;
+}
+
+.rec-result-editorial h1,
+.rec-result-editorial h2,
+.rec-result-editorial h3 {
+  color: var(--text);
+  font-weight: 600;
+  margin: 1.5em 0 0.5em;
+  letter-spacing: -0.02em;
+}
+
+.rec-result-editorial hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5em 0;
+}
+
+.tonight-free-text {
+  max-width: 520px;
 }
 
 .rec-result-films {
@@ -2069,6 +2121,336 @@ html, body {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 10px;
   }
+}
+
+/* ── Add Film page ───────────────────────────────────────────────────── */
+.add-film-layout {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 48px 24px 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.add-film-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+}
+
+.add-film-sub { font-size: 0.9rem; color: var(--text-muted); }
+
+.add-film-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.add-film-search-input {
+  flex: 1;
+  font-size: 1rem;
+  padding: 12px 16px;
+}
+
+/* ── TMDB search results ────────────────────────────────────────────── */
+.tmdb-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tmdb-result-card {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  transition: border-color 0.15s;
+  align-items: flex-start;
+}
+
+.tmdb-result-card:hover { border-color: var(--accent); }
+
+.tmdb-result-poster {
+  width: 52px;
+  min-height: 78px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+
+.tmdb-result-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tmdb-result-poster-ph {
+  width: 100%;
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.tmdb-result-info { min-width: 0; flex: 1; }
+
+.tmdb-result-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.tmdb-result-meta {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.tmdb-result-overview {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.tmdb-in-db-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 0.68rem;
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--watched);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.tmdb-no-results {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Add Film confirm/log page ──────────────────────────────────────── */
+.add-confirm-layout {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 32px 24px 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.add-confirm-header {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.add-confirm-poster {
+  width: 140px;
+  flex-shrink: 0;
+  border-radius: var(--r);
+  overflow: hidden;
+  aspect-ratio: 2/3;
+  background: var(--surface-2);
+}
+
+.add-confirm-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.add-confirm-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.add-confirm-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.add-confirm-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.add-confirm-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.add-confirm-attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.add-confirm-existing {
+  padding: 8px 12px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.add-confirm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.add-notes-textarea { min-height: 120px; }
+
+.btn-lg {
+  padding: 12px 28px;
+  font-size: 0.95rem;
+}
+
+/* ── Star ratings ────────────────────────────────────────────────────── */
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  padding: 4px;
+  transition: color 0.12s, transform 0.1s;
+}
+
+.star-btn:hover { color: var(--accent); transform: scale(1.15); }
+.star-btn.active { color: var(--accent); }
+
+.star-label {
+  margin-left: 10px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.rating-hints {
+  display: flex;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.rating-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.pill-sm {
+  padding: 6px 14px;
+  font-size: 0.8rem;
+}
+
+/* Inline star rating (film detail sidebar) */
+.star-rating-inline {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.star-btn-sm {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  padding: 2px;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.star-btn-sm:hover { color: var(--accent); }
+.star-btn-sm.active { color: var(--accent); }
+
+.star-rating-label {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.star-rating-unrated { color: var(--text-dim); }
+
+/* ── Hall of Fame ────────────────────────────────────────────────────── */
+.hof-layout {
+  padding: 20px 24px 60px;
+}
+
+.hof-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 32px 0 24px;
+}
+
+.hof-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+
+.hof-sub {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.hof-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+/* ── Nav add button ──────────────────────────────────────────────────── */
+.nav-link-add {
+  font-size: 1.1rem;
+  font-weight: 600;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  padding: 0;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+}
+
+.nav-link-add:hover {
+  color: var(--accent);
+  background: var(--accent-dim);
 }
 
 /* ── Cognitive load dots ──────────────────────────────────────────────────── */

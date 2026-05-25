@@ -4,3 +4,6 @@
 - [Core problem](project_core_problem.md) — masterpiece avoidance, mood-realistic matching, why watchlists fail
 - [Project status](project_status.md) — current state, what's built, what's next (as of 2026-05-25)
 - [Queued ideas](project_ideas_queued.md) — feature ideas from first session organized by category
+- [Recommendation philosophy](feedback_recommendation_philosophy.md) — editorial issue format, watchlist is one source not the only source
+- [Context efficiency](feedback_context_efficiency.md) — minimize Chrome automation, maximize code output per session
+- [Editorial quality](feedback_editorial_quality.md) — formatting, spoiler awareness, visual polish for recommendation issues

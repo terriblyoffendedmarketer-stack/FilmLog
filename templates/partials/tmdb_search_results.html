@@ -1,0 +1,31 @@
+{% if results %}
+<div class="tmdb-results-list">
+  {% for r in results %}
+  <a href="/add/confirm/{{ r.tmdb_id }}?media_type={{ r.media_type }}" class="tmdb-result-card">
+    <div class="tmdb-result-poster">
+      {% if r.poster_url %}
+      <img src="{{ r.poster_url }}" alt="{{ r.title }}" loading="lazy">
+      {% else %}
+      <div class="tmdb-result-poster-ph">{{ (r.title or '?')[:2] }}</div>
+      {% endif %}
+    </div>
+    <div class="tmdb-result-info">
+      <div class="tmdb-result-title">{{ r.title }}</div>
+      <div class="tmdb-result-meta">
+        {% if r.year %}{{ r.year }}{% endif %}
+        {% if r.language %} · {{ r.language | upper }}{% endif %}
+        {% if r.media_type == 'tv' %} · TV{% endif %}
+      </div>
+      {% if r.overview %}
+      <div class="tmdb-result-overview">{{ r.overview[:120] }}{% if r.overview|length > 120 %}…{% endif %}</div>
+      {% endif %}
+      {% if r.in_db %}
+      <span class="tmdb-in-db-badge">already in library</span>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="tmdb-no-results">No results found. Try a different search term.</div>
+{% endif %}

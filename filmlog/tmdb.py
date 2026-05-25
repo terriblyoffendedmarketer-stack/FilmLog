@@ -237,13 +237,13 @@ def fetch_tv_data(tmdb_id: int) -> dict:
         "poster_url": details["poster_url"],
         "tmdb_genres": details["tmdb_genres"],
         "media_type": "tv",
+        "overview": details.get("overview") or None,
     }
 
 
 def fetch_film_data(tmdb_id: int) -> dict:
     """
     Convenience wrapper: returns a dict ready to pass directly to db.upsert_film().
-    Strips out overview and tagline (those are display-only, not stored in schema).
     """
     details = get_movie_details(tmdb_id)
     return {
@@ -256,6 +256,7 @@ def fetch_film_data(tmdb_id: int) -> dict:
         "poster_url": details["poster_url"],
         "tmdb_genres": details["tmdb_genres"],
         "media_type": "movie",
+        "overview": details.get("overview") or None,
     }
 
 

@@ -1,0 +1,21 @@
+<div class="detail-rating" id="rating-section">
+  <div class="star-rating-inline">
+    {% for i in range(1, 6) %}
+    <button type="button" class="star-btn-sm{% if current_rating and current_rating >= i %} active{% endif %}"
+            hx-post="/films/{{ tmdb_id }}/rating"
+            hx-target="#rating-section"
+            hx-swap="outerHTML"
+            hx-vals='{"rating": "{{ i }}"}'
+            title="{{ i }} star{{ 's' if i > 1 }}">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="{% if current_rating and current_rating >= i %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+    </button>
+    {% endfor %}
+    {% if current_rating %}
+    <span class="star-rating-label">{{ current_rating }}★{% if current_rating == 5 %} hall of fame{% endif %}</span>
+    {% else %}
+    <span class="star-rating-label star-rating-unrated">unrated</span>
+    {% endif %}
+  </div>
+</div>

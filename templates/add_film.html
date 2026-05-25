@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="add-film-layout">
+
+  <div class="add-film-header">
+    <h1 class="add-film-title">Add a film</h1>
+    <p class="add-film-sub">Search TMDB to find a film, series, or anime — then log it with your notes and rating.</p>
+  </div>
+
+  {# ── Search form ─────────────────────────────────────────────────────────── #}
+  <div class="add-film-search-block">
+    <div class="add-film-search-row">
+      <input type="text" id="tmdb-search-input"
+             class="form-input add-film-search-input"
+             placeholder="Search for a film or series…"
+             autocomplete="off"
+             hx-get="/api/tmdb/search"
+             hx-trigger="keyup changed delay:400ms"
+             hx-target="#tmdb-results"
+             hx-swap="innerHTML"
+             hx-indicator="#tmdb-spinner"
+             name="q">
+      <span id="tmdb-spinner" class="gen-indicator htmx-indicator">
+        <span class="gen-dots"><span></span><span></span><span></span></span>
+      </span>
+    </div>
+  </div>
+
+  {# ── Results area ────────────────────────────────────────────────────────── #}
+  <div id="tmdb-results"></div>
+
+</div>
+
+{% endblock %}

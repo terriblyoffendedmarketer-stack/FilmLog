@@ -158,12 +158,23 @@ def _run_migrations(conn) -> None:
     if "cognitive_load" not in film_cols:
         conn.execute("ALTER TABLE films ADD COLUMN cognitive_load TEXT")
 
+    if "overview" not in film_cols:
+        conn.execute("ALTER TABLE films ADD COLUMN overview TEXT")
+
     uf_cols = {r[1] for r in conn.execute("PRAGMA table_info(user_films)").fetchall()}
     if "rewatch" not in uf_cols:
         conn.execute("ALTER TABLE user_films ADD COLUMN rewatch INTEGER NOT NULL DEFAULT 0")
         conn.execute("""
             UPDATE user_films SET rewatch = 1, status = 'watched'
             WHERE status = 'rewatch_candidate'
+        """)
+    if "rating" not in uf_cols:
+        conn.execute("ALTER TABLE user_films ADD COLUMN rating INTEGER")  # 1-5 stars, NULL = unrated
+        # Auto-rate ALL existing watched films as 5 stars — the watched list IS the Hall of Fame
+        # (Prashil's watched list only contains films he loved, not everything he's seen)
+        conn.execute("""
+            UPDATE user_films SET rating = 5
+            WHERE status = 'watched' AND rating IS NULL
         """)
 
 
@@ -191,6 +202,7 @@ def upsert_film(
     tmdb_genres: list | None = None,
     default_taste_attributes: list | None = None,
     media_type: str = "movie",
+    overview: str | None = None,
 ) -> None:
     """Insert a film record, or update it if it already exists."""
     with get_connection() as conn:
@@ -198,9 +210,9 @@ def upsert_film(
             """
             INSERT INTO films (
                 tmdb_id, title, year, runtime, language, country,
-                poster_url, tmdb_genres, default_taste_attributes, media_type
+                poster_url, tmdb_genres, default_taste_attributes, media_type, overview
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(tmdb_id) DO UPDATE SET
                 title = excluded.title,
                 year = excluded.year,
@@ -210,7 +222,8 @@ def upsert_film(
                 poster_url = excluded.poster_url,
                 tmdb_genres = excluded.tmdb_genres,
                 default_taste_attributes = excluded.default_taste_attributes,
-                media_type = excluded.media_type
+                media_type = excluded.media_type,
+                overview = COALESCE(excluded.overview, films.overview)
             """,
             (
                 tmdb_id,
@@ -223,6 +236,7 @@ def upsert_film(
                 json.dumps(tmdb_genres) if tmdb_genres else None,
                 json.dumps(default_taste_attributes) if default_taste_attributes else None,
                 media_type,
+                overview,
             ),
         )
         _fts_index_film(conn, tmdb_id)
@@ -268,6 +282,7 @@ def add_user_film(
     source: str = "manual",
     date_watched: str | None = None,
     rewatch: bool = False,
+    rating: int | None = None,
 ) -> int:
     """Add a user_film entry. Returns the new row id."""
     if status == "rewatch_candidate":
@@ -278,10 +293,10 @@ def add_user_film(
         cursor = conn.execute(
             """
             INSERT INTO user_films
-                (tmdb_id, status, rewatch, date_added, date_watched, personal_notes, watch_context, source)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (tmdb_id, status, rewatch, date_added, date_watched, personal_notes, watch_context, source, rating)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (tmdb_id, status, int(rewatch), now, date_watched, personal_notes, watch_context, source),
+            (tmdb_id, status, int(rewatch), now, date_watched, personal_notes, watch_context, source, rating),
         )
         return cursor.lastrowid
 
@@ -289,7 +304,7 @@ def add_user_film(
 def update_user_film(row_id: int, **kwargs) -> None:
     """Update specific fields on a user_film row."""
     allowed = {
-        "status", "rewatch", "date_watched", "personal_notes", "watch_context", "source"
+        "status", "rewatch", "date_watched", "personal_notes", "watch_context", "source", "rating"
     }
     updates = {k: v for k, v in kwargs.items() if k in allowed}
     if not updates:
@@ -345,6 +360,47 @@ def get_watched_films() -> list[dict]:
             WHERE uf.status = 'watched'
             ORDER BY uf.date_watched DESC
             """
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_hall_of_fame() -> list[dict]:
+    """Return all films rated 5 stars (Hall of Fame), joined with film metadata."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
+                   uf.date_watched, uf.personal_notes, uf.watch_context, uf.source, uf.rating
+            FROM user_films uf
+            JOIN films f ON uf.tmdb_id = f.tmdb_id
+            WHERE uf.rating = 5
+              AND uf.id = (
+                  SELECT MAX(id) FROM user_films u2
+                  WHERE u2.tmdb_id = uf.tmdb_id
+              )
+            ORDER BY uf.date_added DESC
+            """,
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_rated_films(min_rating: int = 1) -> list[dict]:
+    """Return all rated films (with opinions), joined with film metadata."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
+                   uf.date_watched, uf.personal_notes, uf.watch_context, uf.source, uf.rating
+            FROM user_films uf
+            JOIN films f ON uf.tmdb_id = f.tmdb_id
+            WHERE uf.rating IS NOT NULL AND uf.rating >= ?
+              AND uf.id = (
+                  SELECT MAX(id) FROM user_films u2
+                  WHERE u2.tmdb_id = uf.tmdb_id
+              )
+            ORDER BY uf.rating DESC, uf.date_added DESC
+            """,
+            (min_rating,),
         ).fetchall()
     return [dict(r) for r in rows]
 
@@ -565,7 +621,7 @@ def get_all_films_with_status(status_filter: str | None = None) -> list[dict]:
             rows = conn.execute(
                 """
                 SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
-                       uf.date_watched, uf.personal_notes, uf.watch_context, uf.source
+                       uf.date_watched, uf.personal_notes, uf.watch_context, uf.source, uf.rating
                 FROM user_films uf
                 JOIN films f ON uf.tmdb_id = f.tmdb_id
                 WHERE uf.status = ?
@@ -581,7 +637,7 @@ def get_all_films_with_status(status_filter: str | None = None) -> list[dict]:
             rows = conn.execute(
                 """
                 SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
-                       uf.date_watched, uf.personal_notes, uf.watch_context, uf.source
+                       uf.date_watched, uf.personal_notes, uf.watch_context, uf.source, uf.rating
                 FROM user_films uf
                 JOIN films f ON uf.tmdb_id = f.tmdb_id
                 WHERE uf.id = (

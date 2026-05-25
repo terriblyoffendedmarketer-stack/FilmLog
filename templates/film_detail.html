@@ -2,10 +2,11 @@
 {% block content %}
 
 {# Convenience shortcuts used by partials #}
-{% set tmdb_id      = film.tmdb_id %}
-{% set notes        = user_film.get('personal_notes', '') if user_film else '' %}
-{% set curr_status  = user_film.get('status', 'watchlist') if user_film else 'watchlist' %}
-{% set curr_rewatch = user_film.get('rewatch', 0) if user_film else 0 %}
+{% set tmdb_id       = film.tmdb_id %}
+{% set notes         = user_film.get('personal_notes', '') if user_film else '' %}
+{% set curr_status   = user_film.get('status', 'watchlist') if user_film else 'watchlist' %}
+{% set curr_rewatch  = user_film.get('rewatch', 0) if user_film else 0 %}
+{% set curr_rating   = user_film.get('rating') if user_film else None %}
 
 <div class="detail-layout">
 
@@ -57,6 +58,7 @@
     <div>
       <h1 class="detail-title">{{ film.title }}</h1>
       {% if film.year %}<div class="detail-year-line">{{ film.year }}</div>{% endif %}
+      {% if film.overview %}<p class="detail-overview">{{ film.overview }}</p>{% endif %}
     </div>
 
     {# Taste attributes #}
