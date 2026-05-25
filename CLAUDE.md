@@ -6,6 +6,8 @@ Filmlog is a personal taste engine for films. It solves a specific problem: spen
 
 The secondary problem it solves is the watchlist trap: a watchlist loses all emotional spark the moment something gets added to it. Filmlog treats the watchlist as a live candidate pool that's filtered through a real taste model in real time, so every recommendation from it comes with a reason *why tonight*.
 
+**Important:** `DECISIONS.md` contains the *why* behind design decisions — user preferences, product philosophy, what was tried and rejected. Read it alongside this file in any new session.
+
 ---
 
 ## Architecture

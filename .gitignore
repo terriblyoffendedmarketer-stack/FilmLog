@@ -1,7 +1,7 @@
 .env
 filmlog.db-shm
 filmlog.db-wal
-.claude/settings.local.json
+.claude/
 __pycache__/
 *.pyc
 *.pyo
