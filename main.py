@@ -76,9 +76,11 @@ def export_unresolved():
 @click.option("--trigger", default="manual",
               type=click.Choice(["manual", "user_edit"]),
               help="What triggered this rescan.")
-def rescan(trigger):
-    """Regenerate the taste model from the full log."""
-    model_module.rescan(trigger=trigger)
+@click.option("--full", is_flag=True, default=False,
+              help="Force a full rescan instead of diff-based.")
+def rescan(trigger, full):
+    """Regenerate the taste model (diff-based by default, --full for complete rebuild)."""
+    model_module.rescan(trigger=trigger, force_full=full)
 
 
 @cli.command()

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="unresolved-layout">
+
+  <div class="unresolved-header">
+    <div>
+      <h1 class="unresolved-title">Unresolved imports</h1>
+      <p class="unresolved-sub">{{ items | length }} items couldn't be matched during import. Search TMDB to resolve them or dismiss the ones you don't want.</p>
+    </div>
+    {% if items %}
+    <div class="unresolved-progress">
+      <span class="unresolved-progress-num">{{ items | length }}</span>
+      <span class="unresolved-progress-label">remaining</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if not items %}
+  <div class="empty-state">
+    <h2>All clear</h2>
+    <p>No unresolved imports. Everything has been matched or dismissed.</p>
+  </div>
+  {% else %}
+
+  <div class="unresolved-list" id="unresolved-list">
+    {% for item in items %}
+    <div class="unresolved-card" id="unresolved-{{ item.id }}">
+      <div class="unresolved-card-header">
+        <div class="unresolved-card-title">{{ item.raw_text }}</div>
+        <div class="unresolved-card-meta">
+          {% if item.source %}<span>{{ item.source }}</span>{% endif %}
+          {% if item.confidence_score %}<span>conf: {{ '%.0f' | format(item.confidence_score * 100) }}%</span>{% endif %}
+        </div>
+      </div>
+
+      <div class="unresolved-card-actions">
+        {# Search TMDB #}
+        <div class="unresolved-search">
+          <input type="search" class="form-input unresolved-search-input"
+                 placeholder="Search TMDB…"
+                 value="{{ item.raw_text }}"
+                 hx-get="/api/tmdb/search?resolve_for={{ item.id }}"
+                 hx-trigger="input changed delay:400ms, load delay:0ms"
+                 hx-target="#resolve-results-{{ item.id }}"
+                 hx-swap="innerHTML"
+                 name="q">
+          <div id="resolve-results-{{ item.id }}" class="unresolved-results"></div>
+        </div>
+
+        {# Dismiss button #}
+        <form method="POST" action="/unresolved/{{ item.id }}/dismiss" style="flex-shrink:0">
+          <button type="submit" class="btn-ghost btn-sm"
+                  hx-post="/unresolved/{{ item.id }}/dismiss"
+                  hx-target="#unresolved-{{ item.id }}"
+                  hx-swap="outerHTML"
+                  title="Remove from unresolved list">Dismiss</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% endif %}
+
+</div>
+
+{% endblock %}

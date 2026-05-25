@@ -69,18 +69,78 @@
     </div>
 
     {% for issue in past_issues %}
-    <div class="past-issue-card">
+    <div class="past-issue-card" onclick="toggleIssue({{ issue.id }}, this.querySelector('.past-issue-toggle'))" style="cursor:pointer">
       <div class="past-issue-meta">
         Issue #{{ issue.issue_number }}
         <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
       </div>
-      <div class="past-issue-preview" id="preview-{{ issue.id }}">{{ issue.issue_text | strip_md | truncate(200, true, '…') }}</div>
-      <div class="past-issue-full rec-result-editorial" id="full-{{ issue.id }}" style="display:none">{{ issue.issue_html }}</div>
-      <button class="past-issue-toggle" onclick="toggleIssue({{ issue.id }}, this)">
+
+      {# Preview: film posters + truncated text #}
+      <div id="preview-{{ issue.id }}">
+        {% if issue.film_cards %}
+        <div class="past-issue-posters">
+          {% for film in issue.film_cards %}
+          <div class="past-issue-poster" title="{{ film.title }}">
+            {% if film.poster_url %}
+            <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+            {% else %}
+            <div class="past-issue-poster-ph">{{ (film.title or '?')[:2] }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="past-issue-preview">{{ issue.issue_text | strip_md | truncate(200, true, '…') }}</div>
+      </div>
+
+      {# Full expanded view #}
+      <div id="full-{{ issue.id }}" style="display:none" onclick="event.stopPropagation()">
+        <div id="rewrite-target-{{ issue.id }}">
+          <div class="rec-result-editorial">{{ issue.issue_html }}</div>
+          {% if issue.film_cards %}
+          <div class="rec-issue-films-compact" style="margin-top:16px;">
+            {% for film in issue.film_cards %}
+            <a href="/films/{{ film.tmdb_id }}" class="rec-film-icon" title="{{ film.title }} ({{ film.year }})">
+              {% if film.poster_url %}
+              <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+              {% else %}
+              <span class="rec-film-icon-ph">{{ (film.title or '?')[:2] }}</span>
+              {% endif %}
+            </a>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        <div class="past-issue-actions">
+          <button type="button" class="btn-rewrite"
+            hx-post="/tonight/rewrite/{{ issue.id }}"
+            hx-target="#rewrite-target-{{ issue.id }}"
+            hx-swap="innerHTML"
+            hx-indicator="#rewrite-ind-{{ issue.id }}"
+            onclick="event.stopPropagation()">
+            Rewrite
+          </button>
+          <button type="button" class="btn-rewrite"
+            hx-post="/tonight/archive/{{ issue.id }}"
+            hx-target="closest .past-issue-card"
+            hx-swap="outerHTML"
+            onclick="event.stopPropagation()">
+            Archive
+          </button>
+          <span id="rewrite-ind-{{ issue.id }}" class="gen-indicator htmx-indicator">
+            <span class="gen-dots"><span></span><span></span><span></span></span>
+            Rewriting…
+          </span>
+        </div>
+      </div>
+
+      <button class="past-issue-toggle" onclick="event.stopPropagation(); toggleIssue({{ issue.id }}, this)">
         Read more
       </button>
     </div>
     {% endfor %}
+
+    <a href="/tonight/archived" class="archive-link">View archived issues</a>
   </div>
   {% endif %}
 

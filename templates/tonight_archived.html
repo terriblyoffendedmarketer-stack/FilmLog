@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="tonight-layout">
+
+  <div class="tonight-heading-block">
+    <h1 class="tonight-heading">Archived Issues</h1>
+    <p class="tonight-sub">Past recommendation issues moved out of your main view.</p>
+  </div>
+
+  <a href="/tonight" class="archive-link" style="margin-bottom:24px; display:inline-block;">&larr; Back to Tonight</a>
+
+  {% if archived_issues %}
+  {% for issue in archived_issues %}
+  <div class="past-issue-card" id="archived-card-{{ issue.id }}" onclick="toggleIssue({{ issue.id }}, this.querySelector('.past-issue-toggle'))" style="cursor:pointer">
+    <div class="past-issue-meta">
+      Issue #{{ issue.issue_number }}
+      <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
+    </div>
+
+    {# Preview #}
+    <div id="preview-{{ issue.id }}">
+      {% if issue.film_cards %}
+      <div class="past-issue-posters">
+        {% for film in issue.film_cards %}
+        <div class="past-issue-poster" title="{{ film.title }}">
+          {% if film.poster_url %}
+          <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+          {% else %}
+          <div class="past-issue-poster-ph">{{ (film.title or '?')[:2] }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="past-issue-preview">{{ issue.issue_text | strip_md | truncate(200, true, '…') }}</div>
+    </div>
+
+    {# Full expanded view #}
+    <div id="full-{{ issue.id }}" style="display:none" onclick="event.stopPropagation()">
+      <div class="rec-result-editorial">{{ issue.issue_html }}</div>
+      {% if issue.film_cards %}
+      <div class="rec-issue-films-compact" style="margin-top:16px;">
+        {% for film in issue.film_cards %}
+        <a href="/films/{{ film.tmdb_id }}" class="rec-film-icon" title="{{ film.title }} ({{ film.year }})">
+          {% if film.poster_url %}
+          <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+          {% else %}
+          <span class="rec-film-icon-ph">{{ (film.title or '?')[:2] }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="past-issue-actions">
+        <button type="button" class="btn-rewrite"
+          hx-post="/tonight/unarchive/{{ issue.id }}"
+          hx-target="#archived-card-{{ issue.id }}"
+          hx-swap="outerHTML"
+          onclick="event.stopPropagation()">
+          Restore
+        </button>
+      </div>
+    </div>
+
+    <button class="past-issue-toggle" onclick="event.stopPropagation(); toggleIssue({{ issue.id }}, this)">
+      Read more
+    </button>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <p class="tonight-sub" style="margin-top:32px;">No archived issues yet.</p>
+  {% endif %}
+
+</div>
+
+<script>
+function toggleIssue(id, btn) {
+  var preview = document.getElementById('preview-' + id);
+  var full = document.getElementById('full-' + id);
+  var open = full.style.display === 'block';
+  full.style.display    = open ? 'none'         : 'block';
+  preview.style.display = open ? '-webkit-box'  : 'none';
+  btn.textContent       = open ? 'Read more'    : 'Show less';
+}
+</script>
+
+{% endblock %}

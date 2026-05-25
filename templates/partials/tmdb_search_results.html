@@ -1,6 +1,32 @@
 {% if results %}
 <div class="tmdb-results-list">
   {% for r in results %}
+  {% if correct_for %}
+  <form method="POST" action="/films/{{ correct_for }}/correct" class="tmdb-result-card" style="cursor:pointer"
+        onsubmit="return confirm('Replace with {{ r.title }} ({{ r.year or '?' }})? This will swap the TMDB match.')">
+    <input type="hidden" name="new_tmdb_id" value="{{ r.tmdb_id }}">
+    <input type="hidden" name="media_type" value="{{ r.media_type }}">
+    <div class="tmdb-result-poster">
+      {% if r.poster_url %}
+      <img src="{{ r.poster_url }}" alt="{{ r.title }}" loading="lazy">
+      {% else %}
+      <div class="tmdb-result-poster-ph">{{ (r.title or '?')[:2] }}</div>
+      {% endif %}
+    </div>
+    <div class="tmdb-result-info">
+      <div class="tmdb-result-title">{{ r.title }}</div>
+      <div class="tmdb-result-meta">
+        {% if r.year %}{{ r.year }}{% endif %}
+        {% if r.language %} · {{ r.language | upper }}{% endif %}
+        {% if r.media_type == 'tv' %} · TV{% endif %}
+      </div>
+      {% if r.overview %}
+      <div class="tmdb-result-overview">{{ r.overview[:120] }}{% if r.overview|length > 120 %}…{% endif %}</div>
+      {% endif %}
+      <button type="submit" class="btn-primary btn-sm" style="margin-top:8px">Use this match</button>
+    </div>
+  </form>
+  {% else %}
   <a href="/add/confirm/{{ r.tmdb_id }}?media_type={{ r.media_type }}" class="tmdb-result-card">
     <div class="tmdb-result-poster">
       {% if r.poster_url %}
@@ -24,6 +50,7 @@
       {% endif %}
     </div>
   </a>
+  {% endif %}
   {% endfor %}
 </div>
 {% else %}

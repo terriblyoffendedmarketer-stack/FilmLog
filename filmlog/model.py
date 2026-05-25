@@ -351,14 +351,48 @@ def _write_taste_model_file(model_text: str, version: int) -> None:
     TASTE_MODEL_PATH.write_text(text, encoding="utf-8")
 
 
+DIFF_PROMPT = """You are updating an existing personal taste model for Prashil's film recommendation engine.
+
+The current model (v{prev_version}) is below. Since it was last generated, the following changes have been made:
+
+CHANGES SINCE LAST MODEL:
+{diff_context}
+
+Your job: revise the existing model to incorporate these changes. This is a surgical update, not a rewrite.
+
+Rules:
+- If a film was REMOVED, reduce confidence in attributes it was evidence for — but don't remove
+  an attribute unless you're confident it was only supported by that film.
+- If new films were ADDED, check if they reinforce existing attributes or reveal new ones.
+- If NOTES were edited, treat the new note as fresh signal — it may sharpen, contradict, or
+  add nuance to an existing attribute.
+- Keep the same structure and format as the existing model.
+- Update the version number to v{next_version} and the date to {date}.
+- Update watched/watchlist counts to: {watched_count} watched, {watchlist_count} in watchlist.
+
+After the revised model, output a line that reads exactly: [ATTRIBUTES JSON]
+Then output the full updated attributes array (same format as the original model generation).
+
+EXISTING MODEL:
+{existing_model}
+"""
+
+
+DIFF_THRESHOLD = 30
+
 # ---------------------------------------------------------------------------
 # Main rescan function
 # ---------------------------------------------------------------------------
 
-def rescan(trigger: str = "manual") -> None:
+def rescan(trigger: str = "manual", force_full: bool = False) -> None:
     """
-    Full taste model regeneration.
-    Reads DB, calls Claude Opus, writes taste_model.md, updates taste_attributes.
+    Taste model regeneration — diff-based when possible, full when needed.
+
+    Diff rescan: if the last model exists and fewer than DIFF_THRESHOLD films
+    changed since then, send only the diff + existing model to Claude. Much
+    cheaper and faster than a full rescan.
+
+    Full rescan: no existing model, or too many changes, or force_full=True.
     """
     click.echo("\n── Rescan starting ─────────────────────────────")
 
@@ -381,23 +415,58 @@ def rescan(trigger: str = "manual") -> None:
         if not click.confirm("  Generate anyway?", default=True):
             return
 
-    # ── 2. Assemble context ──────────────────────────────────────────────────
-    click.echo("\n  Building context …")
-    context = _build_context(watched, watchlist)
-
-    # ── 3. Get current version number ────────────────────────────────────────
+    # ── 2. Decide: diff or full ──────────────────────────────────────────────
     existing = db.get_latest_taste_model()
     next_version = (existing["version_number"] + 1) if existing else 1
+    use_diff = False
+    changed_films = []
+
+    if existing and not force_full:
+        last_generated = existing.get("generated_at", "")
+        if last_generated:
+            changed_films = db.get_films_changed_since(last_generated)
+            if 0 < len(changed_films) <= DIFF_THRESHOLD:
+                use_diff = True
+                click.echo(f"\n  {len(changed_films)} film(s) changed since v{existing['version_number']} — using diff rescan")
+            elif len(changed_films) == 0:
+                click.echo("\n  No changes since last model. Nothing to update.")
+                return
+            else:
+                click.echo(f"\n  {len(changed_films)} changes — too many for diff, running full rescan")
+
+    # ── 3. Build prompt ──────────────────────────────────────────────────────
+    if use_diff:
+        diff_lines = []
+        for film in changed_films:
+            sig = _quality_signal(film.get("source"), film.get("personal_notes"))
+            diff_lines.append(_format_film_for_context(film, sig))
+
+        existing_model = existing.get("model_summary", "")
+        if not existing_model and TASTE_MODEL_PATH.exists():
+            existing_model = TASTE_MODEL_PATH.read_text(encoding="utf-8")
+
+        prompt = DIFF_PROMPT.format(
+            prev_version=existing["version_number"],
+            next_version=next_version,
+            date=datetime.now(timezone.utc).date().isoformat(),
+            watched_count=len(watched),
+            watchlist_count=len(watchlist),
+            diff_context="\n".join(diff_lines),
+            existing_model=existing_model[:6000],
+        )
+        click.echo("  Sending diff to Claude Opus …")
+    else:
+        click.echo("\n  Building full context …")
+        context = _build_context(watched, watchlist)
+        prompt = MODEL_PROMPT.format(
+            version=next_version,
+            date=datetime.now(timezone.utc).date().isoformat(),
+            watched_count=len(watched),
+            watchlist_count=len(watchlist),
+            context=context,
+        )
 
     # ── 4. Call Claude Opus ──────────────────────────────────────────────────
-    prompt = MODEL_PROMPT.format(
-        version=next_version,
-        date=datetime.now(timezone.utc).date().isoformat(),
-        watched_count=len(watched),
-        watchlist_count=len(watchlist),
-        context=context,
-    )
-
     try:
         raw_output = _call_claude_opus(prompt)
     except RuntimeError as e:

@@ -74,8 +74,8 @@ def _parse_film(film: dict) -> dict:
     if overview:
         # Take first sentence (up to first period, question mark, or exclamation)
         first_sentence = re.split(r'(?<=[.!?])\s', overview, maxsplit=1)[0]
-        if len(first_sentence) > 120:
-            first_sentence = first_sentence[:117].rsplit(" ", 1)[0] + "…"
+        if len(first_sentence) > 85:
+            first_sentence = first_sentence[:82].rsplit(" ", 1)[0] + "…"
         f["tagline"] = first_sentence
     else:
         f["tagline"] = ""
@@ -86,6 +86,43 @@ def _parse_film(film: dict) -> dict:
 def _render_md(text: str) -> Markup:
     """Convert markdown text to safe HTML for Jinja2 templates."""
     return Markup(md_lib.markdown(text, extensions=["nl2br", "sane_lists"]))
+
+
+def _inject_inline_posters(html: str, film_cards: list[dict]) -> Markup:
+    """
+    Replace the first <strong>Title</strong> occurrence for each recommended film
+    with a small inline poster float + the bold title. Creates the visual pull
+    of seeing the poster in context with the sell text.
+    """
+    if not film_cards:
+        return html
+
+    for film in film_cards:
+        title = film.get("title", "")
+        poster = film.get("poster_url", "")
+        tmdb_id = film.get("tmdb_id", "")
+        if not title:
+            continue
+
+        bold_pattern = re.compile(
+            r"<strong>" + re.escape(title) + r"</strong>", re.IGNORECASE
+        )
+
+        if poster:
+            replacement = (
+                f'<span class="inline-poster-wrap">'
+                f'<a href="/films/{tmdb_id}" class="inline-poster">'
+                f'<img src="{poster}" alt="{title}" loading="lazy">'
+                f'</a>'
+                f'<strong>{title}</strong>'
+                f'</span>'
+            )
+        else:
+            replacement = f"<strong>{title}</strong>"
+
+        html = bold_pattern.sub(replacement, html, count=1)
+
+    return Markup(html)
 
 
 def _extract_film_ids_from_text(text: str) -> list[int]:
@@ -240,6 +277,44 @@ def film_detail(tmdb_id: int):
     )
 
 
+# ── Film correction: swap wrong TMDB match ─────────────────────────────────
+
+@app.route("/films/<int:tmdb_id>/correct", methods=["POST"])
+def correct_film(tmdb_id: int):
+    """Swap a wrong TMDB match with the correct one."""
+    new_tmdb_id = int(request.form.get("new_tmdb_id", 0))
+    media_type = request.form.get("media_type", "movie")
+    if not new_tmdb_id:
+        abort(400)
+
+    # Fetch the correct film from TMDB and save it
+    try:
+        if media_type == "tv":
+            details = tmdb.fetch_tv_data(new_tmdb_id)
+        else:
+            details = tmdb.fetch_film_data(new_tmdb_id)
+        db.upsert_film(**details)
+    except Exception:
+        abort(500)
+
+    # Swap the old tmdb_id to the new one across all tables
+    db.swap_film_tmdb_id(tmdb_id, new_tmdb_id)
+
+    return redirect(url_for("film_detail", tmdb_id=new_tmdb_id))
+
+
+# ── Film delete ────────────────────────────────────────────────────────────
+
+@app.route("/films/<int:tmdb_id>/delete", methods=["POST"])
+def delete_film(tmdb_id: int):
+    """Remove a film from the library entirely."""
+    film = db.get_film(tmdb_id)
+    if not film:
+        abort(404)
+    db.delete_film(tmdb_id)
+    return redirect(url_for("films"))
+
+
 # ── HTMX partials: notes edit-in-place ──────────────────────────────────────
 
 @app.route("/films/<int:tmdb_id>/notes/edit")
@@ -285,6 +360,8 @@ def update_status(tmdb_id: int):
     if rewatch_val is not None:
         rewatch_int = int(rewatch_val)
         db.update_user_film(user_film["id"], rewatch=rewatch_int)
+        if rewatch_int:
+            db.update_user_film(user_film["id"], status="watched")
 
     user_film = db.get_user_film_by_tmdb(tmdb_id)
     return render_template(
@@ -300,9 +377,16 @@ def update_status(tmdb_id: int):
 @app.route("/tonight")
 def tonight():
     past_issues = db.get_recommendation_history(limit=5)
-    # Pre-render markdown for past issues so they display properly
+    # Pre-render markdown and resolve film posters for past issues
     for issue in past_issues:
-        issue["issue_html"] = _render_md(issue.get("issue_text", ""))
+        film_cards = []
+        for tmdb_id in issue.get("films_referenced", [])[:4]:
+            film = db.get_film(tmdb_id)
+            if film:
+                film_cards.append(film)
+        raw_html = _render_md(issue.get("issue_text", ""))
+        issue["issue_html"] = _inject_inline_posters(raw_html, film_cards)
+        issue["film_cards"] = film_cards
     return render_template(
         "tonight.html",
         page="tonight",
@@ -324,23 +408,98 @@ def tonight_generate():
 
     result = generate_web_recommendation(answers)
 
-    # Render the editorial markdown as HTML
-    issue_html = ""
-    if result.get("issue_text"):
-        issue_html = _render_md(result["issue_text"])
+    # Auto-archive: keep only the 2 most recent issues visible
+    db.auto_archive_issues(keep=2)
 
-    # Fetch referenced films for the mini-poster strip
+    # Fetch referenced films for inline posters + bottom strip
     film_cards = []
     for tmdb_id in result.get("films_referenced", [])[:4]:
         film = db.get_film(tmdb_id)
         if film:
             film_cards.append(film)
 
+    # Render editorial markdown then inject inline posters beside bold titles
+    issue_html = ""
+    if result.get("issue_text"):
+        raw_html = _render_md(result["issue_text"])
+        issue_html = _inject_inline_posters(raw_html, film_cards)
+
     return render_template(
         "partials/recommendation_result.html",
         issue_html=issue_html,
         film_cards=film_cards,
         **{k: v for k, v in result.items() if k != "issue_text"},
+    )
+
+
+@app.route("/tonight/rewrite/<int:issue_id>", methods=["POST"])
+def tonight_rewrite(issue_id: int):
+    """HTMX endpoint: rewrite a past issue with the current prompt, same films."""
+    from filmlog.recommend import rewrite_issue
+
+    result = rewrite_issue(issue_id)
+
+    if result.get("error"):
+        return f'<div class="rec-result-error"><p>{result["error"]}</p></div>'
+
+    # Re-fetch the updated issue for rendering
+    history = db.get_recommendation_history(limit=50)
+    issue = next((i for i in history if i["id"] == issue_id), None)
+    if not issue:
+        return '<div class="rec-result-error"><p>Issue not found after rewrite.</p></div>'
+
+    film_cards = []
+    for tmdb_id in issue.get("films_referenced", [])[:4]:
+        film = db.get_film(tmdb_id)
+        if film:
+            film_cards.append(film)
+
+    raw_html = _render_md(result["issue_text"])
+    issue_html = _inject_inline_posters(raw_html, film_cards)
+
+    return render_template(
+        "partials/recommendation_result.html",
+        issue_html=issue_html,
+        film_cards=film_cards,
+        issue_number=issue.get("issue_number"),
+        tier2=False,
+        error=None,
+    )
+
+
+@app.route("/tonight/archive/<int:issue_id>", methods=["POST"])
+def tonight_archive(issue_id: int):
+    """HTMX endpoint: archive a past issue."""
+    db.archive_issue(issue_id)
+    return ""
+
+
+@app.route("/tonight/unarchive/<int:issue_id>", methods=["POST"])
+def tonight_unarchive(issue_id: int):
+    """HTMX endpoint: restore an archived issue."""
+    db.unarchive_issue(issue_id)
+    return ""
+
+
+@app.route("/tonight/archived")
+def tonight_archived():
+    """View archived recommendation issues."""
+    archived = db.get_archived_issues(limit=50)
+    for issue in archived:
+        film_cards = []
+        for tmdb_id in issue.get("films_referenced", [])[:4]:
+            film = db.get_film(tmdb_id)
+            if film:
+                film_cards.append(film)
+        raw_html = _render_md(issue.get("issue_text", ""))
+        issue["issue_html"] = _inject_inline_posters(raw_html, film_cards)
+        issue["film_cards"] = film_cards
+    return render_template(
+        "tonight_archived.html",
+        page="tonight",
+        title="Archived Issues",
+        stats=_get_stats(),
+        archived_issues=archived,
     )
 
 
@@ -583,6 +742,58 @@ def search():
     )
 
 
+# ── Unresolved imports ──────────────────────────────────────────────────────
+
+@app.route("/unresolved")
+def unresolved():
+    items = db.get_unresolved(resolved=False)
+    return render_template(
+        "unresolved.html",
+        page="unresolved",
+        title="Unresolved imports",
+        stats=_get_stats(),
+        items=items,
+    )
+
+
+@app.route("/unresolved/<int:item_id>/resolve", methods=["POST"])
+def resolve_item(item_id: int):
+    """Resolve an unresolved import by adding the matched film to the library."""
+    tmdb_id = int(request.form.get("tmdb_id", 0))
+    media_type = request.form.get("media_type", "movie")
+    skip_add = request.form.get("skip_add")
+
+    if not tmdb_id:
+        abort(400)
+
+    if not skip_add:
+        # Fetch from TMDB and add to library
+        try:
+            if media_type == "tv":
+                details = tmdb.fetch_tv_data(tmdb_id)
+            else:
+                details = tmdb.fetch_film_data(tmdb_id)
+            db.upsert_film(**details)
+        except Exception:
+            abort(500)
+
+        # Add as watchlist if not already in user_films
+        if not db.get_user_film_by_tmdb(tmdb_id):
+            db.add_user_film(tmdb_id=tmdb_id, status="watchlist", source="resolved_import")
+
+    db.mark_resolved(item_id)
+
+    # Return empty div — card disappears via hx-swap="outerHTML"
+    return '<div class="unresolved-resolved">✓ Resolved</div>'
+
+
+@app.route("/unresolved/<int:item_id>/dismiss", methods=["POST"])
+def dismiss_item(item_id: int):
+    """Dismiss an unresolved import (mark as resolved without adding)."""
+    db.mark_resolved(item_id)
+    return ""
+
+
 # ── Settings ─────────────────────────────────────────────────────────────────
 
 @app.route("/settings")
@@ -654,6 +865,8 @@ def api_tmdb_search():
     """HTMX endpoint: search TMDB for films/TV, return HTML results."""
     q = request.args.get("q", "").strip()
     media = request.args.get("media_type", "movie")
+    correct_for = request.args.get("correct_for", type=int)
+    resolve_for = request.args.get("resolve_for", type=int)
     if not q or len(q) < 2:
         return ""
     try:
@@ -668,7 +881,9 @@ def api_tmdb_search():
     for r in results:
         r["in_db"] = db.get_film(r["tmdb_id"]) is not None
 
-    return render_template("partials/tmdb_search_results.html", results=results)
+    if resolve_for:
+        return render_template("partials/resolve_results.html", results=results, resolve_for=resolve_for)
+    return render_template("partials/tmdb_search_results.html", results=results, correct_for=correct_for)
 
 
 @app.route("/add/confirm/<int:tmdb_id>")

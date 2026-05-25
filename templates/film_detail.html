@@ -29,6 +29,13 @@
     {% endwith %}
     {% endif %}
 
+    {# Rating control — HTMX swap target #}
+    {% if user_film %}
+    {% with current_rating = curr_rating %}
+    {% include 'partials/rating_control.html' %}
+    {% endwith %}
+    {% endif %}
+
     {# Metadata #}
     <div class="detail-meta-list">
       {% if film.runtime %}<div class="detail-meta-item">⏱ {{ film.runtime }} min</div>{% endif %}
@@ -114,6 +121,36 @@
       </div>
     </div>
     {% endif %}
+
+    {# Admin actions — wrong match + delete #}
+    <div class="detail-admin">
+      <div class="section-label">Admin</div>
+      <div class="detail-admin-actions">
+
+        {# Wrong film? correction #}
+        <button class="btn-ghost btn-sm" onclick="document.getElementById('correct-panel').style.display = document.getElementById('correct-panel').style.display === 'none' ? 'block' : 'none'">Wrong film?</button>
+
+        {# Delete #}
+        <form method="POST" action="/films/{{ tmdb_id }}/delete" onsubmit="return confirm('Remove {{ film.title | e }} from your library? This cannot be undone.')">
+          <button type="submit" class="btn-ghost btn-sm btn-danger">Delete film</button>
+        </form>
+      </div>
+
+      {# Correction search panel (hidden by default) #}
+      <div id="correct-panel" style="display:none; margin-top: 16px;">
+        <div class="film-picker-search">
+          <input type="search" class="form-input film-picker-input"
+                 placeholder="Search TMDB for the correct film…"
+                 hx-get="/api/tmdb/search?correct_for={{ tmdb_id }}"
+                 hx-trigger="input changed delay:400ms"
+                 hx-target="#correct-results"
+                 hx-swap="innerHTML"
+                 name="q">
+          <div id="correct-results" class="film-search-results" style="position:static; border:1px solid var(--border); border-radius:var(--r); margin-top:8px;">
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 </div>

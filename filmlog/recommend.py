@@ -268,30 +268,36 @@ def _format_hall_of_fame(limit: int = 20) -> str:
 # Claude Opus recommendation issue
 # ---------------------------------------------------------------------------
 
-RECOMMENDATION_PROMPT = """You are the writer of a personalised film magazine for one reader: Prashil.
+RECOMMENDATION_PROMPT = """You are writing a personalised recommendation for Prashil — one reader, one evening.
 
-You know his taste. You have his taste model, his hall of fame, and his watchlist. You're the friend who's seen everything and knows what lands for him.
+Voice: a friend who watches a lot of film and knows what lands for this specific person. Warm, direct, zero filler. You're handing someone a film, not reviewing one.
 
-Write a recommendation issue — 300–500 words of warm, specific editorial prose. The voice of someone who loves film and knows Prashil.
+Write 300–500 words. Recommend 2–4 films.
+
+## FORMAT
+
+- **Bold film titles** every time: **The Wailing**, **Coherence**, etc.
+- One paragraph per film, with a blank line between them.
+- *Italics* for emphasis sparingly.
+- A short opening line setting up the evening, and a short closing line.
+- No numbered lists, no bullet points, no subheadings.
+
+## THE SELL
+
+This is the most important part. Each film gets 3–4 sentences that make someone want to press play. Not a synopsis. Not a review. A sell.
+
+What works: sensory details, the feeling the film creates, what makes it distinctive, a specific image or moment (without spoiling). Write like you're leaning across a table saying "okay but you have to watch this one."
+
+What doesn't work: generic praise ("masterfully crafted", "compelling narrative"), plot summary disguised as enthusiasm, or connecting every single film to something in the hall of fame. If a connection to a film Prashil loves is genuine and specific, make it. If you're reaching, skip it entirely. Most films should sell on their own merits.
+
+Bad sell: "This film explores themes of isolation and redemption through a masterful lens."
+Good sell: "Ninety minutes of a man in a car being hunted by a truck whose driver you never see. That's it. And it's relentless."
 
 ## RULES
 
-**Format:**
-- **Bold film titles** every time: **The Wailing**, **Coherence**, etc.
-- Paragraph breaks between films. Breathing room.
-- *Italics* for emphasis on feelings or qualities.
-- Prose, not a listicle. No numbered lists or bullet points for the recommendations.
-- End with a short closing line.
-
-**Recommend exactly 2–3 films. Only write about films you are recommending.** Do not mention films you're choosing not to recommend. Do not say "save X for another night." Every film you name should be a pick for tonight.
-
-**The sell is everything.** For each film, write 3–4 sentences that make someone want to watch it. Not a plot synopsis — a sell. What does it feel like? What's the texture? Why is it exciting? Write like you love this film and want to hand it to someone.
-
-**Spoilers:** Never reveal twists, turns, or structural surprises. But don't let caution make the sell bland. You can describe mood, craft, performances, the world of the film, what it does to you — just don't describe what happens. A great sell makes you feel something without knowing the plot.
-
-**Connections to Prashil's taste:** If a film genuinely connects to something in his hall of fame — a shared quality, not just the same genre — mention it. But this is optional. A film can stand entirely on its own. Don't force connections for every pick. Sometimes the sell is enough.
-
-**Source:** Primarily pick from the watchlist candidates below, but you can recommend any film you think fits — even if it's not on his list. You can also suggest a hall-of-fame rewatch if it fits tonight perfectly.
+- Only write about films you are recommending. Don't mention films you're not picking.
+- Never spoil twists, endings, or structural surprises.
+- Pick primarily from the watchlist candidates. You can go outside the list if something fits perfectly.
 
 ---
 
@@ -406,6 +412,72 @@ def _call_claude_opus(prompt: str) -> str:
     return message.content[0].text.strip()
 
 
+import re as _re
+
+def _extract_mentioned_films(issue_text: str, candidates: list[dict]) -> list[int]:
+    """
+    Parse the editorial text to find which films were actually recommended.
+    Looks for **bold titles** (markdown) and matches against candidates + full DB.
+    Returns list of tmdb_ids for films mentioned in the text.
+    """
+    # Extract bold text patterns: **Title** or **Title (Year)**
+    bold_pattern = _re.compile(r'\*\*([^*]+)\*\*')
+    bold_matches = bold_pattern.findall(issue_text)
+
+    # Clean up: strip year suffixes like "Title (2023)"
+    mentioned_titles = []
+    for match in bold_matches:
+        # Remove trailing year in parens
+        clean = _re.sub(r'\s*\(\d{4}\)\s*$', '', match).strip()
+        if clean:
+            mentioned_titles.append(clean.lower())
+
+    if not mentioned_titles:
+        return []
+
+    # Build lookup: title → tmdb_id from candidates
+    title_to_id: dict[str, int] = {}
+    for film in candidates:
+        title = (film.get("title") or "").lower()
+        if title and film.get("tmdb_id"):
+            title_to_id[title] = film["tmdb_id"]
+
+    # Also search the full DB for films Claude may have picked outside the candidate list
+    matched_ids = []
+    for mentioned in mentioned_titles:
+        # Exact match in candidates
+        if mentioned in title_to_id:
+            tid = title_to_id[mentioned]
+            if tid not in matched_ids:
+                matched_ids.append(tid)
+            continue
+
+        # Fuzzy: check if mentioned title is contained in or contains a candidate title
+        found = False
+        for title, tid in title_to_id.items():
+            if mentioned in title or title in mentioned:
+                if tid not in matched_ids:
+                    matched_ids.append(tid)
+                found = True
+                break
+
+        if not found:
+            # Search the full local DB
+            results = db.search_films_local(mentioned)
+            if results:
+                # Pick the closest match
+                for r in results:
+                    r_title = (r.get("title") or "").lower()
+                    if r_title == mentioned or mentioned in r_title or r_title in mentioned:
+                        tid = r["tmdb_id"]
+                        if tid not in matched_ids:
+                            matched_ids.append(tid)
+                        found = True
+                        break
+
+    return matched_ids
+
+
 # ---------------------------------------------------------------------------
 # Tier 2 fallback (no live API)
 # ---------------------------------------------------------------------------
@@ -510,7 +582,7 @@ def generate_issue() -> None:
     model_version = db.get_latest_taste_model()
     version_id = model_version["id"] if model_version else None
 
-    film_ids = [f["tmdb_id"] for f in candidates if f.get("tmdb_id")]
+    film_ids = _extract_mentioned_films(issue_text, candidates)
 
     issue_id = db.save_recommendation_issue(
         issue_text=issue_text,
@@ -637,7 +709,9 @@ def generate_web_recommendation(answers: dict) -> dict:
             "error": f"Claude API error: {e}",
         }
 
-    film_ids = [f["tmdb_id"] for f in candidates if f.get("tmdb_id")]
+    # Extract only the films actually mentioned in the editorial
+    film_ids = _extract_mentioned_films(issue_text, candidates)
+
     model_version = db.get_latest_taste_model()
     db.save_recommendation_issue(
         issue_text=issue_text,
@@ -654,3 +728,164 @@ def generate_web_recommendation(answers: dict) -> dict:
         "tier2": False,
         "error": None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Pre-cached issues (generate in advance for Tier 2 offline use)
+# ---------------------------------------------------------------------------
+
+_PRECACHE_CONTEXTS = [
+    {"watch_context": "solo", "free_text": ""},
+    {"watch_context": "solo", "free_text": "something that stays with me"},
+    {"watch_context": "partner", "free_text": ""},
+]
+
+
+def precache_issues(count: int = 2) -> list[dict]:
+    """
+    Pre-generate recommendation issues for common contexts.
+    Call this after a rescan or periodically. Each issue is saved to the DB
+    so it's available even without API credits.
+
+    Returns list of generated issue dicts.
+    """
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return []
+
+    taste_model = _load_taste_model()
+    if not taste_model:
+        return []
+
+    results = []
+    for i, ctx in enumerate(_PRECACHE_CONTEXTS[:count]):
+        try:
+            result = generate_web_recommendation(ctx)
+            if result.get("issue_text") and not result.get("error"):
+                results.append(result)
+        except Exception:
+            continue
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Rewrite an existing issue (same films, fresh editorial)
+# ---------------------------------------------------------------------------
+
+REWRITE_PROMPT = """You are rewriting a personalised recommendation for Prashil — one reader, one evening.
+
+Voice: a friend who watches a lot of film and knows what lands for this specific person. Warm, direct, zero filler. You're handing someone a film, not reviewing one.
+
+Write 300–500 words. You MUST recommend exactly these films (all of them, no others):
+{film_list}
+
+## FORMAT
+
+- **Bold film titles** every time: **The Wailing**, **Coherence**, etc.
+- One paragraph per film, with a blank line between them.
+- *Italics* for emphasis sparingly.
+- A short opening line setting up the evening, and a short closing line.
+- No numbered lists, no bullet points, no subheadings.
+
+## THE SELL
+
+This is the most important part. Each film gets 3–4 sentences that make someone want to press play. Not a synopsis. Not a review. A sell.
+
+What works: sensory details, the feeling the film creates, what makes it distinctive, a specific image or moment (without spoiling). Write like you're leaning across a table saying "okay but you have to watch this one."
+
+What doesn't work: generic praise ("masterfully crafted", "compelling narrative"), plot summary disguised as enthusiasm, or connecting every single film to something in the hall of fame. If a connection to a film Prashil loves is genuine and specific, make it. If you're reaching, skip it entirely. Most films should sell on their own merits.
+
+Bad sell: "This film explores themes of isolation and redemption through a masterful lens."
+Good sell: "Ninety minutes of a man in a car being hunted by a truck whose driver you never see. That's it. And it's relentless."
+
+## RULES
+
+- Write about ALL the films listed above. Don't skip any, don't add new ones.
+- Never spoil twists, endings, or structural surprises.
+
+---
+
+TASTE MODEL:
+{taste_model}
+
+---
+
+HALL OF FAME:
+{hall_of_fame}
+
+---
+
+Write the issue now."""
+
+
+def rewrite_issue(issue_id: int) -> dict:
+    """
+    Rewrite an existing recommendation issue: same films, fresh editorial
+    using the current prompt and taste model.
+
+    Returns:
+      {"issue_text": str, "error": str | None}
+    """
+    history = db.get_recommendation_history(limit=50)
+    issue = next((i for i in history if i["id"] == issue_id), None)
+    if not issue:
+        return {"issue_text": "", "error": "Issue not found."}
+
+    film_ids = issue.get("films_referenced", [])
+    if not film_ids:
+        return {"issue_text": "", "error": "No films linked to this issue."}
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return {"issue_text": "", "error": "ANTHROPIC_API_KEY not set."}
+
+    taste_model = _load_taste_model()
+
+    films = []
+    for tid in film_ids:
+        film = db.get_film(tid)
+        if film:
+            films.append(film)
+
+    if not films:
+        return {"issue_text": "", "error": "Could not find films in the database."}
+
+    film_lines = []
+    for film in films:
+        title = film.get("title", "Unknown")
+        year = film.get("year", "")
+        lang = film.get("language", "")
+        runtime = film.get("runtime", "")
+        raw_attrs = film.get("default_taste_attributes") or "[]"
+        if isinstance(raw_attrs, str):
+            try:
+                attrs = json.loads(raw_attrs)
+            except Exception:
+                attrs = []
+        else:
+            attrs = raw_attrs or []
+
+        line = f"• {title} ({year})"
+        if lang:
+            line += f" [{lang}]"
+        if runtime:
+            line += f" {runtime}min"
+        if attrs:
+            line += f" — {', '.join(attrs[:5])}"
+        film_lines.append(line)
+
+    prompt = REWRITE_PROMPT.format(
+        film_list="\n".join(film_lines),
+        taste_model=taste_model[:3000] if taste_model else "(no taste model available)",
+        hall_of_fame=_format_hall_of_fame(limit=20),
+    )
+
+    try:
+        new_text = _call_claude_opus(prompt)
+    except Exception as e:
+        return {"issue_text": "", "error": f"Claude API error: {e}"}
+
+    db.update_recommendation_issue(issue_id, new_text)
+
+    return {"issue_text": new_text, "error": None}

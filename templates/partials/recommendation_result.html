@@ -9,20 +9,22 @@
 <div class="rec-result">
 
   <div class="rec-result-meta">
-    Issue #{{ issue_number }}
+    <span>Issue #{{ issue_number }}</span>
     {% if tier2 %}<span class="tier2-badge">offline mode</span>{% endif %}
   </div>
 
   <div class="rec-result-editorial">{{ issue_html }}</div>
 
+  {# Film picks — small icon-buttons at the bottom #}
   {% if film_cards %}
-  <div class="rec-result-films">
+  <div class="rec-issue-films-compact">
     {% for film in film_cards %}
-    <a href="/films/{{ film.tmdb_id }}" class="rec-film-chip">
+    <a href="/films/{{ film.tmdb_id }}" class="rec-film-icon" title="{{ film.title }} ({{ film.year }})">
       {% if film.poster_url %}
-      <img src="{{ film.poster_url }}" alt="{{ film.title }}" class="rec-film-thumb">
+      <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+      {% else %}
+      <span class="rec-film-icon-ph">{{ (film.title or '?')[:2] }}</span>
       {% endif %}
-      <span class="rec-film-title">{{ film.title }}{% if film.year %} <em>({{ film.year }})</em>{% endif %}</span>
     </a>
     {% endfor %}
   </div>

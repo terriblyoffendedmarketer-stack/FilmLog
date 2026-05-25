@@ -177,6 +177,14 @@ def _run_migrations(conn) -> None:
             WHERE status = 'watched' AND rating IS NULL
         """)
 
+    ri_cols = {r[1] for r in conn.execute("PRAGMA table_info(recommendation_issues)").fetchall()}
+    if "archived" not in ri_cols:
+        conn.execute("ALTER TABLE recommendation_issues ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+
+    if "updated_at" not in uf_cols:
+        conn.execute("ALTER TABLE user_films ADD COLUMN updated_at TEXT")
+        conn.execute("UPDATE user_films SET updated_at = date_added WHERE updated_at IS NULL")
+
 
 def init_db() -> None:
     """Create all tables if they don't already exist."""
@@ -260,6 +268,54 @@ def get_film(tmdb_id: int) -> dict | None:
     return film
 
 
+def swap_film_tmdb_id(old_tmdb_id: int, new_tmdb_id: int) -> None:
+    """Replace a film's tmdb_id across all tables (wrong TMDB match correction)."""
+    with get_connection() as conn:
+        conn.execute("UPDATE user_films SET tmdb_id = ? WHERE tmdb_id = ?", (new_tmdb_id, old_tmdb_id))
+        conn.execute("DELETE FROM fts_films WHERE tmdb_id = ?", (old_tmdb_id,))
+        conn.execute("DELETE FROM films WHERE tmdb_id = ?", (old_tmdb_id,))
+        _fts_index_film(conn, new_tmdb_id)
+
+
+def delete_film(tmdb_id: int) -> None:
+    """Remove a film and scrub its ID from taste_attributes evidence."""
+    with get_connection() as conn:
+        conn.execute("DELETE FROM user_films WHERE tmdb_id = ?", (tmdb_id,))
+        conn.execute("DELETE FROM fts_films WHERE tmdb_id = ?", (tmdb_id,))
+        conn.execute("DELETE FROM films WHERE tmdb_id = ?", (tmdb_id,))
+
+        # Scrub this film from taste_attributes evidence and degrade confidence.
+        #
+        # evidence_film_ids is a sample Claude cited — not every supporting film.
+        # We can't know exactly how much this film contributed to the confidence
+        # score without re-running Claude. But we can proportionally degrade:
+        # if the attribute had N evidence films and we remove 1, reduce confidence
+        # by 1/N. If all cited evidence is gone, drop confidence hard (0.15) —
+        # the attribute might still be valid from un-cited films, but it's now
+        # weakly supported and the next rescan will either confirm or kill it.
+        rows = conn.execute(
+            "SELECT id, evidence_film_ids, confidence_score FROM taste_attributes"
+        ).fetchall()
+        for row in rows:
+            ids = json.loads(row["evidence_film_ids"]) if row["evidence_film_ids"] else []
+            if tmdb_id not in ids:
+                continue
+            original_count = len(ids)
+            ids = [i for i in ids if i != tmdb_id]
+            if ids:
+                degradation = 1.0 / original_count
+                new_confidence = max(0.1, row["confidence_score"] - (row["confidence_score"] * degradation))
+                conn.execute(
+                    "UPDATE taste_attributes SET evidence_film_ids = ?, confidence_score = ? WHERE id = ?",
+                    (json.dumps(ids), round(new_confidence, 3), row["id"]),
+                )
+            else:
+                conn.execute(
+                    "UPDATE taste_attributes SET evidence_film_ids = '[]', confidence_score = 0.15 WHERE id = ?",
+                    (row["id"],),
+                )
+
+
 def search_films_local(query: str) -> list[dict]:
     """Case-insensitive title search against the local DB."""
     with get_connection() as conn:
@@ -309,6 +365,7 @@ def update_user_film(row_id: int, **kwargs) -> None:
     updates = {k: v for k, v in kwargs.items() if k in allowed}
     if not updates:
         return
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     set_clause = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [row_id]
     with get_connection() as conn:
@@ -490,6 +547,26 @@ def get_taste_attributes(cluster: str | None = None, polarity: str = "positive")
     return result
 
 
+def get_films_changed_since(since_iso: str) -> list[dict]:
+    """
+    Return films added or updated since a given ISO timestamp.
+    Used by diff-rescan to send only new/changed data to Claude.
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT f.*, uf.status, uf.personal_notes, uf.watch_context,
+                   uf.source, uf.date_added, uf.updated_at, uf.rewatch, uf.rating
+            FROM user_films uf
+            JOIN films f ON uf.tmdb_id = f.tmdb_id
+            WHERE uf.date_added > ? OR uf.updated_at > ?
+            ORDER BY uf.updated_at DESC
+            """,
+            (since_iso, since_iso),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def clear_taste_attributes() -> None:
     """Wipe all taste attributes — called at the start of a rescan."""
     with get_connection() as conn:
@@ -560,11 +637,33 @@ def save_recommendation_issue(
         return cursor.lastrowid
 
 
-def get_recommendation_history(limit: int = 10) -> list[dict]:
-    """Return the most recent recommendation issues."""
+def get_recommendation_history(limit: int = 10, include_archived: bool = False) -> list[dict]:
+    """Return the most recent recommendation issues (non-archived by default)."""
+    with get_connection() as conn:
+        if include_archived:
+            rows = conn.execute(
+                "SELECT * FROM recommendation_issues ORDER BY generated_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM recommendation_issues WHERE archived = 0 ORDER BY generated_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["films_referenced"] = json.loads(d["films_referenced"]) if d["films_referenced"] else []
+        d.setdefault("archived", 0)
+        result.append(d)
+    return result
+
+
+def get_archived_issues(limit: int = 50) -> list[dict]:
+    """Return archived recommendation issues."""
     with get_connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM recommendation_issues ORDER BY generated_at DESC LIMIT ?",
+            "SELECT * FROM recommendation_issues WHERE archived = 1 ORDER BY generated_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
     result = []
@@ -573,6 +672,52 @@ def get_recommendation_history(limit: int = 10) -> list[dict]:
         d["films_referenced"] = json.loads(d["films_referenced"]) if d["films_referenced"] else []
         result.append(d)
     return result
+
+
+def archive_issue(issue_id: int) -> None:
+    """Archive a single issue."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE recommendation_issues SET archived = 1 WHERE id = ?",
+            (issue_id,),
+        )
+
+
+def unarchive_issue(issue_id: int) -> None:
+    """Restore an archived issue."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE recommendation_issues SET archived = 0 WHERE id = ?",
+            (issue_id,),
+        )
+
+
+def auto_archive_issues(keep: int = 2) -> int:
+    """
+    Auto-archive all but the most recent `keep` non-archived issues.
+    Returns the number of issues archived.
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id FROM recommendation_issues WHERE archived = 0 ORDER BY generated_at DESC"
+        ).fetchall()
+        to_archive = [r["id"] for r in rows[keep:]]
+        if to_archive:
+            placeholders = ",".join("?" * len(to_archive))
+            conn.execute(
+                f"UPDATE recommendation_issues SET archived = 1 WHERE id IN ({placeholders})",
+                to_archive,
+            )
+        return len(to_archive)
+
+
+def update_recommendation_issue(issue_id: int, issue_text: str) -> None:
+    """Overwrite the editorial text of an existing issue (keeps films_referenced)."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE recommendation_issues SET issue_text = ? WHERE id = ?",
+            (issue_text, issue_id),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -618,21 +763,37 @@ def get_all_films_with_status(status_filter: str | None = None) -> list[dict]:
     """
     with get_connection() as conn:
         if status_filter and status_filter != "all":
-            rows = conn.execute(
-                """
-                SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
-                       uf.date_watched, uf.personal_notes, uf.watch_context, uf.source, uf.rating
-                FROM user_films uf
-                JOIN films f ON uf.tmdb_id = f.tmdb_id
-                WHERE uf.status = ?
-                  AND uf.id = (
-                      SELECT MAX(id) FROM user_films u2
-                      WHERE u2.tmdb_id = uf.tmdb_id
-                  )
-                ORDER BY uf.date_added DESC
-                """,
-                (status_filter,),
-            ).fetchall()
+            if status_filter == "watchlist":
+                rows = conn.execute(
+                    """
+                    SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
+                           uf.date_watched, uf.personal_notes, uf.watch_context, uf.source, uf.rating
+                    FROM user_films uf
+                    JOIN films f ON uf.tmdb_id = f.tmdb_id
+                    WHERE (uf.status = 'watchlist' OR uf.rewatch = 1)
+                      AND uf.id = (
+                          SELECT MAX(id) FROM user_films u2
+                          WHERE u2.tmdb_id = uf.tmdb_id
+                      )
+                    ORDER BY uf.date_added DESC
+                    """,
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
+                           uf.date_watched, uf.personal_notes, uf.watch_context, uf.source, uf.rating
+                    FROM user_films uf
+                    JOIN films f ON uf.tmdb_id = f.tmdb_id
+                    WHERE uf.status = ?
+                      AND uf.id = (
+                          SELECT MAX(id) FROM user_films u2
+                          WHERE u2.tmdb_id = uf.tmdb_id
+                      )
+                    ORDER BY uf.date_added DESC
+                    """,
+                    (status_filter,),
+                ).fetchall()
         else:
             rows = conn.execute(
                 """

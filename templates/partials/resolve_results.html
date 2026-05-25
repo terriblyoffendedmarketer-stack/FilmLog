@@ -1,0 +1,41 @@
+{% if results %}
+<div class="tmdb-results-list">
+  {% for r in results %}
+  <div class="tmdb-result-card" style="cursor:default">
+    <div class="tmdb-result-poster">
+      {% if r.poster_url %}
+      <img src="{{ r.poster_url }}" alt="{{ r.title }}" loading="lazy">
+      {% else %}
+      <div class="tmdb-result-poster-ph">{{ (r.title or '?')[:2] }}</div>
+      {% endif %}
+    </div>
+    <div class="tmdb-result-info">
+      <div class="tmdb-result-title">{{ r.title }}</div>
+      <div class="tmdb-result-meta">
+        {% if r.year %}{{ r.year }}{% endif %}
+        {% if r.language %} · {{ r.language | upper }}{% endif %}
+        {% if r.media_type == 'tv' %} · TV{% endif %}
+      </div>
+      {% if r.in_db %}
+      <span class="tmdb-in-db-badge">already in library</span>
+      {% endif %}
+      {% if not r.in_db %}
+      <button class="btn-primary btn-sm" style="margin-top:6px"
+              hx-post="/unresolved/{{ resolve_for }}/resolve"
+              hx-vals='{"tmdb_id": "{{ r.tmdb_id }}", "media_type": "{{ r.media_type }}"}'
+              hx-target="#unresolved-{{ resolve_for }}"
+              hx-swap="outerHTML">Add to watchlist</button>
+      {% else %}
+      <button class="btn-ghost btn-sm" style="margin-top:6px"
+              hx-post="/unresolved/{{ resolve_for }}/resolve"
+              hx-vals='{"tmdb_id": "{{ r.tmdb_id }}", "media_type": "{{ r.media_type }}", "skip_add": "1"}'
+              hx-target="#unresolved-{{ resolve_for }}"
+              hx-swap="outerHTML">Link &amp; resolve</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="tmdb-no-results" style="padding:16px; font-size:0.85rem;">No results. Try a different spelling.</div>
+{% endif %}
