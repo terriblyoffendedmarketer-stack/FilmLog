@@ -14,6 +14,7 @@ from filmlog import recommend as recommend_module
 from filmlog import browse as browse_module
 from filmlog import journal_ingest
 from filmlog import attributes as attr_module
+from filmlog import harddrive_import
 
 
 @click.group()
@@ -242,6 +243,19 @@ def status():
         click.echo(f"\n  Unresolved imports: {len(unresolved)} — run: python main.py ingest")
 
     click.echo("")
+
+
+@cli.command("import-harddrive")
+@click.option("--dry-run", is_flag=True, help="Preview what would be added without importing.")
+@click.option("--no-attrs", is_flag=True, help="Skip taste attribute inference (faster).")
+def import_harddrive_cmd(dry_run, no_attrs):
+    """Import films from the hard drive catalog (data/harddrive_catalog.json)."""
+    try:
+        harddrive_import.import_harddrive(dry_run=dry_run, infer_attrs=not no_attrs)
+    except FileNotFoundError as e:
+        click.echo(f"Error: {e}", err=True)
+    except RuntimeError as e:
+        click.echo(f"Error: {e}", err=True)
 
 
 if __name__ == "__main__":
