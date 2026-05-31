@@ -13,6 +13,7 @@ from filmlog import model as model_module
 from filmlog import recommend as recommend_module
 from filmlog import browse as browse_module
 from filmlog import journal_ingest
+from filmlog import attributes as attr_module
 
 
 @click.group()
@@ -132,6 +133,36 @@ def browse(language, context, mood, length, era, query, limit, watched):
         limit=limit,
         show_watched=watched,
     )
+
+
+@cli.command("compute-engagement")
+def compute_engagement():
+    """Compute engagement levels for all films (heuristic, no API needed)."""
+    total = db.compute_all_engagement()
+    click.echo(f"✓ Updated engagement for {total} films.")
+
+
+@cli.command("backfill-attributes")
+@click.option("--batch-size", default=10, help="Films per API call (default 10).")
+@click.option("--max-batches", default=100, help="Maximum number of batches to process.")
+def backfill_attributes(batch_size, max_batches):
+    """Infer taste attributes for all films missing them (uses Claude Haiku)."""
+    remaining = len(db.get_films_without_attributes(limit=9999))
+    click.echo(f"\n── Backfilling attributes for {remaining} films ──────────────")
+    click.echo(f"   Batch size: {batch_size}, max batches: {max_batches}\n")
+
+    total = attr_module.backfill_attributes(
+        batch_size=batch_size,
+        max_batches=max_batches,
+    )
+
+    click.echo(f"\n✓ Updated {total} films with taste attributes.")
+    new_remaining = len(db.get_films_without_attributes(limit=9999))
+    if new_remaining:
+        click.echo(f"  {new_remaining} films still need attributes.")
+    else:
+        click.echo("  All films now have taste attributes.")
+    click.echo()
 
 
 @cli.command("import-journal")

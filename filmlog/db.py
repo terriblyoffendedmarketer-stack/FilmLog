@@ -155,8 +155,10 @@ def _run_migrations(conn) -> None:
     film_cols = {r[1] for r in conn.execute("PRAGMA table_info(films)").fetchall()}
     if "media_type" not in film_cols:
         conn.execute("ALTER TABLE films ADD COLUMN media_type TEXT DEFAULT 'movie'")
-    if "cognitive_load" not in film_cols:
-        conn.execute("ALTER TABLE films ADD COLUMN cognitive_load TEXT")
+    if "cognitive_load" not in film_cols and "engagement" not in film_cols:
+        conn.execute("ALTER TABLE films ADD COLUMN engagement TEXT")
+    elif "cognitive_load" in film_cols and "engagement" not in film_cols:
+        conn.execute("ALTER TABLE films RENAME COLUMN cognitive_load TO engagement")
 
     if "overview" not in film_cols:
         conn.execute("ALTER TABLE films ADD COLUMN overview TEXT")
@@ -248,6 +250,34 @@ def upsert_film(
             ),
         )
         _fts_index_film(conn, tmdb_id)
+
+
+def set_film_taste_attributes(tmdb_id: int, attributes: list[str]) -> None:
+    """Update only the default_taste_attributes column for a film."""
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE films SET default_taste_attributes = ? WHERE tmdb_id = ?",
+            (json.dumps(attributes), tmdb_id),
+        )
+        _fts_index_film(conn, tmdb_id)
+
+
+def get_films_without_attributes(limit: int = 100) -> list[dict]:
+    """Return films that have no default_taste_attributes populated."""
+    conn = get_connection()
+    rows = conn.execute(
+        """
+        SELECT tmdb_id, title, year, runtime, language, tmdb_genres, overview, media_type
+        FROM films
+        WHERE default_taste_attributes IS NULL
+           OR default_taste_attributes = '[]'
+           OR default_taste_attributes = 'null'
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 def get_film(tmdb_id: int) -> dict | None:
@@ -1126,70 +1156,76 @@ def fts_search(query: str, limit: int = 20) -> dict:
     return {"films": films, "journals": journals}
 
 
-def infer_cognitive_load(
+def infer_engagement(
     runtime: int | None,
     genres: list[str] | None,
     taste_attrs: list[str] | None,
     media_type: str = "movie",
 ) -> str:
     """
-    Infer cognitive load (low/medium/high) from film metadata.
+    Infer engagement level (low/medium/high) from film metadata.
+    Engagement = how easy it is to get hooked once you press play.
     No API call — pure heuristic based on genre, runtime, and attributes.
+
+    - High engagement: grips you from the first scene (Fight Club, Mr. Nobody, Duel)
+    - Medium engagement: takes 15–20 min to settle in but rewards attention
+    - Low engagement: slow build, requires patience and the right mood
     """
-    score = 0.0  # negative = lighter, positive = heavier
+    score = 0.0  # positive = higher engagement (more hookable)
 
     genres_lower = {g.lower() for g in (genres or [])}
     attrs_lower = " ".join(a.lower() for a in (taste_attrs or []))
 
-    # Genre signals
-    light_genres = {"comedy", "animation", "family", "music", "romance"}
-    heavy_genres = {"war", "history", "documentary", "crime", "thriller"}
-    mid_genres = {"drama", "mystery", "sci-fi & fantasy", "science fiction", "fantasy"}
+    # Genre signals — hookability
+    high_hook_genres = {"thriller", "action", "horror", "crime", "mystery", "adventure"}
+    mid_hook_genres = {"drama", "science fiction", "fantasy", "animation", "comedy"}
+    low_hook_genres = {"documentary", "history"}
 
-    if genres_lower & light_genres:
-        score -= 1.0
-    if genres_lower & heavy_genres:
+    if genres_lower & high_hook_genres:
         score += 1.0
-    if genres_lower & mid_genres:
+    if genres_lower & mid_hook_genres:
         score += 0.3
+    if genres_lower & low_hook_genres:
+        score -= 0.5
 
-    # Runtime signals
+    # Runtime signals — shorter films tend to hook faster
     if runtime:
         if runtime < 95:
-            score -= 0.5
-        elif runtime > 150:
-            score += 0.8
-        elif runtime > 130:
             score += 0.3
+        elif runtime > 150:
+            score -= 0.5
+        elif runtime > 130:
+            score -= 0.2
 
-    # Attribute signals — keywords that indicate weight
-    heavy_words = ["existential", "dread", "grief", "trauma", "war", "cerebral",
-                   "philosophical", "bleak", "devastating", "harrowing", "slow",
-                   "meditative", "arthouse", "non-linear", "ambiguous"]
-    light_words = ["fun", "entertaining", "lighthearted", "heartwarming", "feel-good",
-                   "whimsical", "playful", "colorful", "adventure", "action-packed",
-                   "fast-paced", "comedic"]
+    # Attribute signals — hookability keywords
+    high_hook_words = ["relentless", "gripping", "tension", "adrenaline", "frenetic",
+                       "fast-paced", "propulsive", "edge-of-seat", "suspense",
+                       "grips you", "locked in", "can't look away", "action-packed",
+                       "riveting", "gut-punch", "high-stakes"]
+    low_hook_words = ["meditative", "contemplative", "slow", "patient", "demands patience",
+                      "hypnotic", "stillness", "quiet", "measured", "languid",
+                      "deliberate pacing", "rewards patience"]
 
-    for w in heavy_words:
+    for w in high_hook_words:
         if w in attrs_lower:
             score += 0.4
-    for w in light_words:
+    for w in low_hook_words:
         if w in attrs_lower:
             score -= 0.4
 
-    # Anime/series adjustment — episodes are individually lighter than a 3hr film
+    # Anime/series get a small boost — episodic format hooks differently
     if media_type in ("anime", "tv"):
-        score -= 0.3
+        score += 0.2
 
-    if score <= -0.5:
-        return "low"
-    elif score >= 1.0:
+    if score >= 1.0:
         return "high"
+    elif score <= -0.3:
+        return "low"
     return "medium"
 
 
-def compute_all_cognitive_loads() -> int:
-    """Compute and store cognitive_load for all films. Returns count updated."""
+def compute_all_engagement() -> int:
+    """Compute and store engagement for all films. Returns count updated."""
     with get_connection() as conn:
         rows = conn.execute(
             "SELECT tmdb_id, runtime, tmdb_genres, default_taste_attributes, media_type FROM films"
@@ -1199,10 +1235,10 @@ def compute_all_cognitive_loads() -> int:
         for r in rows:
             genres = json.loads(r["tmdb_genres"]) if r["tmdb_genres"] else []
             attrs = json.loads(r["default_taste_attributes"]) if r["default_taste_attributes"] else []
-            load = infer_cognitive_load(r["runtime"], genres, attrs, r["media_type"] or "movie")
+            level = infer_engagement(r["runtime"], genres, attrs, r["media_type"] or "movie")
             conn.execute(
-                "UPDATE films SET cognitive_load = ? WHERE tmdb_id = ?",
-                (load, r["tmdb_id"]),
+                "UPDATE films SET engagement = ? WHERE tmdb_id = ?",
+                (level, r["tmdb_id"]),
             )
             updated += 1
 

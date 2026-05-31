@@ -39,7 +39,7 @@
     {# Metadata #}
     <div class="detail-meta-list">
       {% if film.runtime %}<div class="detail-meta-item">⏱ {{ film.runtime }} min</div>{% endif %}
-      {% if film.cognitive_load %}<div class="detail-meta-item"><span class="cog-dot cog-{{ film.cognitive_load }}"></span> {{ film.cognitive_load }} energy</div>{% endif %}
+      {% if film.engagement %}<div class="detail-meta-item"><span class="cog-dot cog-{{ film.engagement }}"></span> {{ film.engagement }} engagement</div>{% endif %}
       {% if film.language %}<div class="detail-meta-item">🌍 {{ film.language | upper }}</div>{% endif %}
       {% if film.country %}<div class="detail-meta-item">📍 {{ film.country }}</div>{% endif %}
       {% if film.year %}<div class="detail-meta-item">📅 {{ film.year }}</div>{% endif %}

@@ -357,13 +357,13 @@ def _format_candidates(candidates: list[dict]) -> str:
         else:
             attrs = raw_attrs or []
 
-        cog_load = film.get("cognitive_load") or "medium"
+        engagement = film.get("engagement") or "medium"
         line = f"• {title} ({year})"
         if lang:
             line += f" [{lang}]"
         if runtime:
             line += f" {runtime}min"
-        line += f" [energy: {cog_load}]"
+        line += f" [engagement: {engagement}]"
         if status == "rewatch_candidate":
             line += " [REWATCH CANDIDATE]"
         if attrs:

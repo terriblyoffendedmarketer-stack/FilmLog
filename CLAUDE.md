@@ -89,6 +89,7 @@ filmlog/                     ← repo root
     ├── log.py               ← taste log: write/rebuild taste_log.md from DB
     ├── model.py             ← taste model generation (rescan — diff-based or full)
     ├── recommend.py         ← mood calibration + recommendation issue generation + rewrite
+    ├── attributes.py        ← taste attribute inference (Claude Haiku) + backfill
     ├── journal_ingest.py    ← bulk journal import from markdown
     └── browse.py            ← browse/filter mode (CLI)
 ```
@@ -108,9 +109,9 @@ CREATE TABLE films (
     country TEXT,
     poster_url TEXT,
     tmdb_genres TEXT,                    -- raw JSON array, for reference only
-    default_taste_attributes TEXT,       -- JSON: Claude-inferred baseline attributes (currently unpopulated — backfill needed)
+    default_taste_attributes TEXT,       -- JSON: Claude-inferred baseline attributes (Haiku-inferred, backfilled)
     media_type TEXT DEFAULT 'movie',     -- 'movie', 'tv', 'anime'
-    cognitive_load TEXT,                 -- engagement/hookability level (to be reframed — see roadmap)
+    engagement TEXT,                     -- hookability level: 'high' (grips you immediately), 'medium', 'low' (slow build)
     overview TEXT                        -- TMDB synopsis
 );
 ```
@@ -208,10 +209,13 @@ python3 main.py ingest <file>            # watchlist from text file
 python3 main.py ingest-all <dir>         # bulk ingest all files in a directory
 python3 main.py rescan                   # diff-based taste model update (only sends changes)
 python3 main.py rescan --full            # full rebuild from entire library
+python3 main.py rescan --precache        # rescan + pre-generate 2 recommendation issues
 python3 main.py recommend               # mood calibration → recommendation issue
 python3 main.py browse                   # interactive browse/filter mode (CLI)
 python3 main.py import-journal <file>    # bulk import journal entries from markdown
 python3 main.py export-unresolved        # export unresolved items
+python3 main.py backfill-attributes      # infer taste attributes for all films (Claude Haiku)
+python3 main.py compute-engagement       # compute engagement levels for all films (heuristic)
 ```
 
 ---

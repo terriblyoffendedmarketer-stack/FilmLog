@@ -32,7 +32,7 @@
           <div class="film-meta-row">
             <span>{{ film.year or '' }}</span>
             {% if film.language %}<span>[{{ film.language }}]</span>{% endif %}
-            {% if film.cognitive_load %}<span class="cog-dot cog-{{ film.cognitive_load }}" title="{{ film.cognitive_load }} energy"></span>{% endif %}
+            {% if film.engagement %}<span class="cog-dot cog-{{ film.engagement }}" title="{{ film.engagement }} engagement"></span>{% endif %}
           </div>
           {% if film.tagline %}
           <div class="film-tagline">{{ film.tagline }}</div>

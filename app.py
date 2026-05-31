@@ -17,7 +17,7 @@ from flask import Flask, abort, redirect, render_template, request, url_for
 from markupsafe import Markup
 from dotenv import load_dotenv
 
-from filmlog import db, tmdb
+from filmlog import db, tmdb, attributes as attr_module
 from filmlog.browse import _apply_filters, _score_by_taste
 
 load_dotenv(override=True)
@@ -1029,6 +1029,16 @@ def add_film_save():
             source="manual",
             rating=rating,
         )
+
+    # Infer taste attributes if missing (non-blocking — Haiku is fast)
+    film_data = db.get_film(tmdb_id)
+    if film_data:
+        existing_attrs = film_data.get("default_taste_attributes")
+        if not existing_attrs or existing_attrs in ("[]", "null"):
+            try:
+                attr_module.infer_single(tmdb_id)
+            except Exception:
+                pass  # Don't block save on attribute inference failure
 
     return redirect(url_for("film_detail", tmdb_id=tmdb_id))
 
