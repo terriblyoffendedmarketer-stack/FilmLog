@@ -514,6 +514,43 @@ def tonight_generate():
     )
 
 
+@app.route("/tonight/cached")
+def tonight_cached():
+    """Check if a recent pre-cached issue exists for instant reveal."""
+    issues = db.get_recommendation_history(limit=1, include_archived=False)
+    if not issues:
+        return "", 204  # No content
+
+    issue = issues[0]
+    # Only serve cached if it's less than 48 hours old
+    from datetime import datetime, timezone
+    try:
+        gen_time = datetime.fromisoformat(issue["generated_at"].replace("Z", "+00:00"))
+        age_hours = (datetime.now(timezone.utc) - gen_time).total_seconds() / 3600
+        if age_hours > 48:
+            return "", 204
+    except Exception:
+        pass
+
+    # Render the issue
+    film_cards = []
+    for tmdb_id in issue.get("films_referenced", [])[:4]:
+        film = db.get_film(tmdb_id)
+        if film:
+            film_cards.append(film)
+
+    raw_html = _render_md(issue.get("issue_text", ""))
+    issue_html = _inject_inline_posters(raw_html, film_cards)
+
+    return render_template(
+        "partials/recommendation_result.html",
+        issue_html=issue_html,
+        film_cards=film_cards,
+        issue_number=issue.get("issue_number"),
+        cached=True,
+    )
+
+
 @app.route("/tonight/rewrite/<int:issue_id>", methods=["POST"])
 def tonight_rewrite(issue_id: int):
     """HTMX endpoint: rewrite a past issue with the current prompt, same films."""

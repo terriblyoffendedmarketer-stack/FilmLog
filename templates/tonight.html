@@ -48,6 +48,13 @@
       <button type="submit" class="btn-generate" id="generate-btn" disabled>
         Generate issue
       </button>
+      <button type="button" class="btn-cached-reveal" id="cached-btn"
+              style="display:none"
+              hx-get="/tonight/cached"
+              hx-target="#recommendation-result"
+              hx-swap="innerHTML">
+        Your issue is ready
+      </button>
       <span id="gen-indicator" class="gen-indicator htmx-indicator">
         <span class="gen-dots"><span></span><span></span><span></span></span>
         Writing your issue…
@@ -190,6 +197,52 @@ form.addEventListener('htmx:afterSwap', function() {
       result.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
   }
+});
+
+// ── Pre-cached issue reveal ─────────────────────────────────────────────────
+// When "solo" is selected with no free text, show a "Your issue is ready"
+// button after 3 seconds if a recent cached issue exists.
+var cachedTimer = null;
+
+function maybeTriggerCachedReveal() {
+  var ctx = document.querySelector('[name=watch_context]').value;
+  var freeText = document.querySelector('[name=free_text]').value.trim();
+  var cachedBtn = document.getElementById('cached-btn');
+  var genBtn = document.getElementById('generate-btn');
+
+  // Clear any pending timer
+  if (cachedTimer) { clearTimeout(cachedTimer); cachedTimer = null; }
+  cachedBtn.style.display = 'none';
+  cachedBtn.classList.remove('cached-visible');
+
+  // Only for solo context with no free text
+  if (ctx === 'solo' && !freeText) {
+    cachedTimer = setTimeout(function() {
+      // Check if a cached issue exists
+      fetch('/tonight/cached', { method: 'HEAD' }).then(function(r) {
+        if (r.ok) {
+          cachedBtn.style.display = '';
+          // Trigger the fade-in animation
+          requestAnimationFrame(function() {
+            cachedBtn.classList.add('cached-visible');
+          });
+        }
+      }).catch(function() {});
+    }, 3000);
+  }
+}
+
+// Hook into pill selection
+document.querySelectorAll('.option-pills .pill').forEach(function(pill) {
+  pill.addEventListener('click', function() {
+    setTimeout(maybeTriggerCachedReveal, 50);
+  });
+});
+
+// Also trigger when free text changes
+document.querySelector('[name=free_text]').addEventListener('input', function() {
+  if (cachedTimer) { clearTimeout(cachedTimer); cachedTimer = null; }
+  document.getElementById('cached-btn').style.display = 'none';
 });
 
 // ── Past issue toggle ───────────────────────────────────────────────────────

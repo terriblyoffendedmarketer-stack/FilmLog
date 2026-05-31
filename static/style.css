@@ -754,6 +754,29 @@ html, body {
 .btn-generate:active:not(:disabled) { transform: scale(0.98); }
 .btn-generate:disabled { opacity: 0.35; cursor: not-allowed; }
 
+.btn-cached-reveal {
+  padding: 12px 28px;
+  border-radius: var(--r);
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.6s ease, transform 0.6s ease, background 0.15s, color 0.15s;
+}
+.btn-cached-reveal.cached-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.btn-cached-reveal:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
 .gen-indicator {
   display: flex;
   align-items: center;
