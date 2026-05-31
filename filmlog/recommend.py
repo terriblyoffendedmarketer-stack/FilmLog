@@ -293,6 +293,14 @@ What doesn't work: generic praise ("masterfully crafted", "compelling narrative"
 Bad sell: "This film explores themes of isolation and redemption through a masterful lens."
 Good sell: "Ninety minutes of a man in a car being hunted by a truck whose driver you never see. That's it. And it's relentless."
 
+## VARIETY
+
+Your 2–4 picks should feel like a curated set, not a cluster. Vary across:
+- **Energy**: mix intensities — don't recommend four slow burns or four adrenaline rides.
+- **Origin**: draw from different countries/languages when the watchlist allows it. If the best three are all Korean, that's fine — but don't default to one region out of habit.
+- **Tone**: pair something heavy with something lighter, or something contemplative with something visceral.
+The variety should feel natural, not forced. You're assembling a set of options for one evening — give real range so at least one clicks no matter the mood.
+
 ## RULES
 
 - Only write about films you are recommending. Don't mention films you're not picking.

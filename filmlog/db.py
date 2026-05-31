@@ -1231,3 +1231,64 @@ def get_library_stats() -> dict:
         "total": total_row["n"] if total_row else 0,
         "taste_model_version": dict(model_row) if model_row else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# Enrichment queue
+# ---------------------------------------------------------------------------
+
+def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None) -> list[dict]:
+    """
+    Return watched films that have no personal notes, ordered by rating tier
+    (5★ first, then 4★, then lower, then unrated), randomised within each tier.
+    Optionally exclude a specific tmdb_id (used after skip to avoid showing the same film).
+    """
+    conn = get_connection()
+    exclude_clause = "AND f.tmdb_id != ?" if exclude_tmdb_id else ""
+    params = [exclude_tmdb_id, limit] if exclude_tmdb_id else [limit]
+    rows = conn.execute(
+        f"""
+        SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url,
+               uf.rating, uf.personal_notes
+        FROM user_films uf
+        JOIN films f ON uf.tmdb_id = f.tmdb_id
+        WHERE uf.status = 'watched'
+          AND (uf.personal_notes IS NULL OR uf.personal_notes = '')
+          AND uf.id = (
+              SELECT MAX(id) FROM user_films u2
+              WHERE u2.tmdb_id = uf.tmdb_id
+          )
+          {exclude_clause}
+        ORDER BY
+          CASE
+            WHEN uf.rating = 5 THEN 1
+            WHEN uf.rating = 4 THEN 2
+            WHEN uf.rating IS NOT NULL AND uf.rating <= 3 THEN 3
+            ELSE 4
+          END,
+          RANDOM()
+        LIMIT ?
+        """,
+        params,
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_enrichment_count() -> int:
+    """Return the number of watched films with no personal notes."""
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT COUNT(*) as n
+        FROM user_films uf
+        WHERE uf.status = 'watched'
+          AND (uf.personal_notes IS NULL OR uf.personal_notes = '')
+          AND uf.id = (
+              SELECT MAX(id) FROM user_films u2
+              WHERE u2.tmdb_id = uf.tmdb_id
+          )
+        """
+    ).fetchone()
+    conn.close()
+    return row["n"] if row else 0

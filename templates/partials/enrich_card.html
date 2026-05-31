@@ -1,0 +1,56 @@
+{% if film %}
+<div id="enrich-card" class="enrich-card" style="animation: enrichSlideIn 0.25s ease;">
+  <div class="enrich-poster">
+    {% if film.poster_url %}
+      <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="eager">
+    {% else %}
+      <div class="enrich-poster-placeholder">{{ film.title[0] }}</div>
+    {% endif %}
+  </div>
+
+  <div class="enrich-overlay">
+    <div class="enrich-film-info">
+      <h1 class="enrich-title">{{ film.title }}</h1>
+      <div class="enrich-meta">
+        {{ film.year or '' }}
+        {% if film.language %} &middot; {{ film.language }}{% endif %}
+        {% if film.rating %}
+          &middot; <span class="enrich-stars">{% for i in range(film.rating) %}&#9733;{% endfor %}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <form class="enrich-form" hx-post="/enrich/{{ film.tmdb_id }}" hx-target="#enrich-card" hx-swap="outerHTML">
+      <textarea
+        name="personal_notes"
+        class="enrich-textarea"
+        placeholder="{{ placeholder }}"
+        rows="3"
+        autofocus
+      ></textarea>
+      <div class="enrich-actions">
+        <button type="submit" class="btn-primary enrich-save">Save</button>
+        <button type="button" class="btn-ghost enrich-skip"
+                hx-post="/enrich/{{ film.tmdb_id }}/skip"
+                hx-target="#enrich-card" hx-swap="outerHTML">Skip</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Update remaining count
+  document.querySelector('.enrich-progress span').textContent = '{{ remaining }} films need notes';
+  // Auto-focus the textarea
+  setTimeout(function() {
+    var ta = document.querySelector('.enrich-textarea');
+    if (ta) ta.focus();
+  }, 50);
+</script>
+{% else %}
+<div id="enrich-card" class="enrich-done" style="animation: enrichSlideIn 0.25s ease;">
+  <h2>All caught up</h2>
+  <p>Every watched film has notes. The taste model thanks you.</p>
+  <a href="/films" class="btn-ghost" style="margin-top: 16px;">Browse films</a>
+</div>
+{% endif %}

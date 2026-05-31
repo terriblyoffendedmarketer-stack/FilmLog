@@ -74,7 +74,7 @@
       <div class="section-label">Taste attributes</div>
       <div class="detail-taste-attrs">
         {% for attr in film.taste_attrs %}
-        <span class="detail-attr-chip">{{ attr }}</span>
+        <a href="/search?q={{ attr | urlencode }}" class="detail-attr-chip">{{ attr }}</a>
         {% endfor %}
       </div>
     </div>

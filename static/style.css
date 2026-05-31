@@ -2844,3 +2844,195 @@ html, body {
   border-radius: var(--r);
   animation: fadeSlideIn 0.2s ease;
 }
+
+/* ── Enrichment screen ──────────────────────────────────────────────────── */
+.enrich-layout {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+  min-height: calc(100vh - var(--nav-h));
+  display: flex;
+  flex-direction: column;
+}
+
+.enrich-progress {
+  text-align: right;
+  padding: 0 4px 12px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+
+.enrich-card {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+  flex: 1;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+
+.enrich-poster {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.enrich-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.enrich-poster-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 5rem;
+  font-weight: 700;
+}
+
+.enrich-overlay {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding: 80px 24px 28px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.4) 15%,
+    rgba(0, 0, 0, 0.75) 40%,
+    rgba(0, 0, 0, 0.92) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.enrich-film-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.enrich-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.enrich-meta {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.enrich-stars {
+  color: var(--accent);
+}
+
+.enrich-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.enrich-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--r);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  resize: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.enrich-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.enrich-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.enrich-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.enrich-save {
+  flex: 1;
+  padding: 12px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.enrich-skip {
+  padding: 12px 20px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.enrich-skip:hover {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.enrich-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px;
+  color: var(--text-muted);
+}
+
+.enrich-done h2 {
+  font-size: 1.3rem;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.enrich-done p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+@keyframes enrichSlideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Enrichment responsive — on wider screens, center and constrain */
+@media (min-width: 421px) {
+  .enrich-card {
+    min-height: 600px;
+  }
+}
+
+/* On very small screens, reduce padding */
+@media (max-width: 380px) {
+  .enrich-overlay {
+    padding: 60px 18px 22px;
+  }
+  .enrich-title {
+    font-size: 1.35rem;
+  }
+}

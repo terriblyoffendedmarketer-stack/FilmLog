@@ -174,7 +174,81 @@ def _get_stats() -> dict:
 
 @app.route("/")
 def index():
-    return redirect(url_for("films"))
+    return redirect(url_for("enrich"))
+
+
+# ---------------------------------------------------------------------------
+# Enrichment — default landing page
+# ---------------------------------------------------------------------------
+
+import random
+
+ENRICH_PLACEHOLDERS = [
+    "What did you love about this?",
+    "What stayed with you after watching?",
+    "Who would you recommend this to?",
+    "What mood were you in when you watched it?",
+    "Any scenes that stuck with you?",
+    "Would you rewatch this? Why or why not?",
+    "What made this one stand out?",
+    "How did it make you feel?",
+]
+
+
+@app.route("/enrich")
+def enrich():
+    queue = db.get_enrichment_queue(limit=1)
+    film = queue[0] if queue else None
+    remaining = db.get_enrichment_count()
+    placeholder = random.choice(ENRICH_PLACEHOLDERS)
+
+    return render_template(
+        "enrich.html",
+        page="enrich",
+        title="Enrich",
+        stats=_get_stats(),
+        film=film,
+        remaining=remaining,
+        placeholder=placeholder,
+    )
+
+
+@app.route("/enrich/<int:tmdb_id>", methods=["POST"])
+def enrich_save(tmdb_id: int):
+    """Save notes from enrichment card, return next card."""
+    notes = request.form.get("personal_notes", "").strip()
+    user_film = db.get_user_film_by_tmdb(tmdb_id)
+    if user_film and notes:
+        db.update_user_film(user_film["id"], personal_notes=notes)
+
+    # Get next film
+    queue = db.get_enrichment_queue(limit=1)
+    film = queue[0] if queue else None
+    remaining = db.get_enrichment_count()
+    placeholder = random.choice(ENRICH_PLACEHOLDERS)
+
+    return render_template(
+        "partials/enrich_card.html",
+        film=film,
+        remaining=remaining,
+        placeholder=placeholder,
+    )
+
+
+@app.route("/enrich/<int:tmdb_id>/skip", methods=["POST"])
+def enrich_skip(tmdb_id: int):
+    """Skip without saving, return next card (excluding the skipped film)."""
+    queue = db.get_enrichment_queue(limit=1, exclude_tmdb_id=tmdb_id)
+    film = queue[0] if queue else None
+    remaining = db.get_enrichment_count()
+    placeholder = random.choice(ENRICH_PLACEHOLDERS)
+
+    return render_template(
+        "partials/enrich_card.html",
+        film=film,
+        remaining=remaining,
+        placeholder=placeholder,
+    )
 
 
 @app.route("/films")

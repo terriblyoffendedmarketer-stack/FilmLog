@@ -78,9 +78,15 @@ def export_unresolved():
               help="What triggered this rescan.")
 @click.option("--full", is_flag=True, default=False,
               help="Force a full rescan instead of diff-based.")
-def rescan(trigger, full):
+@click.option("--precache", is_flag=True, default=False,
+              help="Pre-generate 2 recommendation issues after rescan.")
+def rescan(trigger, full, precache):
     """Regenerate the taste model (diff-based by default, --full for complete rebuild)."""
     model_module.rescan(trigger=trigger, force_full=full)
+    if precache:
+        click.echo("\nPre-caching recommendation issues…")
+        results = recommend_module.precache_issues(count=2)
+        click.echo(f"  Generated {len(results)} pre-cached issue(s).")
 
 
 @cli.command()

@@ -77,9 +77,10 @@ filmlog/                     ← repo root
 │   ├── journal.html / journal_entry.html / journal_form.html
 │   ├── search.html          ← full-text search
 │   ├── settings.html        ← API key management
+│   ├── enrich.html          ← enrichment screen (default landing page)
 │   ├── add_film.html / add_film_confirm.html
 │   ├── unresolved.html      ← unmatched import management
-│   └── partials/            ← HTMX swap targets
+│   └── partials/            ← HTMX swap targets (incl. enrich_card.html)
 └── filmlog/
     ├── __init__.py
     ├── db.py                ← schema, migrations, all DB read/write operations
@@ -219,6 +220,7 @@ python3 main.py export-unresolved        # export unresolved items
 
 | Page | Route | What it does |
 |---|---|---|
+| **Enrich** | `/enrich` | Default landing page. Full-screen poster card, one watched film at a time, notes field front and center. Queue ordered by rating tier. |
 | **Tonight** | `/tonight` | Recommendation generator — calibration form → Claude Opus editorial with inline posters. Past issues below (auto-archived, keep 2). |
 | **Archived Issues** | `/tonight/archived` | Older recommendation issues with restore button. |
 | **Films** | `/films` | Tile/card grid with posters, status badges. Click → film detail. |
@@ -296,11 +298,11 @@ The main prompt is `RECOMMENDATION_PROMPT` in `filmlog/recommend.py` (line ~271)
 
 ## Remaining build order
 
-1. **Enrichment screen** — `ENRICHMENT_SPEC.md`. Default landing page. Mobile-first full-screen card for adding notes to watched films.
+1. ~~**Enrichment screen**~~ — **Done.** Default landing page at `/enrich`. Full-screen poster card, notes field, skip/save, HTMX card swap, rotating placeholders.
 2. **`default_taste_attributes` backfill** — Haiku-inferred attributes per film at add time + batch backfill for existing 514.
 3. **Engagement reframe** — rename `cognitive_load` → engagement concept, rework rubric around hookability not intellectual difficulty.
 4. **Pre-cached issue reveal** — wire `precache_issues()` into post-rescan, serve cached issues on default params with 3s delay.
 5. **Relational navigation** — attribute→films, recommendation→model version, journal→films click-through.
-6. **Recommendation prompt variety** — refine prompt to instruct balanced picks (different energies, origins, tones) without code-level quotas.
-7. **Deployment** — Railway/similar, Dockerfile, env config, persistent storage.
+6. ~~**Recommendation prompt variety**~~ — **Done.** VARIETY section added to `RECOMMENDATION_PROMPT` instructing balanced picks across energy, origin, and tone.
+7. **Deployment** — PythonAnywhere free tier. Always-on, persistent disk, both APIs whitelisted.
 8. **PWA manifest** — installable on mobile, offline poster caching. Depends on deployment.

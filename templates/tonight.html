@@ -73,6 +73,9 @@
       <div class="past-issue-meta">
         Issue #{{ issue.issue_number }}
         <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
+        {% if issue.taste_model_version %}
+        <span class="past-issue-date">· model v{{ issue.taste_model_version }}</span>
+        {% endif %}
       </div>
 
       {# Preview: film posters + truncated text #}
