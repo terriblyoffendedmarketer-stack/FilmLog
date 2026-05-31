@@ -172,6 +172,14 @@ def _get_stats() -> dict:
 # Routes
 # ---------------------------------------------------------------------------
 
+@app.route("/sw.js")
+def service_worker():
+    """Serve the service worker from root so it can control the full scope."""
+    return app.send_static_file("sw.js"), 200, {
+        "Content-Type": "application/javascript",
+        "Service-Worker-Allowed": "/",
+    }
+
 @app.route("/")
 def index():
     return redirect(url_for("enrich"))
