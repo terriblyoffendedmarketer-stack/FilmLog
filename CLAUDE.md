@@ -64,8 +64,14 @@ filmlog/                     ← repo root
 ├── requirements.txt
 ├── app.py                   ← Flask web server — routes + template rendering only
 ├── main.py                  ← CLI entry point — argument parsing only
+├── wsgi.py                  ← PythonAnywhere WSGI entry point
+├── deploy.md                ← PythonAnywhere deployment guide
 ├── static/
-│   └── style.css            ← all web UI styles
+│   ├── style.css            ← all web UI styles
+│   ├── manifest.json        ← PWA manifest
+│   ├── sw.js                ← service worker (offline caching)
+│   ├── icon-192.png         ← PWA icon 192×192
+│   └── icon-512.png         ← PWA icon 512×512
 ├── templates/               ← Jinja2 templates (HTMX partials + full pages)
 │   ├── base.html
 │   ├── tonight.html         ← recommendation generator
@@ -290,23 +296,29 @@ The main prompt is `RECOMMENDATION_PROMPT` in `filmlog/recommend.py` (line ~271)
 | Recommendation issue trigger | **Resolved.** On demand via web UI and CLI. |
 | Rescan trigger | **Resolved.** Manual, diff-based by default. `--full` flag available. |
 | Watch providers | **Resolved.** Not implementing — decided against. |
-| Pre-cached recommendation issues | **Partially built.** `precache_issues()` exists but not wired into UI. Should only surface when defaults match (solo, no free text) with 3-second reveal delay. |
+| Pre-cached recommendation issues | **Done.** CLI `--precache` flag + frontend 3s reveal button on Tonight page for solo/no-free-text. |
 | "None of these click" fallback | Parked for V2. Soft negative signal + regenerate avoiding those films. |
-| `default_taste_attributes` backfill | **Not done.** Column empty for all 514 films. Highest-impact missing piece. |
-| Engagement/hookability reframe | **Not done.** `cognitive_load` column needs rename + rubric rework. |
-| Enrichment screen | **Not started.** Spec complete in `ENRICHMENT_SPEC.md`. Should be default landing page. |
-| Deployment (Railway etc.) | **Not started.** Currently localhost-only. |
-| Relational navigation depth | **Partial.** Film detail links work. Full attribute→films, recommendation→model version click-through not yet built. |
+| `default_taste_attributes` backfill | **Done.** All 514 films have Haiku-inferred attributes. `filmlog/attributes.py` handles batch + single-film inference. |
+| Engagement/hookability reframe | **Done.** Renamed `cognitive_load` → `engagement`. New hookability rubric. All 514 films computed. |
+| Enrichment screen | **Done.** Default landing page at `/enrich`. Full-screen poster card, notes field, HTMX card swap. |
+| Deployment | **Config ready.** `wsgi.py` + `deploy.md` for PythonAnywhere free tier. Needs manual account setup. |
+| PWA manifest | **Done.** `manifest.json`, icons, service worker (caches app shell + posters), apple-mobile-web-app meta. |
+| Relational navigation depth | **Mostly done.** Attribute chips → search. Past issues → model version. Remaining: dedicated attribute→films page. |
 
 ---
 
 ## Remaining build order
 
-1. ~~**Enrichment screen**~~ — **Done.** Default landing page at `/enrich`. Full-screen poster card, notes field, skip/save, HTMX card swap, rotating placeholders.
-2. **`default_taste_attributes` backfill** — Haiku-inferred attributes per film at add time + batch backfill for existing 514.
-3. **Engagement reframe** — rename `cognitive_load` → engagement concept, rework rubric around hookability not intellectual difficulty.
-4. **Pre-cached issue reveal** — wire `precache_issues()` into post-rescan, serve cached issues on default params with 3s delay.
-5. **Relational navigation** — attribute→films, recommendation→model version, journal→films click-through.
-6. ~~**Recommendation prompt variety**~~ — **Done.** VARIETY section added to `RECOMMENDATION_PROMPT` instructing balanced picks across energy, origin, and tone.
-7. **Deployment** — PythonAnywhere free tier. Always-on, persistent disk, both APIs whitelisted.
-8. **PWA manifest** — installable on mobile, offline poster caching. Depends on deployment.
+1. ~~**Enrichment screen**~~ — **Done.**
+2. ~~**`default_taste_attributes` backfill**~~ — **Done.** All 514 films have attributes. Auto-infer on add-film.
+3. ~~**Engagement reframe**~~ — **Done.** `cognitive_load` → `engagement`. New hookability rubric.
+4. ~~**Pre-cached issue reveal**~~ — **Done.** CLI `--precache` + 3s delayed reveal on Tonight page.
+5. ~~**Relational navigation**~~ — **Mostly done.** Attribute chips → search. Model version on issues.
+6. ~~**Recommendation prompt variety**~~ — **Done.**
+7. ~~**Deployment config**~~ — **Done.** `wsgi.py` + `deploy.md`. Needs manual PythonAnywhere setup.
+8. ~~**PWA manifest**~~ — **Done.** Service worker, manifest, icons, apple-mobile-web-app meta.
+
+### Still remaining
+- **PythonAnywhere account setup** — manual step, follow `deploy.md`
+- **Relational navigation polish** — dedicated attribute→films page, journal→film poster chips
+- **"None of these click" fallback** — V2
