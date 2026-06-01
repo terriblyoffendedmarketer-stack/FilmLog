@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="login-layout">
+  <h1 class="login-title">filmlog</h1>
+  <p class="login-sub">Enter the owner password to make changes.</p>
+
+  {% if error %}
+  <div class="login-error">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="/login?next={{ request.args.get('next', '/') }}" class="login-form">
+    <input type="password" name="password" class="login-input" placeholder="Password" autofocus autocomplete="current-password">
+    <button type="submit" class="login-btn">Log in</button>
+  </form>
+
+  <a href="/films" class="login-browse-link">or browse as a visitor</a>
+</div>
+{% endblock %}

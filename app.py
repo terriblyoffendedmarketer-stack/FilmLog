@@ -9,11 +9,13 @@ Prod:  gunicorn -w 2 'app:app'
 """
 
 import json
+import os
 import re
+from functools import wraps
 from pathlib import Path
 
 import markdown as md_lib
-from flask import Flask, abort, redirect, render_template, request, url_for
+from flask import Flask, abort, redirect, render_template, request, session, url_for
 from markupsafe import Markup
 from dotenv import load_dotenv
 
@@ -23,6 +25,36 @@ from filmlog.browse import _apply_filters, _score_by_taste
 load_dotenv(override=True)
 
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32).hex())
+app.permanent_session_lifetime = 60 * 60 * 24 * 30  # 30 days
+
+
+# ---------------------------------------------------------------------------
+# Auth — read-only for visitors, full access for owner
+# ---------------------------------------------------------------------------
+
+def _is_owner() -> bool:
+    """Check if the current session belongs to the owner."""
+    return session.get("owner") is True
+
+
+@app.before_request
+def _guard_writes():
+    """Block all POST requests from non-owners. GET/read is open to everyone."""
+    if request.method == "POST" and not _is_owner():
+        # Allow the login POST itself
+        if request.endpoint == "login":
+            return None
+        # Allow API key test (settings page, harmless read-only check)
+        if request.endpoint == "test_api_key":
+            return None
+        return render_template("auth_denied.html", stats=_get_stats()), 403
+
+
+@app.context_processor
+def _inject_auth():
+    """Make is_owner available in all templates."""
+    return {"is_owner": _is_owner()}
 
 # Initialise DB on startup — creates all tables if they don't exist
 db.init_db()
@@ -171,6 +203,26 @@ def _get_stats() -> dict:
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Owner login — sets session cookie."""
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        correct = os.getenv("FILMLOG_PASSWORD", "")
+        if correct and password == correct:
+            session["owner"] = True
+            session.permanent = True
+            return redirect(request.args.get("next", "/"))
+        return render_template("login.html", error="Wrong password.", stats=_get_stats())
+    return render_template("login.html", stats=_get_stats())
+
+
+@app.route("/logout")
+def logout():
+    session.pop("owner", None)
+    return redirect("/films")
+
 
 @app.route("/sw.js")
 def service_worker():

@@ -3025,6 +3025,85 @@ html, body {
   }
 }
 
+/* ── Login / auth ──────────────────────────────────────────────────────────── */
+.login-layout {
+  max-width: 340px;
+  margin: 0 auto;
+  padding: 120px 24px 60px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.login-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+}
+
+.login-sub {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.login-error {
+  font-size: 0.85rem;
+  color: #e55;
+  padding: 8px 16px;
+  border-radius: var(--r-sm);
+  background: rgba(238, 85, 85, 0.1);
+  border: 1px solid rgba(238, 85, 85, 0.2);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.login-input {
+  padding: 14px 16px;
+  border-radius: var(--r);
+  border: 1px solid var(--border-light);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  text-align: center;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.login-btn {
+  padding: 14px 24px;
+  border-radius: var(--r);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+}
+
+.login-btn:hover { background: var(--accent-hover); }
+
+.login-browse-link {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
+.login-browse-link:hover { color: var(--text-muted); }
+
 /* =============================================================================
    Mobile bottom tab bar + responsive overhaul
    ============================================================================= */

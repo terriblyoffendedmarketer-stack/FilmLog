@@ -30,8 +30,12 @@ Create the `.env` file with your API keys:
 cat > ~/FilmLog/.env << 'EOF'
 TMDB_API_KEY=your_tmdb_key_here
 ANTHROPIC_API_KEY=your_anthropic_key_here
+FILMLOG_PASSWORD=your_owner_password_here
+FLASK_SECRET_KEY=any_random_string_here
 EOF
 ```
+
+The `FILMLOG_PASSWORD` protects write access — visitors can browse your library but only you can edit. `FLASK_SECRET_KEY` keeps your login session alive across server restarts.
 
 ### 5. Configure the web app
 1. Go to the **Web** tab

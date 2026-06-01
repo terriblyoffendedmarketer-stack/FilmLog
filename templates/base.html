@@ -51,6 +51,11 @@
                    M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/>
         </svg>
       </a>
+      {% if is_owner %}
+      <a href="/logout" class="nav-settings-link" title="Log out" style="font-size:0.72rem; color:var(--text-dim);">out</a>
+      {% else %}
+      <a href="/login" class="nav-settings-link" title="Log in" style="font-size:0.72rem; color:var(--accent);">log in</a>
+      {% endif %}
     </div>
     {% endif %}
   </nav>
