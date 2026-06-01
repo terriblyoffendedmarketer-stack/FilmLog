@@ -2332,42 +2332,7 @@ html, body {
   .search-film-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
 }
 
-@media (max-width: 700px) {
-  .detail-layout {
-    grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 20px 16px 40px;
-  }
-
-  .detail-sidebar {
-    position: static;
-    display: grid;
-    grid-template-columns: 160px 1fr;
-    gap: 20px;
-    align-items: start;
-  }
-
-  .detail-poster { grid-row: 1 / 5; }
-
-  .film-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-    padding: 16px;
-  }
-
-  .nav { padding: 0 16px; gap: 16px; }
-  .nav-stats { display: none; }
-  .nav-search { display: none; }
-  .filter-bar { padding: 10px 16px; }
-  .detail-title { font-size: 1.5rem; }
-}
-
-@media (max-width: 420px) {
-  .film-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
-  }
-}
+/* Old breakpoints replaced by comprehensive mobile section at end of file */
 
 /* ── Add Film page ───────────────────────────────────────────────────── */
 .add-film-layout {
@@ -3058,4 +3023,257 @@ html, body {
   .enrich-title {
     font-size: 1.35rem;
   }
+}
+
+/* =============================================================================
+   Mobile bottom tab bar + responsive overhaul
+   ============================================================================= */
+
+/* Hidden on desktop */
+.mobile-tabs { display: none; }
+
+@media (max-width: 700px) {
+
+  /* ── Bottom tab bar ─────────────────────────────────────────────────────── */
+  .mobile-tabs {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: rgba(10, 10, 10, 0.96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--border);
+    padding: 6px 0;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 0;
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tab.active {
+    color: var(--accent);
+  }
+
+  .mobile-tab svg {
+    flex-shrink: 0;
+  }
+
+  /* ── Top nav: simplify for mobile ───────────────────────────────────────── */
+  .nav {
+    padding: 0 16px;
+    gap: 12px;
+    height: 48px;
+  }
+
+  .nav-links { display: none; }
+  .nav-stats { display: none; }
+  .nav-search { display: none; }
+
+  .nav-logo { font-size: 1rem; }
+
+  /* Show a compact inline search + settings in the top bar */
+  .nav::after { display: none; }
+
+  /* ── Main content: add bottom padding for tab bar ───────────────────────── */
+  .main {
+    padding-bottom: 72px;
+  }
+
+  /* ── Film grid: tighter for mobile ──────────────────────────────────────── */
+  .film-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px 10px 20px;
+  }
+
+  .film-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .film-info {
+    padding: 6px 6px 8px;
+  }
+
+  .film-title {
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .film-meta-row {
+    font-size: 0.65rem;
+  }
+
+  .film-tagline { display: none; }
+
+  /* ── Filter bar: horizontal scroll ──────────────────────────────────────── */
+  .filter-bar {
+    padding: 8px 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filter-bar form {
+    flex-wrap: nowrap;
+  }
+
+  .filter-bar::-webkit-scrollbar { display: none; }
+
+  /* ── Detail page ────────────────────────────────────────────────────────── */
+  .detail-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 16px 14px 40px;
+  }
+
+  .detail-sidebar {
+    position: static;
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+
+  .detail-poster { grid-row: 1 / 5; }
+
+  .detail-title { font-size: 1.3rem; }
+  .detail-overview { font-size: 0.85rem; }
+  .detail-back { font-size: 0.8rem; }
+
+  .detail-meta-list { font-size: 0.8rem; }
+  .detail-meta-item { padding: 2px 0; }
+
+  .detail-genres { gap: 4px; }
+  .genre-chip { font-size: 0.7rem; padding: 3px 8px; }
+
+  .detail-taste-attrs { gap: 5px; }
+  .detail-attr-chip { font-size: 0.75rem; padding: 4px 10px; }
+
+  .section-label { font-size: 0.8rem; }
+
+  /* ── Tonight page ───────────────────────────────────────────────────────── */
+  .tonight-layout {
+    padding: 28px 16px 60px;
+  }
+
+  .tonight-heading-block { margin-bottom: 28px; }
+  .tonight-heading { font-size: 1.3rem; }
+  .tonight-sub { font-size: 0.82rem; }
+
+  .calibration-form { gap: 20px; }
+
+  .pill {
+    padding: 10px 16px;
+    font-size: 0.82rem;
+  }
+
+  .tonight-free-text {
+    font-size: 16px; /* prevents iOS zoom on focus */
+  }
+
+  .generate-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .btn-generate, .btn-cached-reveal {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+  }
+
+  /* ── Past issues ─────────────────────────────────────────────────────────── */
+  .past-issue-card { padding: 14px; }
+  .past-issue-posters { gap: 6px; }
+  .past-issue-poster { width: 40px; height: 60px; }
+
+  /* ── Enrichment ──────────────────────────────────────────────────────────── */
+  .enrich-layout { padding: 0; }
+  .enrich-card { border-radius: 0; }
+
+  .enrich-overlay {
+    padding: 50px 16px 18px;
+  }
+
+  .enrich-title { font-size: 1.4rem; }
+  .enrich-year { font-size: 0.85rem; }
+
+  .enrich-textarea {
+    font-size: 16px; /* prevents iOS zoom */
+    min-height: 80px;
+  }
+
+  .enrich-actions {
+    gap: 8px;
+  }
+
+  .enrich-save, .enrich-skip {
+    padding: 14px 16px;
+    font-size: 0.92rem;
+  }
+
+  /* ── Journal ─────────────────────────────────────────────────────────────── */
+  .journal-layout { padding: 24px 14px 60px; }
+  .journal-title { font-size: 1.3rem; }
+
+  /* ── Taste profile ───────────────────────────────────────────────────────── */
+  .taste-layout { padding: 24px 14px 60px; }
+
+  /* ── Search page ─────────────────────────────────────────────────────────── */
+  .search-layout { padding: 24px 14px 60px; }
+
+  /* ── Add film ────────────────────────────────────────────────────────────── */
+  .add-film-layout { padding: 24px 14px 60px; }
+
+  /* ── Settings ────────────────────────────────────────────────────────────── */
+  .settings-layout { padding: 24px 14px 60px; }
+
+  /* ── Rec result ──────────────────────────────────────────────────────────── */
+  .rec-result { padding: 20px 14px; }
+  .rec-result-editorial { font-size: 0.9rem; }
+
+  .inline-poster-wrap { display: block; }
+  .inline-poster {
+    float: none;
+    width: 80px;
+    margin: 0 auto 12px;
+  }
+
+  /* ── Hall of Fame ────────────────────────────────────────────────────────── */
+  .hof-layout { padding: 24px 14px 60px; }
+}
+
+/* Extra small phones */
+@media (max-width: 380px) {
+  .film-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 10px 8px 20px;
+  }
+
+  .mobile-tab {
+    font-size: 0.6rem;
+  }
+
+  .detail-sidebar {
+    grid-template-columns: 110px 1fr;
+  }
+
+  .tonight-heading { font-size: 1.15rem; }
+  .pill { padding: 9px 12px; font-size: 0.78rem; }
 }
