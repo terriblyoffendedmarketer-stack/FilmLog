@@ -23,7 +23,7 @@
       <a href="/hall-of-fame"  class="nav-link{% if page == 'hall_of_fame' %} active{% endif %}">Hall of Fame</a>
       <a href="/taste"         class="nav-link{% if page == 'taste'        %} active{% endif %}">Taste</a>
       <a href="/journal"       class="nav-link{% if page == 'journal'      %} active{% endif %}">Journal</a>
-      {% if is_owner %}<a href="/add" class="nav-link nav-link-add{% if page == 'add' %} active{% endif %}" title="Add a film">+</a>{% endif %}
+      <a href="/add"           class="nav-link nav-link-add{% if page == 'add' %} active{% endif %}" title="Add a film">+</a>
     </div>
 
     <form class="nav-search" action="/search" method="GET" role="search">

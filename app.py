@@ -538,9 +538,6 @@ def tonight():
 def tonight_generate():
     """HTMX endpoint: receive calibration answers, stream back the editorial."""
     from flask import g
-    if g.get("visitor_mode"):
-        return '<div class="rec-result-error"><p>Recommendations require owner access. Log in via Settings.</p></div>'
-
     from filmlog.recommend import generate_web_recommendation
 
     answers = {
@@ -548,10 +545,11 @@ def tonight_generate():
         "free_text": request.form.get("free_text", "").strip(),
     }
 
-    result = generate_web_recommendation(answers)
+    result = generate_web_recommendation(answers, save_to_db=not g.get("visitor_mode"))
 
-    # Auto-archive: keep only the 2 most recent issues visible
-    db.auto_archive_issues(keep=2)
+    # Auto-archive: keep only the 2 most recent issues visible (owner only)
+    if not g.get("visitor_mode"):
+        db.auto_archive_issues(keep=2)
 
     # Fetch referenced films for inline posters + bottom strip
     film_cards = []
@@ -615,11 +613,9 @@ def tonight_cached():
 def tonight_rewrite(issue_id: int):
     """HTMX endpoint: rewrite a past issue with the current prompt, same films."""
     from flask import g
-    if g.get("visitor_mode"):
-        return '<div class="rec-result-error"><p>Rewriting requires owner access.</p></div>'
     from filmlog.recommend import rewrite_issue
 
-    result = rewrite_issue(issue_id)
+    result = rewrite_issue(issue_id, save_to_db=not g.get("visitor_mode"))
 
     if result.get("error"):
         return f'<div class="rec-result-error"><p>{result["error"]}</p></div>'

@@ -607,7 +607,7 @@ def generate_issue() -> None:
 # Web API (library-first — called by Flask, not the CLI)
 # ---------------------------------------------------------------------------
 
-def generate_web_recommendation(answers: dict) -> dict:
+def generate_web_recommendation(answers: dict, *, save_to_db: bool = True) -> dict:
     """
     Generate a recommendation from web form answers. Returns a result dict
     so Flask routes get structured data, not printed output.
@@ -680,14 +680,16 @@ def generate_web_recommendation(answers: dict) -> dict:
             + "\n\n".join(lines)
         )
         film_ids = [f["tmdb_id"] for f in picks if f.get("tmdb_id")]
-        model_version = db.get_latest_taste_model()
-        db.save_recommendation_issue(
-            issue_text=issue_text,
-            films_referenced=film_ids,
-            taste_model_version_id=model_version["id"] if model_version else None,
-        )
-        issues = db.get_recommendation_history(limit=1)
-        issue_number = issues[0]["issue_number"] if issues else 1
+        issue_number = None
+        if save_to_db:
+            model_version = db.get_latest_taste_model()
+            db.save_recommendation_issue(
+                issue_text=issue_text,
+                films_referenced=film_ids,
+                taste_model_version_id=model_version["id"] if model_version else None,
+            )
+            issues = db.get_recommendation_history(limit=1)
+            issue_number = issues[0]["issue_number"] if issues else 1
 
         return {
             "issue_text": issue_text,
@@ -720,14 +722,16 @@ def generate_web_recommendation(answers: dict) -> dict:
     # Extract only the films actually mentioned in the editorial
     film_ids = _extract_mentioned_films(issue_text, candidates)
 
-    model_version = db.get_latest_taste_model()
-    db.save_recommendation_issue(
-        issue_text=issue_text,
-        films_referenced=film_ids,
-        taste_model_version_id=model_version["id"] if model_version else None,
-    )
-    issues = db.get_recommendation_history(limit=1)
-    issue_number = issues[0]["issue_number"] if issues else 1
+    issue_number = None
+    if save_to_db:
+        model_version = db.get_latest_taste_model()
+        db.save_recommendation_issue(
+            issue_text=issue_text,
+            films_referenced=film_ids,
+            taste_model_version_id=model_version["id"] if model_version else None,
+        )
+        issues = db.get_recommendation_history(limit=1)
+        issue_number = issues[0]["issue_number"] if issues else 1
 
     return {
         "issue_text": issue_text,
@@ -827,7 +831,7 @@ HALL OF FAME:
 Write the issue now."""
 
 
-def rewrite_issue(issue_id: int) -> dict:
+def rewrite_issue(issue_id: int, *, save_to_db: bool = True) -> dict:
     """
     Rewrite an existing recommendation issue: same films, fresh editorial
     using the current prompt and taste model.
@@ -894,6 +898,7 @@ def rewrite_issue(issue_id: int) -> dict:
     except Exception as e:
         return {"issue_text": "", "error": f"Claude API error: {e}"}
 
-    db.update_recommendation_issue(issue_id, new_text)
+    if save_to_db:
+        db.update_recommendation_issue(issue_id, new_text)
 
     return {"issue_text": new_text, "error": None}

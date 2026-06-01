@@ -39,7 +39,6 @@
     </div>
     {% endif %}
 
-    {% if is_owner %}
     <div class="journal-entry-actions">
       <a href="/journal/{{ entry.id }}/edit" class="btn-ghost">Edit</a>
       <form method="POST" action="/journal/{{ entry.id }}/delete"
@@ -47,7 +46,6 @@
         <button type="submit" class="btn-ghost btn-danger">Delete</button>
       </form>
     </div>
-    {% endif %}
   </aside>
 
   {# ── Main content ─────────────────────────────────────────────────────────── #}

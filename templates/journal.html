@@ -5,7 +5,7 @@
 
   <div class="journal-header">
     <h1 class="journal-title">Journal</h1>
-    {% if is_owner %}<a href="/journal/new" class="btn-primary">New entry</a>{% endif %}
+    <a href="/journal/new" class="btn-primary">New entry</a>
   </div>
 
   {% if entries %}
@@ -42,11 +42,9 @@
       Write about a director, a theme, a reaction, a question.<br>
       These become the context layer that sharpens recommendations.
     </p>
-    {% if is_owner %}
     <a href="/journal/new" class="btn-primary" style="display:inline-block; margin-top:20px;">
       Write first entry
     </a>
-    {% endif %}
   </div>
   {% endif %}
 
