@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="login-layout">
-  <h1 class="login-title">View only</h1>
-  <p class="login-sub">You're browsing as a visitor. Log in to make changes.</p>
-  <a href="/login?next={{ request.path }}" class="login-btn" style="display:inline-block; text-align:center;">Log in</a>
-  <a href="/films" class="login-browse-link">back to browsing</a>
+  <p class="login-sub">This action requires owner access.</p>
+  <a href="/settings" class="login-browse-link">Go to settings to log in</a>
 </div>
 {% endblock %}

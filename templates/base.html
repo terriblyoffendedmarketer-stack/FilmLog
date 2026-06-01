@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
 </head>
-<body>
+<body data-owner="{{ 'true' if is_owner else 'false' }}">
   <nav class="nav">
     <a href="/" class="nav-logo">filmlog</a>
 
@@ -51,11 +51,6 @@
                    M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/>
         </svg>
       </a>
-      {% if is_owner %}
-      <a href="/logout" class="nav-settings-link" title="Log out" style="font-size:0.72rem; color:var(--text-dim);">out</a>
-      {% else %}
-      <a href="/login" class="nav-settings-link" title="Log in" style="font-size:0.72rem; color:var(--accent);">log in</a>
-      {% endif %}
     </div>
     {% endif %}
   </nav>
@@ -88,6 +83,7 @@
     </a>
   </nav>
 
+  <script src="{{ url_for('static', filename='visitor.js') }}"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});

@@ -180,4 +180,29 @@ async function testKey(type) {
 loadKeys();
 </script>
 
+  {# ── Owner login ────────────────────────────────────────────────────────── #}
+  <div class="settings-card" style="margin-top: 32px;">
+    <div class="settings-card-header">
+      <div>
+        <h2 class="settings-card-title">Owner access</h2>
+        <p class="settings-card-desc">
+          {% if is_owner %}
+            You're logged in as the owner. Changes write directly to the database.
+          {% else %}
+            Log in as owner to save changes to the database. Without login, your edits are saved to this device only.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    {% if is_owner %}
+    <a href="/logout" class="btn-ghost btn-sm">Log out</a>
+    {% else %}
+    <form method="POST" action="/login?next=/settings" style="display:flex; gap:10px; align-items:center;">
+      <input type="password" name="password" class="form-input settings-key-input"
+             placeholder="Owner password" autocomplete="current-password" style="max-width:240px; font-size:16px;">
+      <button type="submit" class="btn-ghost btn-sm" style="white-space:nowrap;">Log in</button>
+    </form>
+    {% endif %}
+  </div>
+
 {% endblock %}

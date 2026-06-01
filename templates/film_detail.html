@@ -122,7 +122,8 @@
     </div>
     {% endif %}
 
-    {# Admin actions — wrong match + delete #}
+    {# Admin actions — wrong match + delete (owner only) #}
+    {% if is_owner %}
     <div class="detail-admin">
       <div class="section-label">Admin</div>
       <div class="detail-admin-actions">
@@ -151,6 +152,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
 
   </div>
 </div>

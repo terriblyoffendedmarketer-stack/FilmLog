@@ -26,7 +26,7 @@ load_dotenv(override=True)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32).hex())
-app.permanent_session_lifetime = 60 * 60 * 24 * 30  # 30 days
+app.permanent_session_lifetime = 60 * 60 * 24 * 365  # 1 year
 
 
 # ---------------------------------------------------------------------------
@@ -39,16 +39,10 @@ def _is_owner() -> bool:
 
 
 @app.before_request
-def _guard_writes():
-    """Block all POST requests from non-owners. GET/read is open to everyone."""
-    if request.method == "POST" and not _is_owner():
-        # Allow the login POST itself
-        if request.endpoint == "login":
-            return None
-        # Allow API key test (settings page, harmless read-only check)
-        if request.endpoint == "test_api_key":
-            return None
-        return render_template("auth_denied.html", stats=_get_stats()), 403
+def _set_visitor_flag():
+    """Set visitor mode flag. Visitors can interact — their changes go to localStorage."""
+    from flask import g
+    g.visitor_mode = not _is_owner()
 
 
 @app.context_processor
@@ -276,9 +270,10 @@ def enrich():
 @app.route("/enrich/<int:tmdb_id>", methods=["POST"])
 def enrich_save(tmdb_id: int):
     """Save notes from enrichment card, return next card."""
+    from flask import g
     notes = request.form.get("personal_notes", "").strip()
     user_film = db.get_user_film_by_tmdb(tmdb_id)
-    if user_film and notes:
+    if user_film and notes and not g.get("visitor_mode"):
         db.update_user_film(user_film["id"], personal_notes=notes)
 
     # Get next film
@@ -415,7 +410,10 @@ def film_detail(tmdb_id: int):
 
 @app.route("/films/<int:tmdb_id>/correct", methods=["POST"])
 def correct_film(tmdb_id: int):
-    """Swap a wrong TMDB match with the correct one."""
+    """Swap a wrong TMDB match with the correct one. Owner only."""
+    from flask import g
+    if g.get("visitor_mode"):
+        abort(403)
     new_tmdb_id = int(request.form.get("new_tmdb_id", 0))
     media_type = request.form.get("media_type", "movie")
     if not new_tmdb_id:
@@ -441,7 +439,10 @@ def correct_film(tmdb_id: int):
 
 @app.route("/films/<int:tmdb_id>/delete", methods=["POST"])
 def delete_film(tmdb_id: int):
-    """Remove a film from the library entirely."""
+    """Remove a film from the library entirely. Owner only."""
+    from flask import g
+    if g.get("visitor_mode"):
+        abort(403)
     film = db.get_film(tmdb_id)
     if not film:
         abort(404)
@@ -470,9 +471,10 @@ def notes_view(tmdb_id: int):
 @app.route("/films/<int:tmdb_id>/notes", methods=["POST"])
 def update_notes(tmdb_id: int):
     """Save notes and return updated display (HTMX partial)."""
+    from flask import g
     notes = request.form.get("personal_notes", "").strip()
     user_film = db.get_user_film_by_tmdb(tmdb_id)
-    if user_film:
+    if user_film and not g.get("visitor_mode"):
         db.update_user_film(user_film["id"], personal_notes=notes)
     return render_template("partials/notes_view.html", tmdb_id=tmdb_id, notes=notes)
 
@@ -486,16 +488,18 @@ def update_status(tmdb_id: int):
     if not user_film:
         abort(404)
 
+    from flask import g
     new_status = request.form.get("status")
     rewatch_val = request.form.get("rewatch")
 
-    if new_status and new_status in {"watched", "watchlist"}:
-        db.update_user_film(user_film["id"], status=new_status)
-    if rewatch_val is not None:
-        rewatch_int = int(rewatch_val)
-        db.update_user_film(user_film["id"], rewatch=rewatch_int)
-        if rewatch_int:
-            db.update_user_film(user_film["id"], status="watched")
+    if not g.get("visitor_mode"):
+        if new_status and new_status in {"watched", "watchlist"}:
+            db.update_user_film(user_film["id"], status=new_status)
+        if rewatch_val is not None:
+            rewatch_int = int(rewatch_val)
+            db.update_user_film(user_film["id"], rewatch=rewatch_int)
+            if rewatch_int:
+                db.update_user_film(user_film["id"], status="watched")
 
     user_film = db.get_user_film_by_tmdb(tmdb_id)
     return render_template(
@@ -1169,9 +1173,11 @@ def update_rating(tmdb_id: int):
     if not user_film:
         abort(404)
 
+    from flask import g
     rating_str = request.form.get("rating", "")
     rating = int(rating_str) if rating_str and rating_str.isdigit() else None
-    db.update_user_film(user_film["id"], rating=rating)
+    if not g.get("visitor_mode"):
+        db.update_user_film(user_film["id"], rating=rating)
 
     return render_template(
         "partials/rating_control.html",
