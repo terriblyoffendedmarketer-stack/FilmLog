@@ -9,7 +9,8 @@
     <p class="tonight-sub">Your personalised issue — based on everything I know about your taste.</p>
   </div>
 
-  {# ── Simplified calibration form ──────────────────────────────────────────── #}
+  {# ── Simplified calibration form (owner only) ─────────────────────────────── #}
+  {% if is_owner %}
   <form id="calibration-form" class="calibration-form"
     hx-post="/tonight/generate"
     hx-target="#recommendation-result"
@@ -62,6 +63,7 @@
     </div>
 
   </form>
+  {% endif %}
 
   {# ── Result area (populated by HTMX) ──────────────────────────────────────── #}
   <div id="recommendation-result"></div>
@@ -121,6 +123,7 @@
           </div>
           {% endif %}
         </div>
+        {% if is_owner %}
         <div class="past-issue-actions">
           <button type="button" class="btn-rewrite"
             hx-post="/tonight/rewrite/{{ issue.id }}"
@@ -142,6 +145,7 @@
             Rewriting…
           </span>
         </div>
+        {% endif %}
       </div>
 
       <button class="past-issue-toggle" onclick="event.stopPropagation(); toggleIssue({{ issue.id }}, this)">
