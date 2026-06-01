@@ -10,7 +10,13 @@
   </div>
 
   {# ── Simplified calibration form ──────────────────────────────────────────── #}
+  {% if not is_owner %}
+  <p class="tonight-visitor-note" style="color:var(--muted); font-size:0.95rem; margin-bottom:24px;">
+    Generating new recommendations requires owner access. Browse past issues below.
+  </p>
+  {% endif %}
   <form id="calibration-form" class="calibration-form"
+    {% if not is_owner %}style="display:none"{% endif %}
     hx-post="/tonight/generate"
     hx-target="#recommendation-result"
     hx-swap="innerHTML"
@@ -121,6 +127,7 @@
           </div>
           {% endif %}
         </div>
+        {% if is_owner %}
         <div class="past-issue-actions">
           <button type="button" class="btn-rewrite"
             hx-post="/tonight/rewrite/{{ issue.id }}"
@@ -142,6 +149,7 @@
             Rewriting…
           </span>
         </div>
+        {% endif %}
       </div>
 
       <button class="past-issue-toggle" onclick="event.stopPropagation(); toggleIssue({{ issue.id }}, this)">

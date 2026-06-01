@@ -413,7 +413,7 @@ def correct_film(tmdb_id: int):
     """Swap a wrong TMDB match with the correct one. Owner only."""
     from flask import g
     if g.get("visitor_mode"):
-        abort(403)
+        return redirect(url_for("film_detail", tmdb_id=tmdb_id))
     new_tmdb_id = int(request.form.get("new_tmdb_id", 0))
     media_type = request.form.get("media_type", "movie")
     if not new_tmdb_id:
@@ -442,7 +442,7 @@ def delete_film(tmdb_id: int):
     """Remove a film from the library entirely. Owner only."""
     from flask import g
     if g.get("visitor_mode"):
-        abort(403)
+        return redirect(url_for("film_detail", tmdb_id=tmdb_id))
     film = db.get_film(tmdb_id)
     if not film:
         abort(404)
@@ -537,6 +537,10 @@ def tonight():
 @app.route("/tonight/generate", methods=["POST"])
 def tonight_generate():
     """HTMX endpoint: receive calibration answers, stream back the editorial."""
+    from flask import g
+    if g.get("visitor_mode"):
+        return '<div class="rec-result-error"><p>Recommendations require owner access. Log in via Settings.</p></div>'
+
     from filmlog.recommend import generate_web_recommendation
 
     answers = {
@@ -610,6 +614,9 @@ def tonight_cached():
 @app.route("/tonight/rewrite/<int:issue_id>", methods=["POST"])
 def tonight_rewrite(issue_id: int):
     """HTMX endpoint: rewrite a past issue with the current prompt, same films."""
+    from flask import g
+    if g.get("visitor_mode"):
+        return '<div class="rec-result-error"><p>Rewriting requires owner access.</p></div>'
     from filmlog.recommend import rewrite_issue
 
     result = rewrite_issue(issue_id)
@@ -645,6 +652,9 @@ def tonight_rewrite(issue_id: int):
 @app.route("/tonight/archive/<int:issue_id>", methods=["POST"])
 def tonight_archive(issue_id: int):
     """HTMX endpoint: archive a past issue."""
+    from flask import g
+    if g.get("visitor_mode"):
+        return ""
     db.archive_issue(issue_id)
     return ""
 
@@ -652,6 +662,9 @@ def tonight_archive(issue_id: int):
 @app.route("/tonight/unarchive/<int:issue_id>", methods=["POST"])
 def tonight_unarchive(issue_id: int):
     """HTMX endpoint: restore an archived issue."""
+    from flask import g
+    if g.get("visitor_mode"):
+        return ""
     db.unarchive_issue(issue_id)
     return ""
 
@@ -762,6 +775,9 @@ def api_film_search():
 
 @app.route("/journal/new", methods=["GET", "POST"])
 def journal_new():
+    from flask import g
+    if g.get("visitor_mode"):
+        return redirect(url_for("journal"))
     if request.method == "POST":
         title = request.form.get("title", "").strip()
         content = request.form.get("content", "").strip()
@@ -831,6 +847,9 @@ def journal_entry(entry_id: int):
 
 @app.route("/journal/<int:entry_id>/edit", methods=["GET", "POST"])
 def journal_edit(entry_id: int):
+    from flask import g
+    if g.get("visitor_mode"):
+        return redirect(url_for("journal_entry", entry_id=entry_id))
     entry = db.get_journal_entry(entry_id)
     if entry is None:
         abort(404)
@@ -887,6 +906,9 @@ def journal_edit(entry_id: int):
 
 @app.route("/journal/<int:entry_id>/delete", methods=["POST"])
 def journal_delete(entry_id: int):
+    from flask import g
+    if g.get("visitor_mode"):
+        return redirect(url_for("journal"))
     entry = db.get_journal_entry(entry_id)
     if entry is None:
         abort(404)
@@ -1098,6 +1120,10 @@ def add_film_confirm(tmdb_id: int):
 @app.route("/add/save", methods=["POST"])
 def add_film_save():
     """Save/update a film log entry with status, rating, and notes."""
+    from flask import g
+    if g.get("visitor_mode"):
+        return redirect(url_for("films"))
+
     tmdb_id = int(request.form.get("tmdb_id", 0))
     status = request.form.get("status", "watched")
     rating_str = request.form.get("rating", "")
