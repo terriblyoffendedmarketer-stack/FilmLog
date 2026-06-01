@@ -301,9 +301,13 @@ The main prompt is `RECOMMENDATION_PROMPT` in `filmlog/recommend.py` (line ~271)
 | `default_taste_attributes` backfill | **Done.** All 514 films have Haiku-inferred attributes. `filmlog/attributes.py` handles batch + single-film inference. |
 | Engagement/hookability reframe | **Done.** Renamed `cognitive_load` → `engagement`. New hookability rubric. All 514 films computed. |
 | Enrichment screen | **Done.** Default landing page at `/enrich`. Full-screen poster card, notes field, HTMX card swap. |
-| Deployment | **Config ready.** `wsgi.py` + `deploy.md` for PythonAnywhere free tier. Needs manual account setup. |
-| PWA manifest | **Done.** `manifest.json`, icons, service worker (caches app shell + posters), apple-mobile-web-app meta. |
+| Deployment | **Live.** PythonAnywhere free tier at prashil3k.pythonanywhere.com. `wsgi.py` + `deploy.md`. |
+| PWA manifest | **Done.** `manifest.json`, icons, service worker (caches app shell + posters), apple-mobile-web-app meta. Installed on phone. |
 | Relational navigation depth | **Mostly done.** Attribute chips → search. Past issues → model version. Remaining: dedicated attribute→films page. |
+| Visitor mode | **Done.** Visitors browse everything, edit notes/ratings/status (localStorage). Owner-only: add film, generate recs, journal CRUD, delete/correct. Journal entries have public/private toggle. |
+| DB backup | **Script ready** (`backup_db.sh`). Needs PythonAnywhere scheduled task setup + git credential verification. |
+| PythonAnywhere auto-renewal | **Not started.** Needs automated monthly button click. Critical for uptime. |
+| SaaS-ification | **Not started.** Multi-user support — own library, taste model, recs per user. Biggest remaining feature. |
 
 ---
 
@@ -318,7 +322,13 @@ The main prompt is `RECOMMENDATION_PROMPT` in `filmlog/recommend.py` (line ~271)
 7. ~~**Deployment config**~~ — **Done.** `wsgi.py` + `deploy.md`. Needs manual PythonAnywhere setup.
 8. ~~**PWA manifest**~~ — **Done.** Service worker, manifest, icons, apple-mobile-web-app meta.
 
-### Still remaining
-- **PythonAnywhere account setup** — manual step, follow `deploy.md`
-- **Relational navigation polish** — dedicated attribute→films page, journal→film poster chips
-- **"None of these click" fallback** — V2
+### Still remaining (priority order)
+
+1. **P0 — Daily DB backup to GitHub** — `backup_db.sh` is written and pushed. Needs: (a) run `git pull` on PythonAnywhere, (b) set up the scheduled task in PythonAnywhere Tasks tab (command: `bash /home/prashil3k/FilmLog/backup_db.sh`, any daily time), (c) verify `git push` works from PythonAnywhere without prompting for credentials — if it asks, set up a GitHub personal access token or SSH key.
+
+2. **P0 — PythonAnywhere auto-renewal** — Free tier expires if you don't click "Run until 3 months from today" monthly. Build an automation (e.g. a script using browser automation or the PythonAnywhere API if available) that logs into PythonAnywhere, clicks the renewal button, and confirms success. Could run from a cron job on Mac, a GitHub Action, or any always-on service. Prashil's PythonAnywhere username is `prashil3k`. This is critical — the whole app dies without it.
+
+3. **P1 — SaaS-ification** — Turn Filmlog into a multi-user product. Currently: single-user with owner login + visitor localStorage for notes/ratings/status on existing films. Target: each user gets their own library, their own taste model, their own recommendations. Architectural lift: needs user accounts (registration/login), per-user database isolation (separate SQLite files or switch to Postgres with user_id foreign keys), per-user API key management or a shared pool, and client-side rendering for user-local data (IndexedDB). The visitor localStorage system (`visitor.js`) is the seed of this — it already handles notes/ratings/status per-device. The gap is: adding films, journal entries, and generating recommendations can't work locally without a proper per-user backend. This is the biggest remaining feature and will likely require a different hosting setup (beyond PythonAnywhere free tier).
+
+4. **Relational navigation polish** — dedicated attribute→films page, journal→film poster chips
+5. **"None of these click" fallback** — V2
