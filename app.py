@@ -752,7 +752,8 @@ def taste_profile():
 
 @app.route("/journal")
 def journal():
-    entries = db.get_all_journal_entries(limit=50)
+    from flask import g
+    entries = db.get_all_journal_entries(limit=50, public_only=g.get("visitor_mode", False))
     return render_template(
         "journal.html",
         page="journal",
@@ -822,8 +823,11 @@ def journal_new():
 
 @app.route("/journal/<int:entry_id>")
 def journal_entry(entry_id: int):
+    from flask import g
     entry = db.get_journal_entry(entry_id)
     if entry is None:
+        abort(404)
+    if g.get("visitor_mode") and not entry.get("public"):
         abort(404)
 
     # Resolve linked films

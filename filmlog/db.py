@@ -187,6 +187,10 @@ def _run_migrations(conn) -> None:
         conn.execute("ALTER TABLE user_films ADD COLUMN updated_at TEXT")
         conn.execute("UPDATE user_films SET updated_at = date_added WHERE updated_at IS NULL")
 
+    j_cols = {r[1] for r in conn.execute("PRAGMA table_info(journals)").fetchall()}
+    if "public" not in j_cols:
+        conn.execute("ALTER TABLE journals ADD COLUMN public INTEGER NOT NULL DEFAULT 0")
+
 
 def init_db() -> None:
     """Create all tables if they don't already exist."""
@@ -939,13 +943,19 @@ def get_journal_entry(entry_id: int) -> dict | None:
     return d
 
 
-def get_all_journal_entries(limit: int = 50, offset: int = 0) -> list[dict]:
-    """Return all journal entries, newest first."""
+def get_all_journal_entries(limit: int = 50, offset: int = 0, *, public_only: bool = False) -> list[dict]:
+    """Return all journal entries, newest first. If public_only, filter to public=1."""
     with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM journals ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (limit, offset),
-        ).fetchall()
+        if public_only:
+            rows = conn.execute(
+                "SELECT * FROM journals WHERE public = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM journals ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
     result = []
     for r in rows:
         d = dict(r)
