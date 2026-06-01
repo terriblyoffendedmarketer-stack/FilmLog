@@ -907,6 +907,25 @@ def journal_edit(entry_id: int):
     )
 
 
+@app.route("/journal/<int:entry_id>/toggle-public", methods=["POST"])
+def journal_toggle_public(entry_id: int):
+    """Toggle public/private visibility for a journal entry. Owner only."""
+    from flask import g
+    if g.get("visitor_mode"):
+        return "", 403
+    entry = db.get_journal_entry(entry_id)
+    if entry is None:
+        abort(404)
+    new_val = 0 if entry.get("public") else 1
+    db.toggle_journal_public(entry_id, new_val)
+    label = "🌐 Public" if new_val else "🔒 Private"
+    active = " btn-public-active" if new_val else ""
+    return f'''<button class="btn-ghost btn-sm{active}"
+              hx-post="/journal/{entry_id}/toggle-public"
+              hx-target="this"
+              hx-swap="outerHTML">{label}</button>'''
+
+
 @app.route("/journal/<int:entry_id>/delete", methods=["POST"])
 def journal_delete(entry_id: int):
     from flask import g

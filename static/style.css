@@ -1672,6 +1672,11 @@ html, body {
   background: rgba(239, 68, 68, 0.08) !important;
 }
 
+.btn-public-active {
+  color: var(--watched) !important;
+  border-color: rgba(74, 222, 128, 0.3) !important;
+}
+
 /* Entry body — rendered markdown */
 .journal-entry-content { min-width: 0; }
 

@@ -41,6 +41,12 @@
 
     {% if is_owner %}
     <div class="journal-entry-actions">
+      <button class="btn-ghost btn-sm{% if entry.public %} btn-public-active{% endif %}"
+              hx-post="/journal/{{ entry.id }}/toggle-public"
+              hx-target="this"
+              hx-swap="outerHTML">
+        {{ '🌐 Public' if entry.public else '🔒 Private' }}
+      </button>
       <a href="/journal/{{ entry.id }}/edit" class="btn-ghost">Edit</a>
       <form method="POST" action="/journal/{{ entry.id }}/delete"
             onsubmit="return confirm('Delete this entry?')">

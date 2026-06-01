@@ -14,6 +14,7 @@
     <a href="/journal/{{ entry.id }}" class="journal-card">
       <div class="journal-card-top">
         <span class="journal-type-badge type-{{ entry.type }}">{{ entry.type }}</span>
+        {% if is_owner %}<span class="journal-vis-badge">{{ '🌐' if entry.public else '🔒' }}</span>{% endif %}
         <span class="journal-date">{{ entry.created_at[:10] }}</span>
       </div>
       <div class="journal-card-title">{{ entry.title }}</div>

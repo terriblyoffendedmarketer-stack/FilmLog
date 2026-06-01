@@ -931,6 +931,12 @@ def delete_journal_entry(entry_id: int) -> None:
         conn.execute("DELETE FROM fts_journals WHERE journal_id = ?", (entry_id,))
 
 
+def toggle_journal_public(entry_id: int, public: int) -> None:
+    """Set the public flag on a journal entry (1 = visible to visitors, 0 = private)."""
+    with get_connection() as conn:
+        conn.execute("UPDATE journals SET public = ? WHERE id = ?", (public, entry_id))
+
+
 def get_journal_entry(entry_id: int) -> dict | None:
     """Return a single journal entry by id, or None."""
     with get_connection() as conn:
