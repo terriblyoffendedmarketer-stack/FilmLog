@@ -1,0 +1,574 @@
+# Hard Drive Scan — Seagate Backup Plus (2TB, ExFAT)
+# Scanned: 2026-05-31
+# Total video files: 2,190
+# Total size: ~715 GB
+# Mount point (Mac): /Volumes/Backup Plus
+# Format: ExFAT (Android-compatible)
+
+## ALL MOVIES — 463 GB, 613 video files
+
+### The Apu Trilogy [3 films]
+Aparajito (1956)
+Pather Panchali (1955)
+The World Of Apu (1959)
+
+### Andrei Tarkovsky [5 films]
+Andrei Rublev (1966)
+Ivan's Childhood (1962)
+Solaris (1971)
+Stalker (1979)
+The Mirror (1974)
+
+### Anime movies [23 films]
+Byousoku 5 Centimeter (Dub)
+Howl's Moving Castle
+I Want To Eat Your Pancreas (2018)
+Josee to Sakana-tachi (2020)
+Koe no Katachi
+Kotonoha no Niwa Garden of Words
+Life is Short Walk on Girl
+Memories (1995) — Magnetic Rose + Stink Bomb + Cannon Fodder
+Millennium Actress (2001)
+Mononoke hime - Princess Mononoke
+Mulan (1998)
+Ookami Kodomo no Ame to Yuki (Dub)
+Paprika (2006)
+Perfect Blue (1997)
+Ponyo
+Redline (2009)
+Spirited Away
+Summer Ghost (2021)
+The Disappearance Of Haruhi Suzumiya
+The Red Turtle (2016)
+The Secret World of Arrietty
+Toki wo Kakeru Shoujo (Dub)
+Weathering With You (Tenki no Ko)
+
+### Hong Sang Soo Films [13 films]
+Claire's Camera (2017)
+Grass (2018)
+Hahaha (2010)
+Hotel By The River (2018)
+In Front Of Your Face (2021)
+Night and Day (2008)
+Nobodys Daughter Haewon (2013)
+On The Beach At Night Alone (2017)
+Our Sunhi (2013)
+Right Then, Wrong Now (2015)
+Tale Of Cinema (2005)
+The Woman Who Ran (2020)
+Yourself and Yours (2016)
+
+### Asian Movies [216 films]
+1987 When The Day Comes (2017)
+2046 (2004)
+3-Iron (2004)
+71 Into the Fire (2010)
+A Bittersweet Life (2005)
+A Brand New Life (2009)
+A Dirty Carnival (2006)
+A Gentle Breeze In The Village
+A Hard Day (2014)
+A Man Who Was Superman (2008)
+A Moment To Remember (2004)
+A Quiet Dream (2016)
+A Tale Of Two Sisters (2003)
+A Taxi Driver
+A Werewolf Boy (2012)
+Air Doll (2009)
+All About My Wife
+Always (2011)
+Architecture 101 (2012)
+Ashes Of Time (1994)
+Barking Dogs Never Bite (2000)
+Be With You (2018)
+Beasts That Cling To The Straw (2020)
+Beauty Inside
+Blade Of The Immortal (2017)
+Bokura wa aruku, tada soredake (2009)
+Breathless (2008)
+Broker (2022)
+Burning (2018)
+Canola (2016)
+Castaway On The Moon (2009)
+Cheer up Mr. Lee (2019)
+Chungking Express (1994)
+Coming Out (2000)
+Coming Soon (2008)
+Confessions (2010)
+Crazy Romance (2019)
+Crouching Tiger Hidden Dragon (2000)
+Cure (1997)
+Daisy (2009)
+Dark Figure Of Crime (2018)
+Days Of Being Wild (1990)
+Decision To Leave (2022)
+Ditto (2000)
+Dragon (2011)
+Drive My Car (2021)
+Emergency Declaration (2021)
+Epitaph (2007)
+Escape From Mogadishu (2021)
+Exhuma
+Extreme Job (2019)
+Fallen Angels (1995)
+Fantasy Of The Girls (2016)
+Farewell My Concubine (1993)
+Fearless (2006)
+Fight Back To School 1 (1991)
+Fight Back To School 2 (1992)
+Finding Mr Destiny (2010)
+Forget Me Not (2015)
+Fukuoka (2020)
+Gi-Juk (2021)
+Godzilla (1954)
+Gui lai / Coming Home (2014)
+Han Gong ju (2014)
+Happy Together (1997)
+Hard Boiled (1992)
+Hello Ghost
+Her Love Boils Bathwater (2016)
+Hero (2002)
+Hitman Agent Jun
+Hope (2013)
+House Of Flying Daggers (2004)
+House of Hummingbird (2018)
+Hwayi A Monster Boy (2013)
+I Can Speak (2017)
+I Saw the Devil (2010)
+I'm A Cyborg, But That's OK (2006)
+IP Man (2008)
+Il Mare (2000)
+In The Mood For Love (2000)
+Infernal Affairs (2002)
+Intimate Strangers
+Innocent Witness (2019)
+Inside Men (2015)
+Ip Man 2 (2010)
+Ip Man 3 (2015)
+Ip Man 4 The Finale (2019)
+Joint Security Area (2000)
+Josee (2020) Korean
+Josee the Tiger and the Fish (2003) Japanese
+Journals of Musan (2010)
+Ju-On the Grudge
+Ju-on The Curse (2000)
+Kang Deoksun's Love History
+Keys To The Heart (2018)
+Kim Ji Young Born 1982 (2019)
+King of Comedy (1999)
+Lady Snowblood (1973)
+Lady Vengeance (2005)
+Last Life In the Universe (2003)
+Late Spring (1949)
+Like Father Like Son (2013)
+Linda Linda Linda (2005)
+Little Forest (2018)
+Lust, Caution (2007)
+Luxurious Bone (2001)
+Make the Last Wish (2009)
+Mal Mo E The Secret Mission (2019)
+Memoirs of a Geisha (2005)
+Memories of Murder (2003)
+Microhabitat
+Minari (2020)
+Miracle in cell No 7
+Monga (2010)
+Moon-young (2015)
+More Than Family (2020)
+Mother (2009)
+My Brilliant Life (2014)
+My Dream Class (2018)
+My First Client (2019)
+My Girlfriend is a Serial Killer (2019)
+My Little Bride (2004)
+My Missing Valentine (2020)
+My Way (2011)
+Nameless Gangster Rules Of The Time (2012)
+New World (2013)
+Nobody Knows (2004) Japanese
+Noroi (2005)
+Oasis (2002)
+Ode To My Father (2014)
+Ode to Goose
+Okay! Madam
+Old Days (2016)
+Oldboy (2003)
+On Your Wedding Day (2018)
+Pawn (2020)
+Peppermint Candy (1999)
+Please Don't Save Me (2020)
+Poetry (2010)
+Pulse
+Punch
+Raise The Red Lantern (1991)
+Rashomon (1950)
+Review Notebook of My Embarrassing Days
+Ring / Ringu (1998)
+Rurouni Kenshin Part I Origins (2012)
+Rurouni Kenshin Part II Kyoto Inferno (2014)
+Rurouni Kenshin Part III The Legend Ends (2014)
+Sad Movie (2005)
+Sea Fog (2014)
+Searching (2018)
+Seven Samurai (1954)
+Shin Godzilla (2016)
+Shoplifters (2018)
+Shutter
+Silenced (2011)
+Solanin (2010)
+Spellbound (2011)
+Spring Summer Fall Winter And Spring (2003)
+Steins;Gate Live Stage Adaptation
+Stone Skipping (2020)
+Sunny (2011)
+Swing Kids (2018)
+Sympathy For Mr. Vengeance (2002)
+Tae Guk Gi The Brotherhood Of War (2004)
+Teenage Hooker Became Killing Machine (2000)
+The Chaser (2008)
+The Classic (2002)
+The Day I Died Unclosed Case
+The Dude In Me (2019)
+The Eye (Chinese)
+The Farewell (2019)
+The Front Line (2011)
+The Gangster, The Cop and The Devil
+The God of Cookery
+The Good The Bad The Weird (2008)
+The Grandmaster (2013)
+The Handmaiden (2016)
+The Host (2006)
+The King And The Clown (2005)
+The Man From Nowhere (2010)
+The Man Standing Next (2020)
+The Mars Canon (2002)
+The Net (2016)
+The Outlaws (2017)
+The Promise (2017)
+The Road Home (1999)
+The Roundup (2022)
+The Spy Gone North (2018)
+The Terror Live (2013)
+The Thieves (2012)
+The Wailing
+The Way Home (2002)
+The Witch Part 2. The Other One (2022)
+The Yellow Sea (2010)
+Thirst (2009)
+To Jenny (2018)
+To Live (1994)
+Tokyo Story (1953)
+Tokyo.sora (2002)
+Tunnel (2016)
+Twenty (2015)
+Vanishing Time A Boy Who Returned (2016)
+Very Ordinary Couple (2013)
+Voice of Silence (2020)
+Way Back Home (2013)
+Welcome To Dongmakgol (2005)
+What Happened to Our Nest Egg (2022)
+What a Man Wants
+Will You Be There (2016)
+Yi Yi (2000)
+Young Adult Matters (2020)
+Your Eyes Tell (2020)
+ing (2003)
+
+### Movies in General [158 films]
+12 Angry Men (1957)
+12 Monkeys (1995)
+12 Years a Slave
+500 Days of Summer
+A Clockwork Orange
+A Quiet Place (2018)
+Airplane
+American History X
+Antarctica A Year on Ice (2013)
+Apocalypse Now (1979)
+Apollo 18 (2011)
+Argo (2012)
+Before Midnight (2013)
+Before Sunrise (1995)
+Before Sunset (2004)
+Begin Again (2013)
+Big Fish (2003)
+Billy Elliot (2000)
+Birdman or (The Unexpected Virtue of Ignorance)
+BlacKkKlansman (2018)
+Blade Runner 2049 (2017)
+Blue Is the Warmest Colour (2013)
+Boiling Point (2021)
+Bonnie And Clyde (1967)
+Boyhood
+Call Me By Your Name (2017)
+Castaway (2000)
+Charlie Chaplin - The Great Dictator (1940)
+Children of Men
+Citizen X (1995)
+City of God (2002)
+Close Encounters of the Third Kind (1977)
+Cloud Atlas (2012)
+Cloverfield (2008)
+Coraline (2009)
+Dead Poets Society (1989)
+Dear John (2010)
+Detachment (2011)
+Dinner for Schmucks (2010)
+Donnie Darko (2001)
+Dr. Strangelove or How I Learned to Stop Worrying and Love the Bomb
+Dream House (2011)
+Dune (2021)
+E.T. the Extra-Terrestrial (1982)
+End of Watch (2012)
+Enemy (2013)
+Eraserhead (1977)
+Eternal Sunshine of the Spotless Mind (2004)
+Everything Everywhere All At Once (2022)
+Face Off (1997)
+Ferris Bueller's Day Off
+Fight Club (1999)
+Flow (2024)
+Frances Ha (2012)
+Frequency (2000)
+Fury
+G.I. Joe Retaliation (2013)
+Gandhi (1982)
+Garden State (2004)
+Get Out (2017)
+Glory (1989)
+Good Boys (2019)
+Gravity
+Green Day Bullet in a Bible
+Happy Death Day (2017)
+Harry Potter Series
+Heart of Darkness - A Filmmakers Apocalypse (1991)
+Her
+I Am Heath Ledger (2017)
+In Bruges (2008)
+In The Fade (2017)
+In the Loop (2009)
+Incendies (2010)
+Inception (2010)
+Inside Llewyn Davis (2013)
+Into The Wild (2007)
+It (2017)
+Lady Bird (2017)
+Last Night In Soho (2021)
+Leon The Professional Extended (1994)
+Little Miss Sunshine (2006)
+Little Women (1994)
+Little Women (2019)
+Look Who's Back (2015)
+Manchester By The Sea (2016)
+Mandy (2018)
+Monkey Man (2024)
+Moon (2009)
+Moonlight (2016)
+No Country For Old Men (2007)
+Nomadland (2020)
+Nope (2022)
+One Night in Miami (2021)
+Perfect Strangers (2017)
+Pi (1998)
+Pride and Prejudice (2005)
+Primer (2004)
+Prospect (2018)
+Rain Man (1988)
+Roma (2018)
+Ruby Sparks (2012)
+Safety Not Guaranteed (2012)
+Schindlers List (1993)
+Sense And Sensibility (1995)
+Sinners (2025)
+Split (2016)
+Spring Breakers (2012)
+Sunshine (2007)
+Swiss Army Man
+The Boondock Saints (1999)
+The Dreamers (2003)
+The Endless (2017)
+The Gentlemen (2019)
+The Green Mile (1999)
+The Invisible Man (2020)
+The Irishman (2019)
+The Iron Giant (1999)
+The Judge (2014)
+The Lighthouse (2019)
+The Man From the Earth (2007)
+The Man Who Knew Infinity (2015)
+The Martian (2015)
+The Men Who Stare at Goats (2009)
+The Northman (2022)
+The Pianist (2002)
+The Princess Bride (1987)
+The Secret Life of Walter Mitty (2013)
+The Shape Of Water (2017)
+The Skeleton Twins (2014)
+The Walk (2015)
+The Way Way Back (2013)
+The Wrestler (2008)
+They Live (1988)
+Three Billboards Outside Ebbing, Missouri (2017)
+Thunderbolts (2025)
+Top Gun (1986)
+Trainspotting (1996)
+Trumbo (2015)
+Unbreakable (2000)
+Uncle Vanya (2020)
+Under The Silver Lake (2018)
+Us (2019)
+Waking Life (2001)
+Walk the Line (2005)
+Yesterday (2019)
+You Were Never Really Here (2017)
+Youve Got Mail (1998)
+
+### Indian Films [34 films]
+Aamis (2019)
+Anand (1971)
+Black (2005)
+Bob Biswas (2021)
+Chintu Ka Birthday (2020)
+CityLights (2014)
+Court (2014)
+Delhi Belly (2011)
+Dev D (2009)
+Ek Doctor Ki Maut (1990)
+Geek Out (Short Film)
+Guzaarish (2010)
+Hridayam (2022)
+Jagga Jasoos (2017)
+Jersey (2019)
+Kaante (2002)
+Khosla Ka Ghosla (2006)
+Life In A Metro (2007)
+Lootera (2013)
+Madaari (2016)
+Manmarziyaan (2018)
+Masaan (2015)
+Mom (2017)
+Nna Than Case Kodu (2022)
+Om-Dar-B-Dar (1988)
+Oye Lucky! Lucky Oye! (2009)
+Paan Singh Tomar
+Pyaasa (1957)
+RX 100 (2018)
+Rangi Taranga (2019)
+Sairat (2016)
+Shahid
+Ship Of Theseus (2012)
+X Past is Present
+
+### Tarantino [5 films]
+Django Unchained (2012)
+Kill Bill Vol 2 (2004)
+Pulp Fiction (1994)
+Reservoir Dogs (1992)
+The Hateful Eight (2015)
+
+### Wes Anderson [6 films]
+Hotel Chevalier (2007)
+Rushmore (1998)
+The Darjeeling Limited (2007)
+The French Dispatch (2021)
+The Royal Tenenbaums (2001)
+The Squid And The Whale (2005)
+
+## TV SHOWS — 197 GB, ~950 episodes
+
+### Amagi Brillant Park — 14 episodes (single season)
+
+### Attack On Titan — 124 episodes
+- S02: 24 episodes
+- S03: 42 episodes
+- S04: 56 episodes
+(Note: S01 not on drive)
+
+### Chihayafuru — 162 episodes
+- Season 1: 52 episodes
+- Season 2: 56 episodes
+- Season 3: 54 episodes
+
+### Cowboy Bebop — 27 episodes (single season)
+
+### Ghost in the Shell - Stand Alone Complex — 26 episodes (single season)
+
+### Gravity Falls — 82 episodes
+- Season 1: 40 episodes
+- Season 2: 42 episodes (includes extras)
+
+### Hogu's Love — 32 episodes (single season)
+
+### Legend of the Galactic Heroes — 20 episodes
+
+### Link Click — 24 episodes
+
+### Megalo Box (Season 1) — 13 episodes
+
+### Monogatari Series — 206 episodes
+- 01 Bakemonogatari: 30 episodes
+- 02 Kizumonogatari: 6 episodes
+- 03 Nisemonogatari: 22 episodes
+- 04 Nekomonogatari (Black): 8 episodes
+- 05 Nekomonogatari (White): 10 episodes
+- 06 Kabukimonogatari: 8 episodes
+- 07 Hanamonogatari: 10 episodes
+- 08 Otorimonogatari: 8 episodes
+- 09 Onimonogatari: 8 episodes
+- 10 Koimonogatari: 12 episodes
+- 11 Tsukimonogatari: 8 episodes
+- 12 Koyomimonogatari: 24 episodes
+- 13 Owarimonogatari S1: 26 episodes
+- 14 Owarimonogatari S2: 14 episodes
+- 15 Zoku Owarimonogatari: 12 episodes
+
+### Monster — 75 episodes (single season)
+
+### Odd Taxi S01 — 14 episodes
+
+### Rocket Boys S01 — 8 episodes
+
+### Samurai Champloo — 26 episodes (single season)
+
+### Serial Experiments Lain (1998) — 15 episodes
+
+### Severance S01 — 9 episodes
+
+### Shinsekai yori — 25 episodes (single season)
+
+### Solar Opposites — 27 episodes
+- S01: 8 episodes
+- S02: 8 episodes
+- S03: 11 episodes
+
+### Takopii no Genzai S01 — 12 episodes
+
+### Ted Lasso — 24 episodes
+- S01: 11 episodes
+- S02: 13 episodes
+
+### The Bear — 8 episodes (Season 1 only)
+
+### WandaVision S1 — 9 episodes
+
+## OTHER CONTENT — 55 GB
+
+### MasterClasses and Webinars (26 GB)
+- Aaron Sorkin Teaches Screenwriting
+- James Patterson - Writing
+- Neil Gaiman - The Art of Storytelling
+- Screenwriting Fundamentals (Lynda)
+- Dan Brown Teaches Writing Thrillers
+- Chris Voss - The Art of Negotiation
+- The Python Mega Course
+- Build Responsive Real World Websites with HTML5 and CSS3
+- Automate the Boring Stuff with Python Programming
+- Digital Marketing Foundations
+
+### Everything Else (29 GB)
+- Code projects (old)
+- Magic Lectures + Books on Magic
+- Audiobooks (Born on a Blue Day, Nosleep Podcasts, Penpal)
+- Gallery (personal photos/videos)
+- Language Learning (Japanese Books, Korean Books)
