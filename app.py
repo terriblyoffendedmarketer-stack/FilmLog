@@ -228,7 +228,7 @@ def service_worker():
 
 @app.route("/")
 def index():
-    return redirect(url_for("enrich"))
+    return redirect("/enrich")
 
 
 # ---------------------------------------------------------------------------
