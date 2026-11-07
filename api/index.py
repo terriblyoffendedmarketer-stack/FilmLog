@@ -23,6 +23,14 @@ class VercelWSGIMiddleware:
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
+        import json
+        path_info = environ.get("PATH_INFO", "")
+        req_uri = environ.get("REQUEST_URI", "")
+        if path_info.endswith("/_env") or "/_env" in req_uri:
+            start_response("200 OK", [("Content-Type", "application/json")])
+            info = {k: str(v) for k, v in environ.items() if isinstance(v, (str, int, float, bool))}
+            return [json.dumps(info, indent=2).encode("utf-8")]
+
         path = environ.get("PATH_INFO", "")
         for prefix in ["/api/index.py", "/api/index"]:
             if path.startswith(prefix):
