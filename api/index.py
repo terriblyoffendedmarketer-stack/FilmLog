@@ -9,8 +9,6 @@ from app import app
 
 
 # Fix for Vercel WSGI environment:
-# When Vercel rewrites to /api/index.py, environ['PATH_INFO'] can contain /api/index.py
-# or the original path is in HTTP_X_NOW_ROUTE_MATCHES or HTTP_X_MATCHED_PATH.
 class VercelWSGIMiddleware:
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
@@ -18,15 +16,21 @@ class VercelWSGIMiddleware:
     def __call__(self, environ, start_response):
         path = environ.get("PATH_INFO", "")
 
-        # If PATH_INFO has the /api/index.py or /api/index prefix, strip it
-        if path.startswith("/api/index.py"):
-            path = path[len("/api/index.py"):] or "/"
-        elif path.startswith("/api/index"):
-            path = path[len("/api/index"):] or "/"
-        elif path.startswith("/api"):
-            path = path[len("/api"):] or "/"
+        # Also check HTTP_X_MATCHED_PATH if present
+        matched = environ.get("HTTP_X_MATCHED_PATH")
+        if matched and not matched.startswith("/api"):
+            path = matched
+
+        for prefix in ["/api/index.py", "/api/index", "/api"]:
+            if path.startswith(prefix):
+                path = path[len(prefix):]
+                break
+
+        if not path or not path.startswith("/"):
+            path = "/" + path
 
         environ["PATH_INFO"] = path
+        environ["SCRIPT_NAME"] = ""
         return self.wsgi_app(environ, start_response)
 
 
