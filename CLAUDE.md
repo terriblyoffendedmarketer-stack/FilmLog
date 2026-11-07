@@ -66,6 +66,8 @@ filmlog/                     ← repo root
 ├── main.py                  ← CLI entry point — argument parsing only
 ├── wsgi.py                  ← PythonAnywhere WSGI entry point
 ├── deploy.md                ← PythonAnywhere deployment guide
+├── scripts/
+│   └── sync_jellyfin.py     ← Syncs Jellyfin Mac library & film_comments.json into DB
 ├── static/
 │   ├── style.css            ← all web UI styles
 │   ├── manifest.json        ← PWA manifest
