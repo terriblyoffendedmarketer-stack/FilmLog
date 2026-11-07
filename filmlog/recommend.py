@@ -215,9 +215,14 @@ def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
         if film.get("personal_notes"):
             score += 0.3
 
-        # Penalise recently recommended films slightly
+        # Fresh addition boost (subtle nudge for films added in the latest sync batch)
+        if film.get("date_added") == "2026-11-07":
+            score += 0.5
+
+        # Anti-fatigue cooldown: heavily penalise films recommended in recent issues.
+        # This prevents "rejection fatigue" where a film gets pestered repeatedly until it becomes tainted.
         if film.get("tmdb_id") in recently_recommended_ids:
-            score -= 0.5
+            score -= 3.0
 
         # Rewatch candidates get a small boost (they stuck for a reason)
         if film.get("rewatch", 0):
@@ -294,13 +299,16 @@ What doesn't work: generic praise ("masterfully crafted", "compelling narrative"
 Bad sell: "This film explores themes of isolation and redemption through a masterful lens."
 Good sell: "Ninety minutes of a man in a car being hunted by a truck whose driver you never see. That's it. And it's relentless."
 
-## VARIETY
+## SELECTION & SPREAD
 
-Your 2–4 picks should feel like a curated set, not a cluster. Vary across:
-- **Energy**: mix intensities — don't recommend four slow burns or four adrenaline rides.
-- **Origin**: draw from different countries/languages when the watchlist allows it. If the best three are all Korean, that's fine — but don't default to one region out of habit.
-- **Tone**: pair something heavy with something lighter, or something contemplative with something visceral.
-The variety should feel natural, not forced. You're assembling a set of options for one evening — give real range so at least one clicks no matter the mood.
+- **Taste First**: Anchor everything on Prashil's core taste engines. Never sacrifice emotional precision or engagement for novelty.
+- **Spread Sizing**:
+  - For solo / general nights: Pick 1 clear "Hero Pick" (the sharpest match for tonight), plus 1–2 distinct alternative doors.
+  - If Prashil provided a query or rant (e.g., asking for specific vibes like horror, or specifying what NOT to watch): Address his prompt directly with 2–4 targeted picks matching that exact wavelength.
+  - If watching with others (Friends, Family, Partner): Broaden the spread to 3–5 films to provide enough common ground for a group consensus.
+- **Curated Balance**:
+  - Don't only suggest recent additions, and don't recycle films passed on recently. Pair fresh momentum with a "Vault Rediscovery" — an older, overlooked gem from his watchlist whose time has come.
+- Vary across energy (visceral vs contemplative), tone, and origin.
 
 ## RULES
 
