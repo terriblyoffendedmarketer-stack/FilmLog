@@ -6,78 +6,178 @@
   {# ── Heading ─────────────────────────────────────────────────────────────── #}
   <div class="tonight-heading-block">
     <h1 class="tonight-heading">What are we watching tonight?</h1>
-    <p class="tonight-sub">Your personalised issue — based on everything I know about your taste.</p>
+    <p class="tonight-sub">Your personal cinema brain — tuned to your taste, calibrated for your mood.</p>
   </div>
 
-  {# ── Simplified calibration form (owner only) ─────────────────────────────── #}
-  {% if is_owner %}
-  <form id="calibration-form" class="calibration-form"
+  {# ── Query Engine: Ask What to Watch ──────────────────────────────────────── #}
+  <form id="calibration-form" class="ask-what-to-watch-form"
     hx-post="/tonight/generate"
     hx-target="#recommendation-result"
     hx-swap="innerHTML"
     hx-indicator="#gen-indicator">
 
-    {# Q1: Who's watching #}
-    <div class="question-block">
-      <div class="question-label">Who's watching?</div>
-      <div class="option-pills" data-field="watch_context">
-        <input type="hidden" name="watch_context" value="">
+    <div class="ask-box-wrap">
+      <textarea name="free_text" id="free-text-input" class="ask-input" rows="2"
+        placeholder="Ask what to watch... (e.g. 'tense slow-burn thriller in the rain', 'something high-energy and fast', or rant about what you DON'T feel like tonight)"
+        autocomplete="off"></textarea>
+    </div>
+
+    {# Context Pills #}
+    <div class="ask-controls-row">
+      <div class="context-pills" data-field="watch_context">
+        <input type="hidden" name="watch_context" value="solo">
         {% for val, label in [
-          ('solo',    'Just me'),
-          ('partner', 'With my partner'),
-          ('family',  'With family'),
-          ('friends', 'With friends'),
+          ('solo',    'Solo Night'),
+          ('partner', 'With Partner'),
+          ('friends', 'With Friends'),
+          ('family',  'With Family'),
         ] %}
-        <button type="button" class="pill" data-value="{{ val }}">{{ label }}</button>
+        <button type="button" class="pill {% if val == 'solo' %}selected{% endif %}" data-value="{{ val }}">{{ label }}</button>
         {% endfor %}
       </div>
     </div>
 
-    {# Optional: say what you're feeling #}
-    <div class="question-block">
-      <div class="question-label">
-        Anything on your mind?
-        <span class="question-optional">(optional — leave blank for a surprise)</span>
-      </div>
-      <input type="text" name="free_text" class="form-input tonight-free-text"
-             placeholder="e.g. tired but want something good, not mindless…"
-             autocomplete="off">
+    {# Quick Mood Shortcuts #}
+    <div class="mood-chips-row">
+      <span class="chips-label">Quick Vibe:</span>
+      <button type="button" class="chip-shortcut" onclick="setVibe('Surprise me with high conviction based on my taste model')">🎲 Taste First</button>
+      <button type="button" class="chip-shortcut" onclick="setVibe('Slow-building existential dread, atmospheric and psychological')">🌧️ Slow-Burn Dread</button>
+      <button type="button" class="chip-shortcut" onclick="setVibe('High-energy, tight pacing, grips immediately')">⚡ Gripping & Fast</button>
+      <button type="button" class="chip-shortcut" onclick="setVibe('Warm, bittersweet storytelling with heart')">☕ Warm & Bittersweet</button>
+      <button type="button" class="chip-shortcut" onclick="setVibe('Under 90 minutes, no fluff')">⏱️ Short & Tight</button>
     </div>
 
-    {# Submit #}
-    <div class="generate-row">
-      <button type="submit" class="btn-generate" id="generate-btn" disabled>
-        Generate issue
+    {# Submit Row #}
+    <div class="ask-submit-row">
+      {% if not is_owner %}
+      <div class="inline-auth-group">
+        <input type="password" name="owner_password" class="inline-password-input" placeholder="Password (8544)">
+        <span class="inline-password-hint">Enter 8544 to generate</span>
+      </div>
+      {% endif %}
+
+      <button type="submit" class="btn-ask-generate" id="generate-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        Ask FilmLog Tonight
       </button>
-      <button type="button" class="btn-cached-reveal" id="cached-btn"
-              style="display:none"
-              hx-get="/tonight/cached"
-              hx-target="#recommendation-result"
-              hx-swap="innerHTML">
-        Your issue is ready
-      </button>
+
       <span id="gen-indicator" class="gen-indicator htmx-indicator">
         <span class="gen-dots"><span></span><span></span><span></span></span>
-        Writing your issue…
+        Calibrating your taste and candidate pool…
       </span>
     </div>
 
   </form>
-  {% endif %}
 
-  {# ── Result area (populated by HTMX) ──────────────────────────────────────── #}
+  {# ── Result area for freshly generated recommendations ────────────────────── #}
   <div id="recommendation-result"></div>
 
-  {# ── Past issues ──────────────────────────────────────────────────────────── #}
-  {% if past_issues %}
+  {# ── Active / Latest Issue Showcase (HERO PICK) ────────────────────────────── #}
+  {% if latest_issue and hero_film %}
+  <div class="hero-issue-container" id="current-hero-issue">
+    <div class="hero-header-badge">
+      <span class="hero-badge">⭐ HERO RECOMMENDATION TONIGHT</span>
+      <span class="issue-badge">Issue #{{ latest_issue.issue_number }} · {{ latest_issue.generated_at[:10] }}</span>
+    </div>
+
+    {# ── Hero Film Card ──────────────────────────────────────────────────────── #}
+    <div class="hero-film-card">
+      <div class="hero-poster-wrapper">
+        {% if hero_film.poster_url %}
+        <img src="{{ hero_film.poster_url }}" alt="{{ hero_film.title }}" class="hero-poster-img" loading="eager">
+        {% else %}
+        <div class="hero-poster-ph">{{ (hero_film.title or '?')[:2] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="hero-content">
+        <div class="hero-label-top">HERO PICK TONIGHT</div>
+        <h2 class="hero-title">
+          <a href="/films/{{ hero_film.tmdb_id }}">{{ hero_film.title }}</a>
+          {% if hero_film.year %}<span class="hero-year">({{ hero_film.year }})</span>{% endif %}
+        </h2>
+
+        <div class="hero-meta">
+          {% if hero_film.runtime %}<span>{{ hero_film.runtime }}m</span>{% endif %}
+          {% if hero_film.language %}<span class="meta-tag">{{ hero_film.language | upper }}</span>{% endif %}
+          {% if hero_film.status %}<span class="status-badge status-{{ hero_film.status }}">{{ hero_film.status_label }}</span>{% endif %}
+        </div>
+
+        {% if hero_film.tagline %}
+        <p class="hero-tagline">“{{ hero_film.tagline }}”</p>
+        {% elif hero_film.overview %}
+        <p class="hero-tagline">{{ hero_film.overview | truncate(160, true, '…') }}</p>
+        {% endif %}
+
+        <div class="hero-actions">
+          <a href="/films/{{ hero_film.tmdb_id }}" class="btn-hero-action btn-hero-primary">
+            ▶ View Film Details
+          </a>
+          <a href="/films/{{ hero_film.tmdb_id }}/notes/edit" class="btn-hero-action btn-hero-secondary">
+            + Add Note / Rating
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {# ── The Other Doors (Companion recommendations) ────────────────────────── #}
+    {% if companion_films %}
+    <div class="companion-doors-section">
+      <div class="doors-header">
+        <span class="doors-title">🚪 The Other Doors Tonight</span>
+        <span class="doors-subtitle">Alternative routes from this recommendation</span>
+      </div>
+
+      <div class="companion-cards-grid">
+        {% for comp in companion_films %}
+        <a href="/films/{{ comp.tmdb_id }}" class="companion-card">
+          <div class="comp-poster">
+            {% if comp.poster_url %}
+            <img src="{{ comp.poster_url }}" alt="{{ comp.title }}" loading="lazy">
+            {% else %}
+            <div class="comp-poster-ph">{{ (comp.title or '?')[:2] }}</div>
+            {% endif %}
+          </div>
+          <div class="comp-info">
+            <div class="comp-title">{{ comp.title }}</div>
+            <div class="comp-meta">{% if comp.year %}{{ comp.year }}{% endif %}{% if comp.language %} · {{ comp.language | upper }}{% endif %}</div>
+            {% if comp.tagline %}
+            <div class="comp-tagline">{{ comp.tagline | truncate(85, true, '…') }}</div>
+            {% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── Full Magazine Editorial ──────────────────────────────────────────────── #}
+    {% if latest_issue.issue_html %}
+    <div class="issue-editorial-container">
+      <div class="editorial-header">
+        <span class="editorial-title">Tonight's Editorial Issue</span>
+      </div>
+      <div class="rec-result-editorial">
+        {{ latest_issue.issue_html }}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+  {# ── Older issues archive ─────────────────────────────────────────────────── #}
+  {% if older_issues %}
   <div class="past-issues-section">
     <div class="section-divider">
       <div class="divider-line"></div>
-      <span class="divider-label">Past issues</span>
+      <span class="divider-label">Previous issues</span>
       <div class="divider-line"></div>
     </div>
 
-    {% for issue in past_issues %}
+    {% for issue in older_issues %}
     <div class="past-issue-card" onclick="toggleIssue({{ issue.id }}, this.querySelector('.past-issue-toggle'))" style="cursor:pointer">
       <div class="past-issue-meta">
         Issue #{{ issue.issue_number }}
@@ -161,93 +261,51 @@
 </div>
 
 <script>
+// ── Quick Vibe Chips ────────────────────────────────────────────────────────
+function setVibe(text) {
+  var input = document.getElementById('free-text-input');
+  if (input) {
+    input.value = text;
+    input.focus();
+  }
+}
+
 // ── Pill selection ──────────────────────────────────────────────────────────
-document.querySelectorAll('.option-pills').forEach(function(group) {
+document.querySelectorAll('.context-pills').forEach(function(group) {
   var input = group.querySelector('input[type=hidden]');
   group.querySelectorAll('.pill').forEach(function(pill) {
     pill.addEventListener('click', function() {
       group.querySelectorAll('.pill').forEach(function(p) { p.classList.remove('selected'); });
       pill.classList.add('selected');
       input.value = pill.dataset.value;
-      checkReady();
     });
   });
 });
 
-function checkReady() {
-  var ctx = document.querySelector('[name=watch_context]');
-  document.getElementById('generate-btn').disabled = !(ctx && ctx.value);
-}
-
 // ── Request lifecycle ───────────────────────────────────────────────────────
 var form = document.getElementById('calibration-form');
-
-form.addEventListener('htmx:beforeRequest', function() {
-  var btn = document.getElementById('generate-btn');
-  btn.disabled = true;
-  btn.textContent = 'Writing…';
-});
-
-form.addEventListener('htmx:afterRequest', function() {
-  var btn = document.getElementById('generate-btn');
-  btn.disabled = false;
-  btn.textContent = 'Generate issue';
-});
-
-form.addEventListener('htmx:afterSwap', function() {
-  var result = document.getElementById('recommendation-result');
-  if (result && result.children.length > 0) {
-    setTimeout(function() {
-      result.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
-  }
-});
-
-// ── Pre-cached issue reveal ─────────────────────────────────────────────────
-// When "solo" is selected with no free text, show a "Your issue is ready"
-// button after 3 seconds if a recent cached issue exists.
-var cachedTimer = null;
-
-function maybeTriggerCachedReveal() {
-  var ctx = document.querySelector('[name=watch_context]').value;
-  var freeText = document.querySelector('[name=free_text]').value.trim();
-  var cachedBtn = document.getElementById('cached-btn');
-  var genBtn = document.getElementById('generate-btn');
-
-  // Clear any pending timer
-  if (cachedTimer) { clearTimeout(cachedTimer); cachedTimer = null; }
-  cachedBtn.style.display = 'none';
-  cachedBtn.classList.remove('cached-visible');
-
-  // Only for solo context with no free text
-  if (ctx === 'solo' && !freeText) {
-    cachedTimer = setTimeout(function() {
-      // Check if a cached issue exists
-      fetch('/tonight/cached', { method: 'HEAD' }).then(function(r) {
-        if (r.ok) {
-          cachedBtn.style.display = '';
-          // Trigger the fade-in animation
-          requestAnimationFrame(function() {
-            cachedBtn.classList.add('cached-visible');
-          });
-        }
-      }).catch(function() {});
-    }, 3000);
-  }
-}
-
-// Hook into pill selection
-document.querySelectorAll('.option-pills .pill').forEach(function(pill) {
-  pill.addEventListener('click', function() {
-    setTimeout(maybeTriggerCachedReveal, 50);
+if (form) {
+  form.addEventListener('htmx:beforeRequest', function() {
+    var btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="gen-dots"><span></span><span></span><span></span></span> Consulting taste brain…';
   });
-});
 
-// Also trigger when free text changes
-document.querySelector('[name=free_text]').addEventListener('input', function() {
-  if (cachedTimer) { clearTimeout(cachedTimer); cachedTimer = null; }
-  document.getElementById('cached-btn').style.display = 'none';
-});
+  form.addEventListener('htmx:afterRequest', function() {
+    var btn = document.getElementById('generate-btn');
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Ask FilmLog Tonight';
+  });
+
+  form.addEventListener('htmx:afterSwap', function() {
+    var result = document.getElementById('recommendation-result');
+    if (result && result.children.length > 0) {
+      setTimeout(function() {
+        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 80);
+    }
+  });
+}
 
 // ── Past issue toggle ───────────────────────────────────────────────────────
 function toggleIssue(id, btn) {

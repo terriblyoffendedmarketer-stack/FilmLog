@@ -3339,6 +3339,446 @@ html, body {
   .hof-layout { padding: 24px 14px 60px; }
 }
 
+/* ── Ask What to Watch Query Engine & Hero Showcase ───────────────────────── */
+.ask-what-to-watch-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 24px;
+  margin-bottom: 40px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.ask-box-wrap {
+  width: 100%;
+}
+
+.ask-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding: 14px 16px;
+  resize: vertical;
+  min-height: 72px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ask-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.ask-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.context-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mood-chips-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.chips-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.chip-shortcut {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  transition: all 0.15s ease;
+}
+
+.chip-shortcut:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.ask-submit-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.inline-auth-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-password-input {
+  width: 130px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: 0.85rem;
+  padding: 8px 12px;
+}
+
+.inline-password-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.btn-ask-generate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  padding: 12px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btn-ask-generate:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-ask-generate:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* ── Hero Issue Container & Showcase ──────────────────────────────────────── */
+.hero-issue-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 56px;
+  animation: fadeSlideIn 0.3s ease;
+}
+
+.hero-header-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 4px 10px;
+  border-radius: 100px;
+  border: 1px solid rgba(224, 116, 58, 0.3);
+}
+
+.issue-badge {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* ── Hero Film Card ────────────────────────────────────────────────────────── */
+.hero-film-card {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 28px;
+  background: linear-gradient(145deg, #181818 0%, #101010 100%);
+  border: 1px solid var(--border-light);
+  border-radius: calc(var(--r) * 1.5);
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  position: relative;
+}
+
+.hero-poster-wrapper {
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  aspect-ratio: 2/3;
+  background: var(--surface-2);
+}
+
+.hero-poster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-poster-ph {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-weight: 700;
+  font-size: 2rem;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hero-label-top {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+.hero-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.hero-title a:hover {
+  color: var(--accent);
+}
+
+.hero-year {
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.meta-tag {
+  background: var(--surface-3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.hero-tagline {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.btn-hero-action {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: var(--r-sm);
+  transition: all 0.15s ease;
+}
+
+.btn-hero-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-hero-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-hero-secondary {
+  background: var(--surface-3);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.btn-hero-secondary:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+/* ── The Other Doors (Companion picks) ─────────────────────────────────────── */
+.companion-doors-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.doors-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.doors-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.doors-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.companion-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.companion-card {
+  display: flex;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.companion-card:hover {
+  border-color: var(--border-light);
+  transform: translateY(-2px);
+}
+
+.comp-poster {
+  width: 54px;
+  height: 80px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.comp-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comp-poster-ph {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.comp-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.comp-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.comp-meta {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.comp-tagline {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Full Magazine Editorial ──────────────────────────────────────────────── */
+.issue-editorial-container {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 28px;
+}
+
+.editorial-header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 600px) {
+  .hero-film-card {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .hero-poster-wrapper {
+    max-width: 150px;
+    margin: 0 auto;
+  }
+  .hero-title {
+    font-size: 1.45rem;
+  }
+  .companion-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Extra small phones */
 @media (max-width: 380px) {
   .film-grid {

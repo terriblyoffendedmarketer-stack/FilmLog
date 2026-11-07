@@ -2,7 +2,7 @@
   "name": "Filmlog",
   "short_name": "Filmlog",
   "description": "A personal taste engine for films",
-  "start_url": "/enrich",
+  "start_url": "/tonight",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",

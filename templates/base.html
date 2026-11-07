@@ -17,8 +17,8 @@
     <a href="/" class="nav-logo">filmlog</a>
 
     <div class="nav-links">
-      <a href="/enrich"        class="nav-link{% if page == 'enrich'       %} active{% endif %}">Enrich</a>
       <a href="/tonight"       class="nav-link{% if page == 'tonight'      %} active{% endif %}">Tonight</a>
+      <a href="/enrich"        class="nav-link{% if page == 'enrich'       %} active{% endif %}">Enrich</a>
       <a href="/films"         class="nav-link{% if page == 'films'        %} active{% endif %}">Films</a>
       <a href="/hall-of-fame"  class="nav-link{% if page == 'hall_of_fame' %} active{% endif %}">Hall of Fame</a>
       <a href="/taste"         class="nav-link{% if page == 'taste'        %} active{% endif %}">Taste</a>
@@ -61,13 +61,13 @@
 
   {# Mobile bottom tab bar — visible only on small screens via CSS #}
   <nav class="mobile-tabs" aria-label="Mobile navigation">
-    <a href="/enrich" class="mobile-tab{% if page == 'enrich' %} active{% endif %}">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-      <span>Enrich</span>
-    </a>
     <a href="/tonight" class="mobile-tab{% if page == 'tonight' %} active{% endif %}">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
       <span>Tonight</span>
+    </a>
+    <a href="/enrich" class="mobile-tab{% if page == 'enrich' %} active{% endif %}">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <span>Enrich</span>
     </a>
     <a href="/films" class="mobile-tab{% if page == 'films' %} active{% endif %}">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></svg>

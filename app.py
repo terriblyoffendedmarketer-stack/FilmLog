@@ -254,7 +254,7 @@ def service_worker():
 
 @app.route("/")
 def index():
-    return redirect("/enrich")
+    return redirect("/tonight")
 
 
 # ---------------------------------------------------------------------------
@@ -277,8 +277,17 @@ ENRICH_PLACEHOLDERS = [
 
 @app.route("/enrich")
 def enrich():
-    queue = db.get_enrichment_queue(limit=1)
+    seen = list(session.get("seen_enrich", []))
+    queue = db.get_enrichment_queue(limit=1, exclude_ids=seen)
+    if not queue and seen:
+        seen = []
+        session["seen_enrich"] = []
+        queue = db.get_enrichment_queue(limit=1)
+
     film = queue[0] if queue else None
+    if film and film["tmdb_id"] not in seen:
+        seen.append(film["tmdb_id"])
+        session["seen_enrich"] = seen
     remaining = db.get_enrichment_count()
     placeholder = random.choice(ENRICH_PLACEHOLDERS)
 
@@ -302,9 +311,22 @@ def enrich_save(tmdb_id: int):
     if user_film and notes and not g.get("visitor_mode"):
         db.update_user_film(user_film["id"], personal_notes=notes)
 
-    # Get next film
-    queue = db.get_enrichment_queue(limit=1)
+    seen = list(session.get("seen_enrich", []))
+    if tmdb_id not in seen:
+        seen.append(tmdb_id)
+    session["seen_enrich"] = seen
+
+    queue = db.get_enrichment_queue(limit=1, exclude_ids=seen)
+    if not queue:
+        seen = [tmdb_id]
+        session["seen_enrich"] = seen
+        queue = db.get_enrichment_queue(limit=1, exclude_ids=seen)
+
     film = queue[0] if queue else None
+    if film and film["tmdb_id"] not in seen:
+        seen.append(film["tmdb_id"])
+        session["seen_enrich"] = seen
+
     remaining = db.get_enrichment_count()
     placeholder = random.choice(ENRICH_PLACEHOLDERS)
 
@@ -318,9 +340,23 @@ def enrich_save(tmdb_id: int):
 
 @app.route("/enrich/<int:tmdb_id>/skip", methods=["POST"])
 def enrich_skip(tmdb_id: int):
-    """Skip without saving, return next card (excluding the skipped film)."""
-    queue = db.get_enrichment_queue(limit=1, exclude_tmdb_id=tmdb_id)
+    """Skip without saving, return next card (advancing through the entire queue)."""
+    seen = list(session.get("seen_enrich", []))
+    if tmdb_id not in seen:
+        seen.append(tmdb_id)
+    session["seen_enrich"] = seen
+
+    queue = db.get_enrichment_queue(limit=1, exclude_ids=seen)
+    if not queue:
+        seen = [tmdb_id]
+        session["seen_enrich"] = seen
+        queue = db.get_enrichment_queue(limit=1, exclude_ids=seen)
+
     film = queue[0] if queue else None
+    if film and film["tmdb_id"] not in seen:
+        seen.append(film["tmdb_id"])
+        session["seen_enrich"] = seen
+
     remaining = db.get_enrichment_count()
     placeholder = random.choice(ENRICH_PLACEHOLDERS)
 
@@ -540,22 +576,36 @@ def update_status(tmdb_id: int):
 
 @app.route("/tonight")
 def tonight():
-    past_issues = db.get_recommendation_history(limit=5)
+    past_issues = db.get_recommendation_history(limit=10)
     # Pre-render markdown and resolve film posters for past issues
     for issue in past_issues:
         film_cards = []
         for tmdb_id in issue.get("films_referenced", [])[:4]:
             film = db.get_film(tmdb_id)
             if film:
-                film_cards.append(film)
+                film_cards.append(_parse_film(film))
         raw_html = _render_md(issue.get("issue_text", ""))
         issue["issue_html"] = _inject_inline_posters(raw_html, film_cards)
         issue["film_cards"] = film_cards
+
+    latest_issue = past_issues[0] if past_issues else None
+    hero_film = None
+    companion_films = []
+    if latest_issue and latest_issue.get("film_cards"):
+        hero_film = latest_issue["film_cards"][0]
+        companion_films = latest_issue["film_cards"][1:4]
+
+    older_issues = past_issues[1:] if len(past_issues) > 1 else []
+
     return render_template(
         "tonight.html",
         page="tonight",
         title="Tonight",
         stats=_get_stats(),
+        latest_issue=latest_issue,
+        hero_film=hero_film,
+        companion_films=companion_films,
+        older_issues=older_issues,
         past_issues=past_issues,
     )
 
@@ -564,12 +614,18 @@ def tonight():
 def tonight_generate():
     """HTMX endpoint: receive calibration answers, stream back the editorial."""
     from flask import g
-    if g.get("visitor_mode"):
-        return '<div class="rec-result-info"><p style="color:var(--muted)">Log in as owner to generate recommendations.</p></div>'
+    owner_pwd = request.form.get("owner_password", "").strip()
+    if owner_pwd and owner_pwd == os.getenv("FILMLOG_PASSWORD", "8544"):
+        session["owner"] = True
+        session.permanent = True
+        g.visitor_mode = False
+    elif g.get("visitor_mode"):
+        return '<div class="rec-result-error"><p>Enter the owner password (8544) above to ask FilmLog.</p></div>'
+
     from filmlog.recommend import generate_web_recommendation
 
     answers = {
-        "watch_context": request.form.get("watch_context", "solo"),
+        "watch_context": request.form.get("watch_context", "solo") or "solo",
         "free_text": request.form.get("free_text", "").strip(),
     }
 
@@ -578,12 +634,15 @@ def tonight_generate():
     # Auto-archive: keep only the 2 most recent issues visible
     db.auto_archive_issues(keep=2)
 
-    # Fetch referenced films for inline posters + bottom strip
+    # Fetch referenced films for inline posters + hero pick + companion doors
     film_cards = []
     for tmdb_id in result.get("films_referenced", [])[:4]:
         film = db.get_film(tmdb_id)
         if film:
-            film_cards.append(film)
+            film_cards.append(_parse_film(film))
+
+    hero_film = film_cards[0] if film_cards else None
+    companion_films = film_cards[1:4] if len(film_cards) > 1 else []
 
     # Render editorial markdown then inject inline posters beside bold titles
     issue_html = ""
@@ -595,7 +654,11 @@ def tonight_generate():
         "partials/recommendation_result.html",
         issue_html=issue_html,
         film_cards=film_cards,
-        **{k: v for k, v in result.items() if k != "issue_text"},
+        hero_film=hero_film,
+        companion_films=companion_films,
+        issue_number=result.get("issue_number"),
+        error=result.get("error"),
+        tier2=result.get("tier2", False),
     )
 
 

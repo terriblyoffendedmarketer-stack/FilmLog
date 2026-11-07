@@ -1,38 +1,103 @@
 {% if error %}
-{# ── Error state ─────────────────────────────────────────────────────────── #}
 <div class="rec-result-error">
   <p>{{ error }}</p>
 </div>
 
 {% else %}
-{# ── Success: editorial ───────────────────────────────────────────────────── #}
-<div class="rec-result">
-
-  <div class="rec-result-meta">
-    <span>Issue #{{ issue_number }}</span>
+<div class="hero-issue-container rec-result-fresh" id="fresh-issue">
+  <div class="hero-header-badge">
+    <span class="hero-badge">⭐ FRESH HERO RECOMMENDATION</span>
+    <span class="issue-badge">Issue #{{ issue_number or 'New' }} · Tonight</span>
     {% if tier2 %}<span class="tier2-badge">offline mode</span>{% endif %}
   </div>
 
-  <div class="rec-result-editorial">{{ issue_html }}</div>
-
-  {# Film picks — small icon-buttons at the bottom #}
-  {% if film_cards %}
-  <div class="rec-issue-films-compact">
-    {% for film in film_cards %}
-    <a href="/films/{{ film.tmdb_id }}" class="rec-film-icon" title="{{ film.title }} ({{ film.year }})">
-      {% if film.poster_url %}
-      <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+  {# ── Hero Film Card ────────────────────────────────────────────────────────── #}
+  {% if hero_film %}
+  <div class="hero-film-card">
+    <div class="hero-poster-wrapper">
+      {% if hero_film.poster_url %}
+      <img src="{{ hero_film.poster_url }}" alt="{{ hero_film.title }}" class="hero-poster-img" loading="eager">
       {% else %}
-      <span class="rec-film-icon-ph">{{ (film.title or '?')[:2] }}</span>
+      <div class="hero-poster-ph">{{ (hero_film.title or '?')[:2] }}</div>
       {% endif %}
-    </a>
-    {% endfor %}
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-label-top">HERO PICK TONIGHT</div>
+      <h2 class="hero-title">
+        <a href="/films/{{ hero_film.tmdb_id }}">{{ hero_film.title }}</a>
+        {% if hero_film.year %}<span class="hero-year">({{ hero_film.year }})</span>{% endif %}
+      </h2>
+
+      <div class="hero-meta">
+        {% if hero_film.runtime %}<span>{{ hero_film.runtime }}m</span>{% endif %}
+        {% if hero_film.language %}<span class="meta-tag">{{ hero_film.language | upper }}</span>{% endif %}
+        {% if hero_film.status %}<span class="status-badge status-{{ hero_film.status }}">{{ hero_film.status_label }}</span>{% endif %}
+      </div>
+
+      {% if hero_film.tagline %}
+      <p class="hero-tagline">“{{ hero_film.tagline }}”</p>
+      {% elif hero_film.overview %}
+      <p class="hero-tagline">{{ hero_film.overview | truncate(160, true, '…') }}</p>
+      {% endif %}
+
+      <div class="hero-actions">
+        <a href="/films/{{ hero_film.tmdb_id }}" class="btn-hero-action btn-hero-primary">
+          ▶ View Film Details
+        </a>
+        <a href="/films/{{ hero_film.tmdb_id }}/notes/edit" class="btn-hero-action btn-hero-secondary">
+          + Add Note / Rating
+        </a>
+      </div>
+    </div>
   </div>
   {% endif %}
 
-  <div class="rec-result-actions">
-    <button type="button" class="btn-ghost" onclick="window.location.reload()">Generate another</button>
-  </div>
+  {# ── The Other Doors (Companion recommendations) ────────────────────────── #}
+  {% if companion_films %}
+  <div class="companion-doors-section">
+    <div class="doors-header">
+      <span class="doors-title">🚪 The Other Doors Tonight</span>
+      <span class="doors-subtitle">Alternative routes from this recommendation</span>
+    </div>
 
+    <div class="companion-cards-grid">
+      {% for comp in companion_films %}
+      <a href="/films/{{ comp.tmdb_id }}" class="companion-card">
+        <div class="comp-poster">
+          {% if comp.poster_url %}
+          <img src="{{ comp.poster_url }}" alt="{{ comp.title }}" loading="lazy">
+          {% else %}
+          <div class="comp-poster-ph">{{ (comp.title or '?')[:2] }}</div>
+          {% endif %}
+        </div>
+        <div class="comp-info">
+          <div class="comp-title">{{ comp.title }}</div>
+          <div class="comp-meta">{% if comp.year %}{{ comp.year }}{% endif %}{% if comp.language %} · {{ comp.language | upper }}{% endif %}</div>
+          {% if comp.tagline %}
+          <div class="comp-tagline">{{ comp.tagline | truncate(85, true, '…') }}</div>
+          {% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Full Magazine Editorial ──────────────────────────────────────────────── #}
+  {% if issue_html %}
+  <div class="issue-editorial-container">
+    <div class="editorial-header">
+      <span class="editorial-title">Tonight's Editorial Issue</span>
+    </div>
+    <div class="rec-result-editorial">
+      {{ issue_html }}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="rec-result-actions" style="margin-top:24px; text-align:center;">
+    <button type="button" class="btn-ghost" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑ Ask for another vibe</button>
+  </div>
 </div>
 {% endif %}

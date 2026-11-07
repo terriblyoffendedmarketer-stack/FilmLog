@@ -1308,19 +1308,33 @@ def get_library_stats() -> dict:
 # Enrichment queue
 # ---------------------------------------------------------------------------
 
-def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None) -> list[dict]:
+def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None, exclude_ids: list[int] | None = None) -> list[dict]:
     """
-    Return watched films that have no personal notes, ordered by rating tier
-    (5★ first, then 4★, then lower, then unrated), randomised within each tier.
-    Optionally exclude a specific tmdb_id (used after skip to avoid showing the same film).
+    Return films that have no personal notes, ordered by priority:
+    1. Watched 5-star films
+    2. Watched 4-star films
+    3. Other watched films
+    4. Watchlist films
+    Optionally exclude tmdb_ids already seen during this browsing session.
     """
     conn = get_connection()
-    exclude_clause = "AND f.tmdb_id != ?" if exclude_tmdb_id else ""
-    params = [exclude_tmdb_id, limit] if exclude_tmdb_id else [limit]
+    excludes = set(exclude_ids or [])
+    if exclude_tmdb_id:
+        excludes.add(exclude_tmdb_id)
+
+    exclude_clause = ""
+    params = []
+    if excludes:
+        placeholders = ",".join(["?"] * len(excludes))
+        exclude_clause = f"AND f.tmdb_id NOT IN ({placeholders})"
+        params.extend(list(excludes))
+
+    # First attempt: watched films without notes
+    params_watched = list(params) + [limit]
     rows = conn.execute(
         f"""
         SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url,
-               uf.rating, uf.personal_notes
+               uf.rating, uf.personal_notes, uf.status
         FROM user_films uf
         JOIN films f ON uf.tmdb_id = f.tmdb_id
         WHERE uf.status = 'watched'
@@ -1340,21 +1354,47 @@ def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None) -
           RANDOM()
         LIMIT ?
         """,
-        params,
+        params_watched,
     ).fetchall()
+
+    results = [dict(r) for r in rows]
+
+    # If watched queue is exhausted for this session, fallback to watchlist films
+    if len(results) < limit:
+        needed = limit - len(results)
+        params_wl = list(params) + [needed]
+        wl_rows = conn.execute(
+            f"""
+            SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url,
+                   uf.rating, uf.personal_notes, uf.status
+            FROM user_films uf
+            JOIN films f ON uf.tmdb_id = f.tmdb_id
+            WHERE uf.status = 'watchlist'
+              AND (uf.personal_notes IS NULL OR uf.personal_notes = '')
+              AND uf.id = (
+                  SELECT MAX(id) FROM user_films u2
+                  WHERE u2.tmdb_id = uf.tmdb_id
+              )
+              {exclude_clause}
+            ORDER BY RANDOM()
+            LIMIT ?
+            """,
+            params_wl,
+        ).fetchall()
+        results.extend([dict(r) for r in wl_rows])
+
     conn.close()
-    return [dict(r) for r in rows]
+    return results
 
 
 def get_enrichment_count() -> int:
-    """Return the number of watched films with no personal notes."""
+    """Return the total number of films with no personal notes."""
     conn = get_connection()
     row = conn.execute(
         """
         SELECT COUNT(*) as n
         FROM user_films uf
-        WHERE uf.status = 'watched'
-          AND (uf.personal_notes IS NULL OR uf.personal_notes = '')
+        WHERE (uf.personal_notes IS NULL OR uf.personal_notes = '')
           AND uf.id = (
               SELECT MAX(id) FROM user_films u2
               WHERE u2.tmdb_id = uf.tmdb_id
