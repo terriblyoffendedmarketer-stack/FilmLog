@@ -210,6 +210,13 @@ def _run_migrations(conn) -> None:
     if "public" not in j_cols:
         conn.execute("ALTER TABLE journals ADD COLUMN public INTEGER NOT NULL DEFAULT 0")
 
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS enrichment_skips (
+            tmdb_id INTEGER PRIMARY KEY,
+            skipped_at TEXT NOT NULL
+        )
+    """)
+
 
 def init_db() -> None:
     """Create all tables if they don't already exist."""
@@ -1322,12 +1329,16 @@ def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None, e
     if exclude_tmdb_id:
         excludes.add(exclude_tmdb_id)
 
+    # Multi-day cooldown for skipped films so they don't fatigue the user
+    recent_skips = get_recently_skipped_tmdb_ids(days=7)
+    excludes_with_skips = excludes | recent_skips
+
     exclude_clause = ""
     params = []
-    if excludes:
-        placeholders = ",".join(["?"] * len(excludes))
+    if excludes_with_skips:
+        placeholders = ",".join(["?"] * len(excludes_with_skips))
         exclude_clause = f"AND f.tmdb_id NOT IN ({placeholders})"
-        params.extend(list(excludes))
+        params.extend(list(excludes_with_skips))
 
     # First attempt: watched films without notes
     params_watched = list(params) + [limit]
@@ -1359,6 +1370,30 @@ def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None, e
 
     results = [dict(r) for r in rows]
 
+    # If recent skips filtered out everything, fall back to session excludes
+    if not results and recent_skips:
+        params_fallback = list(excludes) + [limit]
+        fallback_clause = f"AND f.tmdb_id NOT IN ({','.join(['?']*len(excludes))})" if excludes else ""
+        rows = conn.execute(
+            f"""
+            SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url,
+                   uf.rating, uf.personal_notes, uf.status
+            FROM user_films uf
+            JOIN films f ON uf.tmdb_id = f.tmdb_id
+            WHERE uf.status = 'watched'
+              AND (uf.personal_notes IS NULL OR uf.personal_notes = '')
+              AND uf.id = (
+                  SELECT MAX(id) FROM user_films u2
+                  WHERE u2.tmdb_id = uf.tmdb_id
+              )
+              {fallback_clause}
+            ORDER BY RANDOM()
+            LIMIT ?
+            """,
+            params_fallback,
+        ).fetchall()
+        results = [dict(r) for r in rows]
+
     # If watched queue is exhausted for this session, fallback to watchlist films
     if len(results) < limit:
         needed = limit - len(results)
@@ -1387,19 +1422,132 @@ def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None, e
     return results
 
 
-def get_enrichment_count() -> int:
-    """Return the total number of films with no personal notes."""
-    conn = get_connection()
-    row = conn.execute(
-        """
-        SELECT COUNT(*) as n
-        FROM user_films uf
-        WHERE (uf.personal_notes IS NULL OR uf.personal_notes = '')
-          AND uf.id = (
-              SELECT MAX(id) FROM user_films u2
-              WHERE u2.tmdb_id = uf.tmdb_id
-          )
-        """
-    ).fetchone()
-    conn.close()
-    return row["n"] if row else 0
+def record_enrichment_skip(tmdb_id: int) -> None:
+    """Record a skip with the current UTC timestamp so the film rotates into cooldown."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO enrichment_skips (tmdb_id, skipped_at)
+            VALUES (?, ?)
+            ON CONFLICT(tmdb_id) DO UPDATE SET skipped_at = excluded.skipped_at
+            """,
+            (tmdb_id, now),
+        )
+
+
+def get_recently_skipped_tmdb_ids(days: int = 7) -> set[int]:
+    """Return tmdb_ids skipped within the past N days."""
+    from datetime import datetime, timezone, timedelta
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='enrichment_skips'"
+        ).fetchone()
+        if not row:
+            return set()
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        rows = conn.execute(
+            "SELECT tmdb_id FROM enrichment_skips WHERE skipped_at > ?",
+            (cutoff.isoformat(),)
+        ).fetchall()
+        return {r["tmdb_id"] for r in rows}
+
+
+def get_taste_calibration_stats() -> dict:
+    """Compute gamified calibration level, progress %, and signal counts."""
+    with get_connection() as conn:
+        n_watched = conn.execute("SELECT COUNT(*) FROM user_films WHERE status = 'watched'").fetchone()[0]
+        n_notes = conn.execute("SELECT COUNT(*) FROM user_films WHERE personal_notes IS NOT NULL AND trim(personal_notes) != ''").fetchone()[0]
+        n_ratings = conn.execute("SELECT COUNT(*) FROM user_films WHERE rating IS NOT NULL").fetchone()[0]
+        n_journals = conn.execute("SELECT COUNT(*) FROM journals").fetchone()[0]
+        n_attrs = conn.execute("SELECT COUNT(*) FROM taste_attributes").fetchone()[0]
+
+    raw_points = (n_notes * 3) + (n_ratings * 1) + (n_journals * 4) + (n_attrs * 0.5)
+    target_points = 1200.0
+    pct = min(100, max(18, int((raw_points / target_points) * 100)))
+
+    if pct >= 90:
+        level_title = "Auteur Brain"
+        level_num = 5
+        next_hint = "Taste model fully sharp — logging films maintains calibration"
+    elif pct >= 75:
+        level_title = "Master Cinephile"
+        level_num = 4
+        next_hint = f"{max(1, 10 - (n_notes % 10))} notes until Level 5"
+    elif pct >= 50:
+        level_title = "Auteur Critic"
+        level_num = 3
+        next_hint = f"{max(1, 8 - (n_notes % 8))} notes until Level 4"
+    elif pct >= 25:
+        level_title = "Keen Observer"
+        level_num = 2
+        next_hint = f"{max(1, 5 - (n_notes % 5))} notes until Level 3"
+    else:
+        level_title = "Film Explorer"
+        level_num = 1
+        next_hint = "Log your first notes to calibrate"
+
+    return {
+        "percentage": pct,
+        "level_title": level_title,
+        "level_num": level_num,
+        "next_hint": next_hint,
+        "n_notes": n_notes,
+        "n_watched": n_watched,
+        "n_ratings": n_ratings,
+        "n_journals": n_journals,
+        "n_attrs": n_attrs,
+    }
+
+
+def get_random_taste_insight() -> dict | None:
+    """Pull an evocative thought from past journals or detailed film notes."""
+    import random
+    import re
+    with get_connection() as conn:
+        source_choice = random.choice(["journal", "note"])
+        if source_choice == "journal":
+            row = conn.execute(
+                """
+                SELECT id, title, content, created_at
+                FROM journals
+                WHERE length(content) > 60
+                ORDER BY RANDOM()
+                LIMIT 1
+                """
+            ).fetchone()
+            if row:
+                raw = row["content"].replace("#", "").replace("*", "").strip()
+                sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', raw) if len(s.strip()) > 20]
+                quote = " ".join(sentences[:2]) if sentences else raw[:150]
+                return {
+                    "source_type": "Journal",
+                    "title": row["title"],
+                    "quote": quote,
+                    "date": row["created_at"][:10] if row["created_at"] else "",
+                    "link": f"/journal/{row['id']}",
+                }
+
+        row = conn.execute(
+            """
+            SELECT f.tmdb_id, f.title, f.year, uf.personal_notes
+            FROM user_films uf
+            JOIN films f ON uf.tmdb_id = f.tmdb_id
+            WHERE uf.personal_notes IS NOT NULL AND length(uf.personal_notes) > 40
+            ORDER BY RANDOM()
+            LIMIT 1
+            """
+        ).fetchone()
+        if row:
+            raw = row["personal_notes"].strip()
+            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', raw) if len(s.strip()) > 15]
+            quote = " ".join(sentences[:2]) if sentences else raw[:140]
+            return {
+                "source_type": "Personal Note",
+                "title": f"{row['title']} ({row['year']})",
+                "quote": quote,
+                "date": "",
+                "link": f"/films/{row['tmdb_id']}",
+            }
+    return None

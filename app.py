@@ -290,6 +290,7 @@ def enrich():
         session["seen_enrich"] = seen
     remaining = db.get_enrichment_count()
     placeholder = random.choice(ENRICH_PLACEHOLDERS)
+    calibration = db.get_taste_calibration_stats()
 
     return render_template(
         "enrich.html",
@@ -299,6 +300,7 @@ def enrich():
         film=film,
         remaining=remaining,
         placeholder=placeholder,
+        calibration=calibration,
     )
 
 
@@ -329,22 +331,30 @@ def enrich_save(tmdb_id: int):
 
     remaining = db.get_enrichment_count()
     placeholder = random.choice(ENRICH_PLACEHOLDERS)
+    calibration = db.get_taste_calibration_stats()
 
     return render_template(
         "partials/enrich_card.html",
         film=film,
         remaining=remaining,
         placeholder=placeholder,
+        calibration=calibration,
     )
 
 
 @app.route("/enrich/<int:tmdb_id>/skip", methods=["POST"])
 def enrich_skip(tmdb_id: int):
-    """Skip without saving, return next card (advancing through the entire queue)."""
+    """Skip without saving, record persistent skip cooldown, return next card."""
     seen = list(session.get("seen_enrich", []))
     if tmdb_id not in seen:
         seen.append(tmdb_id)
     session["seen_enrich"] = seen
+
+    # Record persistent cooldown so this film doesn't fatigue the user
+    try:
+        db.record_enrichment_skip(tmdb_id)
+    except Exception:
+        pass
 
     queue = db.get_enrichment_queue(limit=1, exclude_ids=seen)
     if not queue:
@@ -359,12 +369,14 @@ def enrich_skip(tmdb_id: int):
 
     remaining = db.get_enrichment_count()
     placeholder = random.choice(ENRICH_PLACEHOLDERS)
+    calibration = db.get_taste_calibration_stats()
 
     return render_template(
         "partials/enrich_card.html",
         film=film,
         remaining=remaining,
         placeholder=placeholder,
+        calibration=calibration,
     )
 
 
@@ -597,6 +609,14 @@ def tonight():
 
     older_issues = past_issues[1:] if len(past_issues) > 1 else []
 
+    # Gamified taste calibration & ambient taste vault insight
+    calibration = db.get_taste_calibration_stats()
+    taste_insight = db.get_random_taste_insight()
+
+    # Contextual micro-enrich candidate for seamless piping
+    enrich_queue = db.get_enrichment_queue(limit=1)
+    micro_film = _parse_film(enrich_queue[0]) if enrich_queue else None
+
     return render_template(
         "tonight.html",
         page="tonight",
@@ -607,6 +627,41 @@ def tonight():
         companion_films=companion_films,
         older_issues=older_issues,
         past_issues=past_issues,
+        calibration=calibration,
+        taste_insight=taste_insight,
+        micro_film=micro_film,
+    )
+
+
+@app.route("/tonight/micro-enrich/<int:tmdb_id>", methods=["POST"])
+def tonight_micro_enrich(tmdb_id: int):
+    """Save quick notes and optional rating from Tonight's inline micro-enrich card."""
+    from flask import g
+    notes = request.form.get("personal_notes", "").strip()
+    rating = request.form.get("rating")
+    user_film = db.get_user_film_by_tmdb(tmdb_id)
+    if user_film and not g.get("visitor_mode"):
+        kwargs = {}
+        if notes:
+            kwargs["personal_notes"] = notes
+        if rating:
+            try:
+                kwargs["rating"] = int(rating)
+            except ValueError:
+                pass
+        if kwargs:
+            db.update_user_film(user_film["id"], **kwargs)
+
+    # Next candidate for smooth continuous micro-enrichment
+    next_queue = db.get_enrichment_queue(limit=1, exclude_tmdb_id=tmdb_id)
+    next_film = _parse_film(next_queue[0]) if next_queue else None
+    calibration = db.get_taste_calibration_stats()
+
+    return render_template(
+        "partials/micro_enrich_card.html",
+        micro_film=next_film,
+        calibration=calibration,
+        just_saved=True,
     )
 
 

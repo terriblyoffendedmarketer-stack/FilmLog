@@ -9,6 +9,26 @@
     <p class="tonight-sub">Your personal cinema brain — tuned to your taste, calibrated for your mood.</p>
   </div>
 
+  {# ── Taste Calibration Progress Bar ──────────────────────────────────────── #}
+  {% if calibration %}
+  <div class="taste-calibration-bar-widget">
+    <div class="calibration-top-info">
+      <div class="calibration-level-badge">
+        <span class="level-icon">⚡</span>
+        <span class="level-name">Level {{ calibration.level_num }} · {{ calibration.level_title }}</span>
+      </div>
+      <span class="calibration-pct">{{ calibration.percentage }}% Calibrated</span>
+    </div>
+    <div class="calibration-progress-track">
+      <div class="calibration-progress-fill" style="width: {{ calibration.percentage }}%;"></div>
+    </div>
+    <div class="calibration-sub-info">
+      <span>{{ calibration.n_watched }} watched · {{ calibration.n_notes }} personal notes</span>
+      <span class="calibration-hint">{{ calibration.next_hint }}</span>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── Query Engine: Ask What to Watch ──────────────────────────────────────── #}
   <form id="calibration-form" class="ask-what-to-watch-form"
     hx-post="/tonight/generate"
@@ -156,10 +176,11 @@
     {# ── Full Magazine Editorial ──────────────────────────────────────────────── #}
     {% if latest_issue.issue_html %}
     <div class="issue-editorial-container">
-      <div class="editorial-header">
-        <span class="editorial-title">Tonight's Editorial Issue</span>
+      <div class="editorial-masthead">
+        <span class="masthead-title">FILMLOG CRITIQUE · ISSUE #{{ latest_issue.issue_number }}</span>
+        <span class="masthead-date">{{ latest_issue.generated_at[:10] }}</span>
       </div>
-      <div class="rec-result-editorial">
+      <div class="rec-result-editorial magazine-prose">
         {{ latest_issue.issue_html }}
       </div>
     </div>
@@ -167,6 +188,27 @@
 
   </div>
   {% endif %}
+
+  {# ── Taste Vault Ambient Insight ─────────────────────────────────────────── #}
+  {% if taste_insight %}
+  <div class="taste-vault-card">
+    <div class="vault-kicker">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      From Your Taste Vault · {{ taste_insight.source_type }}
+    </div>
+    <blockquote class="vault-quote">“{{ taste_insight.quote }}”</blockquote>
+    <div class="vault-footer">
+      <span class="vault-film-title">{{ taste_insight.title }}</span>
+      {% if taste_insight.date %}<span class="vault-date">{{ taste_insight.date }}</span>{% endif %}
+      <a href="{{ taste_insight.link }}" class="vault-link">Read full entry →</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Psychological Enrich Piping (Micro-Enrich Card) ─────────────────────── #}
+  {% include "partials/micro_enrich_card.html" %}
 
   {# ── Older issues archive ─────────────────────────────────────────────────── #}
   {% if older_issues %}

@@ -21,6 +21,18 @@
     </div>
 
     <form class="enrich-form" hx-post="/enrich/{{ film.tmdb_id }}" hx-target="#enrich-card" hx-swap="outerHTML">
+      <div class="enrich-card-stars-row">
+        <span class="stars-label">Your Rating:</span>
+        <div class="micro-star-picker">
+          {% for star in [1, 2, 3, 4, 5] %}
+          <label class="star-label">
+            <input type="radio" name="rating" value="{{ star }}" {% if film.rating == star %}checked{% endif %}>
+            <span class="star-icon">★</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
       <textarea
         name="personal_notes"
         class="enrich-textarea"
@@ -29,18 +41,23 @@
         autofocus
       ></textarea>
       <div class="enrich-actions">
-        <button type="submit" class="btn-primary enrich-save">Save</button>
+        <button type="submit" class="btn-primary enrich-save">+1 Save Note</button>
         <button type="button" class="btn-ghost enrich-skip"
                 hx-post="/enrich/{{ film.tmdb_id }}/skip"
-                hx-target="#enrich-card" hx-swap="outerHTML">Skip</button>
+                hx-target="#enrich-card" hx-swap="outerHTML">Skip (7-day cooldown)</button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-  // Update remaining count
-  document.querySelector('.enrich-progress span').textContent = '{{ remaining }} films need notes';
+  // Update calibration bar if present
+  var fill = document.querySelector('.calibration-progress-fill');
+  if (fill && '{{ calibration.percentage if calibration else '' }}') {
+    fill.style.width = '{{ calibration.percentage }}%';
+    var pctText = document.querySelector('.calibration-pct');
+    if (pctText) pctText.textContent = '{{ calibration.percentage }}% Calibrated';
+  }
   // Auto-focus the textarea
   setTimeout(function() {
     var ta = document.querySelector('.enrich-textarea');

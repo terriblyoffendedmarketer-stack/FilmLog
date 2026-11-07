@@ -3,11 +3,26 @@
 {% block content %}
 <div class="enrich-layout">
 
-  {% if film %}
-  <div class="enrich-progress">
-    <span>{{ remaining }} films need notes</span>
+  {% if calibration %}
+  <div class="taste-calibration-bar-widget" style="margin-bottom: 24px;">
+    <div class="calibration-top-info">
+      <div class="calibration-level-badge">
+        <span class="level-icon">⚡</span>
+        <span class="level-name">Level {{ calibration.level_num }} · {{ calibration.level_title }}</span>
+      </div>
+      <span class="calibration-pct">{{ calibration.percentage }}% Calibrated</span>
+    </div>
+    <div class="calibration-progress-track">
+      <div class="calibration-progress-fill" style="width: {{ calibration.percentage }}%;"></div>
+    </div>
+    <div class="calibration-sub-info">
+      <span>{{ remaining }} films need notes</span>
+      <span class="calibration-hint">{{ calibration.next_hint }}</span>
+    </div>
   </div>
+  {% endif %}
 
+  {% if film %}
   <div id="enrich-card" class="enrich-card">
     <!-- Poster background -->
     <div class="enrich-poster">

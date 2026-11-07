@@ -1,0 +1,80 @@
+<div class="micro-enrich-wrap" id="micro-enrich-container">
+  {% if just_saved %}
+  <div class="micro-enrich-toast">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--watched)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    <span><strong>+1 Taste Signal Calibrated!</strong> Your taste lens is now {{ calibration.percentage }}% sharp.</span>
+  </div>
+  {% endif %}
+
+  {% if micro_film %}
+  <div class="micro-enrich-card">
+    <div class="micro-enrich-header">
+      <div class="micro-badge-group">
+        <span class="micro-kicker">Sharpen Tonight's Algorithm</span>
+        <span class="micro-level-pill">Level {{ calibration.level_num }} · {{ calibration.level_title }} ({{ calibration.percentage }}%)</span>
+      </div>
+      <a href="/enrich" class="micro-deck-link">Open Full Deck ({{ calibration.n_watched - calibration.n_notes }} left) →</a>
+    </div>
+
+    <p class="micro-enrich-prompt">
+      Tonight's issue was curated from your past notes. Logging your verdict on <strong>{{ micro_film.title }}</strong> directly tunes tomorrow's candidate pool:
+    </p>
+
+    <form class="micro-enrich-form"
+          hx-post="/tonight/micro-enrich/{{ micro_film.tmdb_id }}"
+          hx-target="#micro-enrich-container"
+          hx-swap="outerHTML">
+
+      <div class="micro-film-row">
+        <div class="micro-poster">
+          {% if micro_film.poster_url %}
+          <img src="{{ micro_film.poster_url }}" alt="{{ micro_film.title }}" loading="lazy">
+          {% else %}
+          <div class="micro-poster-ph">{{ micro_film.title[:2] }}</div>
+          {% endif %}
+        </div>
+
+        <div class="micro-inputs">
+          <div class="micro-title-bar">
+            <span class="micro-film-title">{{ micro_film.title }}</span>
+            {% if micro_film.year %}<span class="micro-film-year">({{ micro_film.year }})</span>{% endif %}
+            
+            <div class="micro-star-picker">
+              {% for star in [1, 2, 3, 4, 5] %}
+              <label class="star-label">
+                <input type="radio" name="rating" value="{{ star }}" {% if micro_film.rating == star %}checked{% endif %}>
+                <span class="star-icon">★</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <input type="text" name="personal_notes" class="micro-notes-input"
+                 placeholder="Quick verdict... (e.g. 'unbearable tension', 'great third act', 'didn't click with pacing')"
+                 autocomplete="off">
+        </div>
+      </div>
+
+      <div class="micro-form-actions">
+        <button type="submit" class="btn-micro-save">
+          +1 Calibrate Brain
+        </button>
+        <button type="button" class="btn-micro-skip"
+                hx-post="/enrich/{{ micro_film.tmdb_id }}/skip"
+                hx-target="#micro-enrich-container"
+                hx-swap="innerHTML">
+          Skip for now
+        </button>
+        <span class="micro-hint">{{ calibration.next_hint }}</span>
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <div class="micro-enrich-caught-up">
+    <span class="micro-badge-done">✨ All Caught Up</span>
+    <p>Every watched film in your library has notes. Your taste model is fully calibrated!</p>
+  </div>
+  {% endif %}
+</div>

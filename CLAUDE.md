@@ -31,6 +31,7 @@
 - `filmlog.db` — SQLite database with 137 watched and 897 watchlist films
 - `public/` & `static/` — CSS, `visitor.js`, `manifest.json`, `sw.js`, and PWA icons
 - `scripts/sync_jellyfin.py` — Matches local Jellyfin library & merges personal comments into DB
+- `scripts/test_filmlog_e2e.py` — Comprehensive end-to-end verification test suite
 - `taste_model.md` — Synthesized markdown taste profile for recommendation context
 
 ---
@@ -45,6 +46,9 @@ flask --app app run --debug --port 5001
 
 # 3. Jellyfin sync
 python3 scripts/sync_jellyfin.py
+
+# 4. End-to-end verification
+python3 scripts/test_filmlog_e2e.py
 ```
 
 ### Environment Variables (.env / Vercel Settings)
