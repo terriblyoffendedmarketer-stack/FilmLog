@@ -38,20 +38,7 @@
 
     {# Full expanded view #}
     <div id="full-{{ issue.id }}" style="display:none" onclick="event.stopPropagation()">
-      <div class="rec-result-editorial">{{ issue.issue_html }}</div>
-      {% if issue.film_cards %}
-      <div class="rec-issue-films-compact" style="margin-top:16px;">
-        {% for film in issue.film_cards %}
-        <a href="/films/{{ film.tmdb_id }}" class="rec-film-icon" title="{{ film.title }} ({{ film.year }})">
-          {% if film.poster_url %}
-          <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
-          {% else %}
-          <span class="rec-film-icon-ph">{{ (film.title or '?')[:2] }}</span>
-          {% endif %}
-        </a>
-        {% endfor %}
-      </div>
-      {% endif %}
+      {% include "partials/magazine_issue.html" %}
       {% if is_owner %}
       <div class="past-issue-actions">
         <button type="button" class="btn-rewrite"

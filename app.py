@@ -11,11 +11,12 @@ Prod:  gunicorn -w 2 'app:app'
 import json
 import os
 import re
+from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 
 import markdown as md_lib
-from flask import Flask, abort, redirect, render_template, request, session, url_for
+from flask import Flask, abort, g, redirect, render_template, request, session, url_for
 from markupsafe import Markup
 from dotenv import load_dotenv
 
@@ -201,6 +202,135 @@ def _strip_md(text: str) -> str:
     t = re.sub(r"\n{2,}", " ", t)
     t = re.sub(r"\s+", " ", t)
     return t.strip()
+
+
+def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
+    """
+    Parse an editorial issue into a cohesive Sight & Sound style magazine article:
+    - headline: Evocative title from markdown '# ' header or synthesized from films
+    - intro_html: Opening atmosphere deck
+    - hero: Centerpiece recommendation with parsed film card and sell prose
+    - companions: List of companion dispatches with parsed film card, role label, and sell prose
+    - outro_html: Closing editorial benediction
+    """
+    text = (issue_dict.get("issue_text") or "").strip()
+    if not text:
+        return {
+            "id": issue_dict.get("id"),
+            "issue_number": issue_dict.get("issue_number", 1),
+            "generated_at": issue_dict.get("generated_at", ""),
+            "headline": "Tonight's Editorial Issue",
+            "intro_html": "",
+            "hero": None,
+            "companions": [],
+            "outro_html": "",
+            "raw_html": "",
+            "tier2": issue_dict.get("tier2", False),
+            "issue_text": "",
+        }
+
+    # Extract # Headline if present
+    headline_match = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
+    headline = headline_match.group(1).strip() if headline_match else None
+
+    body_text = text
+    if headline:
+        body_text = re.sub(r"^#\s+.+\n*", "", body_text, count=1).strip()
+
+    paragraphs = [p.strip() for p in body_text.split("\n\n") if p.strip()]
+
+    intro_paras = []
+    film_paras = []
+    outro_paras = []
+
+    bold_pattern = re.compile(r"\*\*([^*]+)\*\*")
+
+    seen_films = False
+    for i, p in enumerate(paragraphs):
+        has_bold = bool(bold_pattern.search(p))
+        is_heading = bool(re.match(r"^#{2,4}\s+", p))
+
+        if has_bold or is_heading:
+            seen_films = True
+            film_paras.append(p)
+        elif not seen_films:
+            intro_paras.append(p)
+        else:
+            outro_paras.append(p)
+
+    intro_text = "\n\n".join(intro_paras).strip()
+    outro_text = "\n\n".join(outro_paras).strip()
+
+    hero_section = None
+    companion_sections = []
+
+    for idx, p in enumerate(film_paras):
+        b_match = bold_pattern.search(p)
+        film_name = b_match.group(1).strip() if b_match else ""
+        clean_p = re.sub(r"^#{2,4}\s*.*?\n*", "", p).strip()
+
+        matched_film = None
+        for fc in film_cards:
+            t = (fc.get("title") or "").lower()
+            fn = film_name.lower()
+            if t and fn and (t in fn or fn in t):
+                matched_film = fc
+                break
+        if not matched_film and idx < len(film_cards):
+            matched_film = film_cards[idx]
+
+        sell_html = Markup(md_lib.markdown(clean_p, extensions=["nl2br"]))
+
+        if idx == 0:
+            hero_section = {
+                "film": matched_film,
+                "sell_html": sell_html,
+            }
+        else:
+            labels = ["The Alternative Route", "The Vault Wildcard", "The Midnight Door"]
+            label = labels[min(idx - 1, len(labels) - 1)]
+            companion_sections.append({
+                "film": matched_film,
+                "sell_html": sell_html,
+                "label": label,
+            })
+
+    if not hero_section and film_cards:
+        hero_section = {
+            "film": film_cards[0],
+            "sell_html": Markup(md_lib.markdown(body_text, extensions=["nl2br"])),
+        }
+        if len(film_cards) > 1:
+            companion_sections = [{
+                "film": fc,
+                "sell_html": "",
+                "label": "The Alternative Route"
+            } for fc in film_cards[1:3]]
+
+    if not headline:
+        if hero_section and hero_section.get("film") and hero_section["film"].get("title"):
+            hero_title = hero_section["film"]["title"]
+            headline = f"The Centerpiece: {hero_title}"
+        else:
+            headline = "Tonight's Editorial Selection"
+
+    intro_html = Markup(md_lib.markdown(intro_text, extensions=["nl2br"])) if intro_text else ""
+    outro_html = Markup(md_lib.markdown(outro_text, extensions=["nl2br"])) if outro_text else ""
+    raw_html = _render_md(text)
+
+    return {
+        "id": issue_dict.get("id"),
+        "issue_number": issue_dict.get("issue_number", 1),
+        "generated_at": issue_dict.get("generated_at", ""),
+        "headline": headline,
+        "intro_html": intro_html,
+        "hero": hero_section,
+        "companions": companion_sections,
+        "outro_html": outro_html,
+        "raw_html": raw_html,
+        "issue_text": text,
+        "tier2": issue_dict.get("tier2", False),
+    }
 
 
 app.jinja_env.filters["strip_md"] = _strip_md
@@ -589,25 +719,21 @@ def update_status(tmdb_id: int):
 @app.route("/tonight")
 def tonight():
     past_issues = db.get_recommendation_history(limit=10)
-    # Pre-render markdown and resolve film posters for past issues
-    for issue in past_issues:
+    parsed_issues = []
+    for raw_issue in past_issues:
         film_cards = []
-        for tmdb_id in issue.get("films_referenced", [])[:4]:
+        for tmdb_id in raw_issue.get("films_referenced", [])[:4]:
             film = db.get_film(tmdb_id)
             if film:
                 film_cards.append(_parse_film(film))
-        raw_html = _render_md(issue.get("issue_text", ""))
-        issue["issue_html"] = _inject_inline_posters(raw_html, film_cards)
-        issue["film_cards"] = film_cards
+        parsed = _parse_magazine_issue(raw_issue, film_cards)
+        parsed["film_cards"] = film_cards
+        parsed_issues.append(parsed)
 
-    latest_issue = past_issues[0] if past_issues else None
-    hero_film = None
-    companion_films = []
-    if latest_issue and latest_issue.get("film_cards"):
-        hero_film = latest_issue["film_cards"][0]
-        companion_films = latest_issue["film_cards"][1:4]
-
-    older_issues = past_issues[1:] if len(past_issues) > 1 else []
+    latest_issue = parsed_issues[0] if parsed_issues else None
+    hero_film = latest_issue.get("hero", {}).get("film") if (latest_issue and latest_issue.get("hero")) else None
+    companion_films = [c["film"] for c in latest_issue.get("companions", []) if c.get("film")] if latest_issue else []
+    older_issues = parsed_issues[1:] if len(parsed_issues) > 1 else []
 
     # Gamified taste calibration & ambient taste vault insight
     calibration = db.get_taste_calibration_stats()
@@ -626,10 +752,12 @@ def tonight():
         hero_film=hero_film,
         companion_films=companion_films,
         older_issues=older_issues,
-        past_issues=past_issues,
+        past_issues=parsed_issues,
         calibration=calibration,
         taste_insight=taste_insight,
         micro_film=micro_film,
+        visitor_mode=g.get("visitor_mode", False),
+        is_owner=not g.get("visitor_mode", False),
     )
 
 
@@ -699,16 +827,19 @@ def tonight_generate():
     hero_film = film_cards[0] if film_cards else None
     companion_films = film_cards[1:4] if len(film_cards) > 1 else []
 
-    # Render editorial markdown then inject inline posters beside bold titles
-    issue_html = ""
-    if result.get("issue_text"):
-        raw_html = _render_md(result["issue_text"])
-        issue_html = _inject_inline_posters(raw_html, film_cards)
+    issue_data = {
+        "id": None,
+        "issue_number": result.get("issue_number", "New"),
+        "issue_text": result.get("issue_text", ""),
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "tier2": result.get("tier2", False),
+    }
+    magazine_issue = _parse_magazine_issue(issue_data, film_cards)
+    magazine_issue["film_cards"] = film_cards
 
     return render_template(
         "partials/recommendation_result.html",
-        issue_html=issue_html,
-        film_cards=film_cards,
+        issue=magazine_issue,
         hero_film=hero_film,
         companion_films=companion_films,
         issue_number=result.get("issue_number"),
@@ -740,16 +871,14 @@ def tonight_cached():
     for tmdb_id in issue.get("films_referenced", [])[:4]:
         film = db.get_film(tmdb_id)
         if film:
-            film_cards.append(film)
+            film_cards.append(_parse_film(film))
 
-    raw_html = _render_md(issue.get("issue_text", ""))
-    issue_html = _inject_inline_posters(raw_html, film_cards)
+    magazine_issue = _parse_magazine_issue(issue, film_cards)
+    magazine_issue["film_cards"] = film_cards
 
     return render_template(
         "partials/recommendation_result.html",
-        issue_html=issue_html,
-        film_cards=film_cards,
-        issue_number=issue.get("issue_number"),
+        issue=magazine_issue,
         cached=True,
     )
 
@@ -777,16 +906,14 @@ def tonight_rewrite(issue_id: int):
     for tmdb_id in issue.get("films_referenced", [])[:4]:
         film = db.get_film(tmdb_id)
         if film:
-            film_cards.append(film)
+            film_cards.append(_parse_film(film))
 
-    raw_html = _render_md(result["issue_text"])
-    issue_html = _inject_inline_posters(raw_html, film_cards)
+    magazine_issue = _parse_magazine_issue(issue, film_cards)
+    magazine_issue["film_cards"] = film_cards
 
     return render_template(
         "partials/recommendation_result.html",
-        issue_html=issue_html,
-        film_cards=film_cards,
-        issue_number=issue.get("issue_number"),
+        issue=magazine_issue,
         tier2=False,
         error=None,
     )
@@ -816,21 +943,22 @@ def tonight_unarchive(issue_id: int):
 def tonight_archived():
     """View archived recommendation issues."""
     archived = db.get_archived_issues(limit=50)
+    parsed_archived = []
     for issue in archived:
         film_cards = []
         for tmdb_id in issue.get("films_referenced", [])[:4]:
             film = db.get_film(tmdb_id)
             if film:
-                film_cards.append(film)
-        raw_html = _render_md(issue.get("issue_text", ""))
-        issue["issue_html"] = _inject_inline_posters(raw_html, film_cards)
-        issue["film_cards"] = film_cards
+                film_cards.append(_parse_film(film))
+        parsed = _parse_magazine_issue(issue, film_cards)
+        parsed["film_cards"] = film_cards
+        parsed_archived.append(parsed)
     return render_template(
         "tonight_archived.html",
         page="tonight",
         title="Archived Issues",
         stats=_get_stats(),
-        archived_issues=archived,
+        archived_issues=parsed_archived,
     )
 
 
