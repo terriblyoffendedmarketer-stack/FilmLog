@@ -29,6 +29,32 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32).hex())
 app.permanent_session_lifetime = 60 * 60 * 24 * 365  # 1 year
 
 
+# Middleware to handle Vercel serverless / proxy prefix rewriting
+class VercelPathMiddleware:
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get("PATH_INFO", "")
+        for prefix in ["/app.py", "/app", "/api/index.py", "/api/index"]:
+            if path == prefix:
+                path = "/"
+                break
+            elif path.startswith(prefix + "/"):
+                path = path[len(prefix):]
+                break
+
+        if not path or not path.startswith("/"):
+            path = "/" + path
+
+        environ["PATH_INFO"] = path
+        environ["SCRIPT_NAME"] = ""
+        return self.wsgi_app(environ, start_response)
+
+
+app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
+
+
 # ---------------------------------------------------------------------------
 # Auth — read-only for visitors, full access for owner
 # ---------------------------------------------------------------------------
