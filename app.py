@@ -206,12 +206,12 @@ def _strip_md(text: str) -> str:
 
 def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
     """
-    Parse an editorial issue into a cohesive Sight & Sound style magazine article:
-    - headline: Evocative title from markdown '# ' header or synthesized from films
-    - intro_html: Opening atmosphere deck
-    - hero: Centerpiece recommendation with parsed film card and sell prose
-    - companions: List of companion dispatches with parsed film card, role label, and sell prose
-    - outro_html: Closing editorial benediction
+    Parse an editorial issue into ONE cohesive Sight & Sound style magazine essay:
+    - headline: Thematic title from markdown '# ' header or synthesized from films
+    - essay_html: Unified essay prose where the Hero gets the biggest inline image real estate
+      and companion films get compact inline images, flowing naturally without separate bucket cards.
+    - hero_film: The anchor film
+    - companion_films: Alternative recommendations
     """
     text = (issue_dict.get("issue_text") or "").strip()
     if not text:
@@ -220,11 +220,10 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
             "issue_number": issue_dict.get("issue_number", 1),
             "generated_at": issue_dict.get("generated_at", ""),
             "headline": "Tonight's Editorial Issue",
-            "intro_html": "",
-            "hero": None,
-            "companions": [],
-            "outro_html": "",
-            "raw_html": "",
+            "essay_html": Markup(""),
+            "film_cards": film_cards,
+            "hero_film": None,
+            "companion_films": [],
             "tier2": issue_dict.get("tier2", False),
             "issue_text": "",
         }
@@ -237,97 +236,116 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
     if headline:
         body_text = re.sub(r"^#\s+.+\n*", "", body_text, count=1).strip()
 
+    # Strip any artificial subheadings (## or ###) from earlier formats so it reads as ONE unified essay
+    body_text = re.sub(r"^#{2,4}\s*.*?\n*", "", body_text, flags=re.MULTILINE)
+
     paragraphs = [p.strip() for p in body_text.split("\n\n") if p.strip()]
-
-    intro_paras = []
-    film_paras = []
-    outro_paras = []
-
     bold_pattern = re.compile(r"\*\*([^*]+)\*\*")
 
-    seen_films = False
+    rendered_blocks = []
+    seen_film_ids = []
+
     for i, p in enumerate(paragraphs):
-        has_bold = bool(bold_pattern.search(p))
-        is_heading = bool(re.match(r"^#{2,4}\s+", p))
-
-        if has_bold or is_heading:
-            seen_films = True
-            film_paras.append(p)
-        elif not seen_films:
-            intro_paras.append(p)
-        else:
-            outro_paras.append(p)
-
-    intro_text = "\n\n".join(intro_paras).strip()
-    outro_text = "\n\n".join(outro_paras).strip()
-
-    hero_section = None
-    companion_sections = []
-
-    for idx, p in enumerate(film_paras):
-        b_match = bold_pattern.search(p)
-        film_name = b_match.group(1).strip() if b_match else ""
-        clean_p = re.sub(r"^#{2,4}\s*.*?\n*", "", p).strip()
-
-        matched_film = None
-        for fc in film_cards:
-            t = (fc.get("title") or "").lower()
-            fn = film_name.lower()
-            if t and fn and (t in fn or fn in t):
-                matched_film = fc
+        matches = bold_pattern.findall(p)
+        matched_fc = None
+        for m in matches:
+            clean_m = re.sub(r"\s*\(\d{4}\)\s*$", "", m).strip().lower()
+            for fc in film_cards:
+                t = (fc.get("title") or "").lower()
+                if t and (clean_m in t or t in clean_m) and fc.get("tmdb_id") not in seen_film_ids:
+                    matched_fc = fc
+                    seen_film_ids.append(fc["tmdb_id"])
+                    break
+            if matched_fc:
                 break
-        if not matched_film and idx < len(film_cards):
-            matched_film = film_cards[idx]
 
-        sell_html = Markup(md_lib.markdown(clean_p, extensions=["nl2br"]))
+        # Fallback to sequential film_cards if a bold title didn't directly match
+        if not matched_fc and matches and len(seen_film_ids) < len(film_cards):
+            matched_fc = film_cards[len(seen_film_ids)]
+            seen_film_ids.append(matched_fc.get("tmdb_id"))
 
-        if idx == 0:
-            hero_section = {
-                "film": matched_film,
-                "sell_html": sell_html,
-            }
+        figure_html = ""
+        if matched_fc:
+            is_hero = (len(seen_film_ids) == 1)
+            poster = matched_fc.get("poster_url", "")
+            title = matched_fc.get("title", "")
+            year = str(matched_fc.get("year") or "")
+            tmdb_id = str(matched_fc.get("tmdb_id") or "")
+            runtime = f"{matched_fc.get('runtime')}m" if matched_fc.get("runtime") else ""
+            lang = (matched_fc.get("language") or "").upper()
+
+            meta_parts = [x for x in [year, runtime, lang] if x]
+            meta_str = " · ".join(meta_parts)
+
+            if is_hero:
+                img_tag = (
+                    f'<img src="{poster}" alt="{title}" class="hero-figure-img" loading="eager">'
+                    if poster
+                    else f'<div class="figure-poster-ph">{title[:2]}</div>'
+                )
+                figure_html = (
+                    f'<figure class="hero-inline-figure">'
+                    f'<a href="/films/{tmdb_id}" class="figure-poster-link">{img_tag}</a>'
+                    f'<figcaption class="hero-figure-caption">'
+                    f'<span class="hero-figure-badge">★ HERO RECOMMENDATION</span>'
+                    f'<span class="figure-title"><a href="/films/{tmdb_id}">{title}</a></span>'
+                    f'<span class="figure-meta">{meta_str}</span>'
+                    f'<a href="/films/{tmdb_id}" class="figure-action-link">View Film Details →</a>'
+                    f'</figcaption>'
+                    f'</figure>'
+                )
+            else:
+                img_tag = (
+                    f'<img src="{poster}" alt="{title}" class="companion-figure-img" loading="lazy">'
+                    if poster
+                    else f'<div class="figure-poster-ph">{title[:2]}</div>'
+                )
+                figure_html = (
+                    f'<figure class="companion-inline-figure">'
+                    f'<a href="/films/{tmdb_id}" class="figure-poster-link">{img_tag}</a>'
+                    f'<figcaption class="companion-figure-caption">'
+                    f'<span class="companion-figure-badge">COMPANION DOOR</span>'
+                    f'<span class="figure-title"><a href="/films/{tmdb_id}">{title}</a></span>'
+                    f'<span class="figure-meta">{meta_str}</span>'
+                    f'<a href="/films/{tmdb_id}" class="figure-action-link">Explore →</a>'
+                    f'</figcaption>'
+                    f'</figure>'
+                )
+
+        p_html = md_lib.markdown(p)
+        is_last = (i == len(paragraphs) - 1 and not matches and len(seen_film_ids) > 0)
+        if is_last:
+            rendered_blocks.append(
+                f'<div class="essay-signoff-block"><div class="signoff-glyph">✦ · ✦ · ✦</div><div class="signoff-prose">{p_html}</div></div>'
+            )
+        elif figure_html:
+            rendered_blocks.append(
+                f'<div class="essay-paragraph-block clearfix">{figure_html}{p_html}</div>'
+            )
         else:
-            labels = ["The Alternative Route", "The Vault Wildcard", "The Midnight Door"]
-            label = labels[min(idx - 1, len(labels) - 1)]
-            companion_sections.append({
-                "film": matched_film,
-                "sell_html": sell_html,
-                "label": label,
-            })
+            rendered_blocks.append(f'<div class="essay-paragraph-block">{p_html}</div>')
 
-    if not hero_section and film_cards:
-        hero_section = {
-            "film": film_cards[0],
-            "sell_html": Markup(md_lib.markdown(body_text, extensions=["nl2br"])),
-        }
-        if len(film_cards) > 1:
-            companion_sections = [{
-                "film": fc,
-                "sell_html": "",
-                "label": "The Alternative Route"
-            } for fc in film_cards[1:3]]
+    hero_film = film_cards[0] if film_cards else None
+    companion_films = film_cards[1:] if len(film_cards) > 1 else []
 
     if not headline:
-        if hero_section and hero_section.get("film") and hero_section["film"].get("title"):
-            hero_title = hero_section["film"]["title"]
-            headline = f"The Centerpiece: {hero_title}"
+        if hero_film and hero_film.get("title"):
+            headline = f"The Focus: {hero_film['title']}"
         else:
             headline = "Tonight's Editorial Selection"
 
-    intro_html = Markup(md_lib.markdown(intro_text, extensions=["nl2br"])) if intro_text else ""
-    outro_html = Markup(md_lib.markdown(outro_text, extensions=["nl2br"])) if outro_text else ""
-    raw_html = _render_md(text)
+    essay_html = Markup("\n".join(rendered_blocks))
 
     return {
         "id": issue_dict.get("id"),
         "issue_number": issue_dict.get("issue_number", 1),
         "generated_at": issue_dict.get("generated_at", ""),
         "headline": headline,
-        "intro_html": intro_html,
-        "hero": hero_section,
-        "companions": companion_sections,
-        "outro_html": outro_html,
-        "raw_html": raw_html,
+        "essay_html": essay_html,
+        "hero_film": hero_film,
+        "companion_films": companion_films,
+        "film_cards": film_cards,
+        "raw_html": _render_md(text),
         "issue_text": text,
         "tier2": issue_dict.get("tier2", False),
     }

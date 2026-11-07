@@ -689,7 +689,7 @@ html, body {
 
 /* ── Tonight page ────────────────────────────────────────────────────────── */
 .tonight-layout {
-  max-width: 660px;
+  max-width: 780px;
   margin: 0 auto;
   padding: 52px 24px 100px;
 }
@@ -4196,21 +4196,22 @@ html, body {
   .pill { padding: 9px 12px; font-size: 0.78rem; }
 }
 
-/* ── Sight & Sound Editorial Magazine Article ──────────────────────────────── */
+/* ── Sight & Sound Editorial Magazine Article (Unified Thematic Essay) ──────── */
 .magazine-issue-article {
   background: linear-gradient(180deg, #171717 0%, #111111 100%);
   border: 1px solid var(--border-light);
   border-radius: calc(var(--r) * 1.5);
-  padding: 36px 40px;
+  padding: 38px 40px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
   position: relative;
   overflow: hidden;
-  margin-bottom: 24px;
+  box-sizing: border-box;
+  margin-bottom: 32px;
 }
 
 .issue-masthead {
-  padding-bottom: 24px;
-  margin-bottom: 30px;
+  padding-bottom: 22px;
+  margin-bottom: 28px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -4223,6 +4224,7 @@ html, body {
 }
 
 .masthead-badge {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -4235,17 +4237,20 @@ html, body {
 }
 
 .masthead-issue-no {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted);
 }
 
 .masthead-date {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 0.8rem;
   color: var(--text-dim);
 }
 
 .masthead-offline {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 0.7rem;
   color: #f59e0b;
   background: rgba(245, 158, 11, 0.1);
@@ -4255,326 +4260,219 @@ html, body {
 
 .issue-editorial-headline {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 2.15rem;
+  font-size: clamp(1.75rem, 3.5vw, 2.35rem);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.25;
   color: #f5eee6;
-  margin-bottom: 16px;
+  margin: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
-.issue-lead-deck {
+/* ── Unified Essay Body ─────────────────────────────────────────────────────── */
+.magazine-essay-body {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.15rem;
-  line-height: 1.85;
-  color: #d1cbc4;
-  margin-bottom: 6px;
+  font-size: 1.08rem;
+  line-height: 1.88;
+  color: #ded9d2;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
-/* Centerpiece Hero Feature */
-.issue-hero-centerpiece {
-  margin-bottom: 36px;
-  padding: 28px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: var(--r);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+.magazine-essay-body p {
+  margin: 0 0 20px 0;
 }
 
-.hero-centerpiece-grid {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 32px;
-  align-items: start;
+.magazine-essay-body strong {
+  color: #ffffff;
+  font-weight: 700;
 }
 
-.hero-image-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.magazine-essay-body em {
+  color: #f0e6dc;
+  font-style: italic;
 }
 
-.hero-poster-frame {
-  border-radius: var(--r);
-  overflow: hidden;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.75);
+.essay-paragraph-block {
+  margin-bottom: 22px;
+  position: relative;
+}
+
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* ── Hero Inline Figure (Largest Image Real Estate) ─────────────────────────── */
+.hero-inline-figure {
+  float: right;
+  width: 220px;
+  margin: 4px 0 20px 28px;
   background: var(--surface-2);
-  aspect-ratio: 2/3;
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+  box-sizing: border-box;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.hero-poster-frame:hover {
+.hero-inline-figure:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.88);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
 }
 
-.hero-poster-img {
+.figure-poster-link {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  aspect-ratio: 2/3;
+}
+
+.hero-figure-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.hero-poster-fallback {
+.figure-poster-ph {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
-  color: var(--text-dim);
-  font-weight: 700;
-}
-
-.hero-poster-tagline {
-  font-size: 0.82rem;
-  color: var(--text-dim);
-  font-style: italic;
-  line-height: 1.45;
-  text-align: center;
-}
-
-.hero-prose-column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.hero-kicker-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.hero-kicker-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.hero-film-heading {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 2rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.hero-film-heading a {
-  color: #fff;
-  transition: color 0.15s ease;
-}
-
-.hero-film-heading a:hover {
-  color: var(--accent);
-}
-
-.hero-film-year {
-  font-size: 1.2rem;
-  font-weight: 400;
   color: var(--text-dim);
-  margin-left: 8px;
 }
 
-.hero-film-metadata {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
-
-.meta-pill {
-  background: var(--surface-3);
-  padding: 2px 7px;
-  border-radius: 4px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.meta-status {
-  font-size: 0.74rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 100px;
-  border: 1px solid var(--border);
-}
-
-.hero-critique-prose {
-  font-size: 1.05rem;
-  line-height: 1.88;
-  color: #dddad5;
-  margin-top: 6px;
-}
-
-.hero-article-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-  flex-wrap: wrap;
-}
-
-/* Companion Dispatches */
-.issue-companions-section {
-  margin-top: 36px;
-  margin-bottom: 28px;
-}
-
-.companions-banner {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.banner-rule {
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.banner-text {
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.companions-dispatch-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.companion-dispatch-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 20px;
+.hero-figure-caption {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  gap: 4px;
+  padding: 10px 4px 4px;
+  text-align: left;
 }
 
-.companion-dispatch-card:hover {
-  border-color: var(--border-light);
-  transform: translateY(-2px);
-}
-
-.companion-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.companion-label-badge {
-  font-size: 0.72rem;
+.hero-figure-badge {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--accent);
+  text-transform: uppercase;
 }
 
-.companion-card-body {
-  display: flex;
-  gap: 16px;
-  align-items: start;
-}
-
-.companion-poster-box {
-  width: 76px;
-  height: 114px;
-  flex-shrink: 0;
-  border-radius: var(--r-sm);
-  overflow: hidden;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
-  background: var(--surface-2);
-}
-
-.companion-poster-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.companion-poster-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.companion-text-box {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-}
-
-.companion-film-title {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.15rem;
+.hero-figure-caption .figure-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.95rem;
   font-weight: 700;
   line-height: 1.25;
 }
 
-.companion-film-title a {
+.hero-figure-caption .figure-title a {
   color: #fff;
+  transition: color 0.15s ease;
 }
 
-.companion-film-title a:hover {
+.hero-figure-caption .figure-title a:hover {
   color: var(--accent);
 }
 
-.companion-year {
-  font-size: 0.82rem;
-  font-weight: 400;
-  color: var(--text-dim);
-  margin-left: 4px;
-}
-
-.companion-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.hero-figure-caption .figure-meta {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 0.74rem;
   color: var(--text-dim);
 }
 
-.companion-prose {
-  font-size: 0.94rem;
-  line-height: 1.7;
-  color: #c9c5bf;
-}
-
-.companion-link-row {
-  margin-top: 6px;
-}
-
-.companion-explore-link {
-  font-size: 0.8rem;
+.figure-action-link {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--accent);
+  margin-top: 4px;
+  display: inline-block;
   transition: color 0.15s ease;
 }
 
-.companion-explore-link:hover {
+.figure-action-link:hover {
   text-decoration: underline;
 }
 
-/* Editorial Sign-off */
-.issue-editorial-signoff {
+/* ── Companion Inline Figures (Compact Thumbnail Real Estate) ────────────────── */
+.companion-inline-figure {
+  float: right;
+  width: 125px;
+  margin: 4px 0 16px 22px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.companion-inline-figure:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-light);
+}
+
+.companion-figure-img {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+
+.companion-figure-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 2px 2px;
+  text-align: left;
+}
+
+.companion-figure-badge {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.companion-figure-caption .figure-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.companion-figure-caption .figure-title a {
+  color: #fff;
+  transition: color 0.15s ease;
+}
+
+.companion-figure-caption .figure-title a:hover {
+  color: var(--accent);
+}
+
+.companion-figure-caption .figure-meta {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* ── Closing Sign-off Block ─────────────────────────────────────────────────── */
+.essay-signoff-block {
   margin-top: 36px;
   padding-top: 24px;
   border-top: 1px solid var(--border);
@@ -4582,40 +4480,44 @@ html, body {
 }
 
 .signoff-glyph {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   letter-spacing: 0.25em;
   color: var(--accent);
   margin-bottom: 12px;
 }
 
-.signoff-text {
+.signoff-prose {
   font-family: Georgia, 'Times New Roman', serif;
   font-style: italic;
-  font-size: 1.05rem;
-  color: #aaa49c;
-  line-height: 1.6;
+  font-size: 1.08rem;
+  color: #b5afa7;
+  line-height: 1.7;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
+/* ── Responsive adjustments for all devices ─────────────────────────────────── */
+@media (max-width: 680px) {
+  .tonight-layout {
+    padding: 24px 14px 60px;
+  }
   .magazine-issue-article {
-    padding: 24px 20px;
+    padding: 26px 18px;
   }
   .issue-editorial-headline {
-    font-size: 1.65rem;
+    font-size: 1.6rem;
   }
-  .hero-centerpiece-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
+  .magazine-essay-body {
+    font-size: 1.02rem;
+    line-height: 1.78;
   }
-  .hero-image-column {
-    max-width: 190px;
-    margin: 0 auto;
+  .hero-inline-figure {
+    float: none;
+    width: 100%;
+    max-width: 200px;
+    margin: 0 auto 20px;
   }
-  .hero-film-heading {
-    font-size: 1.55rem;
-  }
-  .companions-dispatch-grid {
-    grid-template-columns: 1fr;
+  .companion-inline-figure {
+    float: right;
+    width: 105px;
+    margin: 4px 0 12px 14px;
   }
 }

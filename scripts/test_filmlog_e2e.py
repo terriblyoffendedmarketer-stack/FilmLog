@@ -84,9 +84,9 @@ def run_all_tests():
     assert "ask-what-to-watch-form" in html, "Ask what to watch form missing"
     assert "taste-calibration-bar-widget" in html, "Calibration bar missing"
     assert "magazine-issue-article" in html, "Magazine issue article missing"
-    assert "issue-hero-centerpiece" in html, "Hero centerpiece missing"
+    assert "hero-inline-figure" in html, "Hero inline figure missing"
     assert "micro-enrich-wrap" in html, "Micro-enrich card missing"
-    print("  ✓ /tonight renders Editorial Magazine Issue, Hero Centerpiece, Ask Form, Calibration Bar, and Micro-Enrich card")
+    print("  ✓ /tonight renders Unified Magazine Essay, Inline Hero Figure, Ask Form, Calibration Bar, and Micro-Enrich card")
 
     # 7. Micro-Enrichment POST Endpoint
     print("\n[Test 7] Tonight Micro-Enrichment endpoint...")
@@ -111,7 +111,7 @@ def run_all_tests():
     assert r_gen.status_code == 200
     gen_html = r_gen.data.decode("utf-8")
     assert "magazine-issue-article" in gen_html, "Magazine issue missing in fresh generation"
-    assert "issue-hero-centerpiece" in gen_html, "Hero centerpiece missing in fresh generation"
+    assert "hero-inline-figure" in gen_html, "Hero inline figure missing in fresh generation"
     print("  ✓ Recommendation issue generated, hero selected, and logged to DB")
 
     print("\n" + "=" * 60)
