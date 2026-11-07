@@ -4,7 +4,6 @@
 <div class="error-page">
   <h1>404</h1>
   <p>That film isn't in the library.</p>
-  <p style="color:#666;font-size:12px;">Path: {{ request.path }} | URI: {{ request.environ.get('REQUEST_URI') }} | Matched: {{ request.environ.get('HTTP_X_MATCHED_PATH') }} | Raw: {{ request.environ.get('RAW_URI') }}</p>
   <a href="/films">← Back to Films</a>
 </div>
 
