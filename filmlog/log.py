@@ -31,7 +31,8 @@ from filmlog import db, tmdb as tmdb_client
 
 load_dotenv(override=True)
 
-TASTE_LOG_PATH = Path(__file__).parent.parent / "taste_log.md"
+DATA_DIR = Path(os.getenv("FILMLOG_DATA_DIR", Path(__file__).parent.parent))
+TASTE_LOG_PATH = DATA_DIR / "taste_log.md"
 
 # How many new films trigger an auto-rescan suggestion
 RESCAN_SUGGESTION_THRESHOLD = 5

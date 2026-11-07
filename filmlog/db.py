@@ -11,7 +11,17 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 # Database lives at the repo root, next to taste_log.md and taste_model.md
-DB_PATH = Path(__file__).parent.parent / "filmlog.db"
+# Can be overridden via FILMLOG_DATA_DIR (e.g. /data on Fly.io) or VERCEL environment
+DATA_DIR = Path(os.getenv("FILMLOG_DATA_DIR", Path(__file__).parent.parent))
+
+if os.getenv("VERCEL"):
+    import shutil
+    TMP_DB_PATH = Path("/tmp/filmlog.db")
+    if not TMP_DB_PATH.exists() and (DATA_DIR / "filmlog.db").exists():
+        shutil.copy2(DATA_DIR / "filmlog.db", TMP_DB_PATH)
+    DB_PATH = TMP_DB_PATH
+else:
+    DB_PATH = DATA_DIR / "filmlog.db"
 
 
 # ---------------------------------------------------------------------------

@@ -29,7 +29,8 @@ from filmlog import db, log as log_module
 
 load_dotenv(override=True)
 
-TASTE_MODEL_PATH = Path(__file__).parent.parent / "taste_model.md"
+DATA_DIR = Path(os.getenv("FILMLOG_DATA_DIR", Path(__file__).parent.parent))
+TASTE_MODEL_PATH = DATA_DIR / "taste_model.md"
 
 
 # ---------------------------------------------------------------------------

@@ -301,7 +301,7 @@ The main prompt is `RECOMMENDATION_PROMPT` in `filmlog/recommend.py` (line ~271)
 | `default_taste_attributes` backfill | **Done.** All 514 films have Haiku-inferred attributes. `filmlog/attributes.py` handles batch + single-film inference. |
 | Engagement/hookability reframe | **Done.** Renamed `cognitive_load` → `engagement`. New hookability rubric. All 514 films computed. |
 | Enrichment screen | **Done.** Default landing page at `/enrich`. Full-screen poster card, notes field, HTMX card swap. |
-| Deployment | **Live.** PythonAnywhere free tier at prashil3k.pythonanywhere.com. `wsgi.py` + `deploy.md`. |
+| Deployment | **Updated.** Moved from PythonAnywhere (which expired) to Fly.io / Vercel container architecture. Dockerfile, fly.toml, and vercel.json added. |
 | PWA manifest | **Done.** `manifest.json`, icons, service worker (caches app shell + posters), apple-mobile-web-app meta. Installed on phone. |
 | Relational navigation depth | **Mostly done.** Attribute chips → search. Past issues → model version. Remaining: dedicated attribute→films page. |
 | Visitor mode | **Done.** Visitors browse everything, edit notes/ratings/status (localStorage). Owner-only: add film, generate recs, journal CRUD, delete/correct. Journal entries have public/private toggle. |
