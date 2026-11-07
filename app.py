@@ -675,7 +675,7 @@ def tonight_generate():
         session.permanent = True
         g.visitor_mode = False
     elif g.get("visitor_mode"):
-        return '<div class="rec-result-error"><p>Enter the owner password (8544) above to ask FilmLog.</p></div>'
+        return '<div class="rec-result-error"><p>Please enter the owner password above to generate an issue.</p></div>'
 
     from filmlog.recommend import generate_web_recommendation
 

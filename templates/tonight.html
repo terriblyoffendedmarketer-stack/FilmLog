@@ -71,8 +71,8 @@
     <div class="ask-submit-row">
       {% if not is_owner %}
       <div class="inline-auth-group">
-        <input type="password" name="owner_password" class="inline-password-input" placeholder="Password (8544)">
-        <span class="inline-password-hint">Enter 8544 to generate</span>
+        <input type="password" name="owner_password" class="inline-password-input" placeholder="Owner password" autocomplete="current-password">
+        <span class="inline-password-hint">Owner unlock</span>
       </div>
       {% endif %}
 
