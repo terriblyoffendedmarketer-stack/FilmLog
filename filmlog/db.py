@@ -30,7 +30,16 @@ else:
 
 def get_connection() -> sqlite3.Connection:
     """Return a sqlite3 connection with row_factory set for dict-like access."""
-    conn = sqlite3.connect(DB_PATH)
+    target_path = DB_PATH
+    if os.getenv("VERCEL"):
+        import shutil
+        tmp_path = Path("/tmp/filmlog.db")
+        if not tmp_path.exists() and (DATA_DIR / "filmlog.db").exists():
+            shutil.copy2(DATA_DIR / "filmlog.db", tmp_path)
+        if tmp_path.exists():
+            target_path = tmp_path
+
+    conn = sqlite3.connect(target_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")  # safe for concurrent reads

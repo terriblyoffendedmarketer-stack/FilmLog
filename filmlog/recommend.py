@@ -404,21 +404,11 @@ def _load_taste_model() -> str:
     return TASTE_MODEL_PATH.read_text(encoding="utf-8")
 
 
+from filmlog.ai import call_ai
+
 def _call_claude_opus(prompt: str) -> str:
-    """Call Claude Opus to generate the recommendation issue."""
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set.")
-
-    import anthropic
-    client = anthropic.Anthropic(api_key=api_key)
-
-    message = client.messages.create(
-        model="claude-opus-4-7",
-        max_tokens=1024,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return message.content[0].text.strip()
+    """Generate the recommendation issue using configured AI (Gemini or Anthropic)."""
+    return call_ai(prompt, max_tokens=1500)
 
 
 import re as _re
@@ -555,10 +545,10 @@ def generate_issue() -> None:
         click.echo("Run: python main.py ingest-all   to import your saved lists.\n")
         return
 
-    # ── 4. Try Claude Opus — fall back to Tier 2 if unavailable ─────────────
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    # ── 4. Try AI — fall back to Tier 2 if unavailable ──────────────────────
+    has_ai = bool(os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
 
-    if not api_key or not taste_model:
+    if not has_ai or not taste_model:
         _tier2_recommendation(cluster)
         return
 
@@ -644,10 +634,10 @@ def generate_web_recommendation(answers: dict) -> dict:
             ),
         }
 
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    has_ai = bool(os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
 
     # ── Tier 2 fallback — no live API ────────────────────────────────────────
-    if not api_key:
+    if not has_ai:
         picks = recommend_from_model(cluster=cluster, limit=3)
         if not picks:
             return {
@@ -758,8 +748,8 @@ def precache_issues(count: int = 2) -> list[dict]:
 
     Returns list of generated issue dicts.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
+    has_ai = bool(os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
+    if not has_ai:
         return []
 
     taste_model = _load_taste_model()
@@ -845,9 +835,9 @@ def rewrite_issue(issue_id: int) -> dict:
     if not film_ids:
         return {"issue_text": "", "error": "No films linked to this issue."}
 
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return {"issue_text": "", "error": "ANTHROPIC_API_KEY not set."}
+    has_ai = bool(os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
+    if not has_ai:
+        return {"issue_text": "", "error": "AI API key not set."}
 
     taste_model = _load_taste_model()
 

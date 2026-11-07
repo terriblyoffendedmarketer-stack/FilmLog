@@ -186,22 +186,9 @@ def _parse_natural_language_query(query: str) -> dict:
     Use Claude Haiku to parse a natural language query into filter params.
     Falls back to empty dict (no filters) if API is unavailable.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return {"free_text": query}
-
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=256,
-            messages=[{
-                "role": "user",
-                "content": NL_QUERY_PROMPT.format(query=query)
-            }]
-        )
-        raw = message.content[0].text.strip()
+        from filmlog.ai import call_ai
+        raw = call_ai(NL_QUERY_PROMPT.format(query=query), max_tokens=256)
         if raw.startswith("```"):
             raw = re.sub(r"^```[a-z]*\n?", "", raw)
             raw = re.sub(r"\n?```$", "", raw).strip()

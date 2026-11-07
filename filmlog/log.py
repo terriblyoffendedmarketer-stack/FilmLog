@@ -66,25 +66,12 @@ Return ONLY a JSON array of strings, no explanation:
 
 def infer_default_attributes(title: str, year: int | None) -> list[str]:
     """Call Claude Haiku to infer default taste attributes for a film."""
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return []  # Graceful degradation — no attributes if key missing
-
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=256,
-            messages=[{
-                "role": "user",
-                "content": ATTRIBUTE_PROMPT.format(
-                    title=title,
-                    year=year or "unknown year"
-                )
-            }]
+        from filmlog.ai import call_ai
+        raw = call_ai(
+            ATTRIBUTE_PROMPT.format(title=title, year=year or "unknown year"),
+            max_tokens=256
         )
-        raw = message.content[0].text.strip()
         # Strip markdown code fences if present
         if raw.startswith("```"):
             raw = raw.split("```")[1]

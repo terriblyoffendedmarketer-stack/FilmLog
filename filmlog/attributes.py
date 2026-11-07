@@ -60,23 +60,11 @@ def infer_attributes_batch(films: list[dict]) -> dict[int, list[str]]:
     Returns {tmdb_id: [attr1, attr2, ...]} for successfully inferred films.
     Batch size should be 10–15 for best results.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set.")
-
-    import anthropic
-    client = anthropic.Anthropic(api_key=api_key)
+    from filmlog.ai import call_ai
 
     film_list = _format_films_for_prompt(films)
     prompt = ATTRIBUTE_PROMPT.format(film_list=film_list)
-
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = message.content[0].text.strip()
+    raw = call_ai(prompt, max_tokens=2048)
 
     # Strip markdown fencing if present
     if raw.startswith("```"):

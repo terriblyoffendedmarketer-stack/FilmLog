@@ -237,26 +237,12 @@ Here is Prashil's complete film log:
 # Generate model
 # ---------------------------------------------------------------------------
 
+from filmlog.ai import call_ai
+
 def _call_claude_opus(prompt: str) -> str:
-    """Call Claude Opus for taste model generation."""
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set.\n"
-            "Add it to your .env file: ANTHROPIC_API_KEY=your_key_here"
-        )
-
-    import anthropic
-    client = anthropic.Anthropic(api_key=api_key)
-
-    click.echo("  Calling Claude Opus (this takes ~30 seconds) …")
-
-    message = client.messages.create(
-        model="claude-opus-4-7",
-        max_tokens=8192,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return message.content[0].text
+    """Call AI (Gemini or Anthropic) for taste model generation."""
+    click.echo("  Calling AI taste model generation …")
+    return call_ai(prompt, max_tokens=8192)
 
 
 ATTR_EXTRACT_PROMPT = """Read this taste model and extract structured taste attributes for database storage.
@@ -284,22 +270,11 @@ Return ONLY valid JSON array."""
 
 def _extract_attributes_via_haiku(model_text: str) -> list[dict]:
     """
-    Fallback: extract structured attributes from prose taste model using Claude Haiku.
-    Used when the main Opus call didn't produce the JSON block.
+    Fallback: extract structured attributes from prose taste model using configured AI.
+    Used when the main call didn't produce the JSON block.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        return []
-
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": ATTR_EXTRACT_PROMPT.format(model_text=model_text)}]
-        )
-        raw = message.content[0].text.strip()
+        raw = call_ai(ATTR_EXTRACT_PROMPT.format(model_text=model_text), max_tokens=4096)
         if raw.startswith("```"):
             raw = re.sub(r"^```[a-z]*\n?", "", raw)
             raw = re.sub(r"\n?```$", "", raw)
@@ -307,7 +282,7 @@ def _extract_attributes_via_haiku(model_text: str) -> list[dict]:
         result = json.loads(raw)
         return result if isinstance(result, list) else []
     except Exception as e:
-        click.echo(f"  ⚠ Haiku attribute extraction failed: {e}", err=True)
+        click.echo(f"  ⚠ Attribute extraction failed: {e}", err=True)
         return []
 
 

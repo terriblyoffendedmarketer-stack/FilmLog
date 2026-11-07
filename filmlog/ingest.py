@@ -120,17 +120,7 @@ def parse_entries(raw_text: str) -> list[dict]:
     Splits large files into chunks to stay within output token limits.
     Returns a list of entry dicts.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set.\n"
-            "Add it to your .env file: ANTHROPIC_API_KEY=your_key_here\n"
-            "Get a key at https://console.anthropic.com/settings/keys"
-        )
-
-    import anthropic
-    client = anthropic.Anthropic(api_key=api_key)
-
+    from filmlog.ai import call_ai
     # Split into chunks of PARSE_CHUNK_LINES lines to avoid output token overflow
     lines = raw_text.splitlines()
     chunks = []
@@ -389,23 +379,9 @@ def _infer_metadata_batch(entries: list[dict]) -> list[dict]:
             entry["tier"] = "auto"
         return entries
 
-    import anthropic
-    client = anthropic.Anthropic(api_key=api_key)
-
-    film_list = "\n".join(
-        f"- {e.get('title', 'Unknown')}" +
-        (f" ({e['year']})" if e.get("year") else "") +
-        (f" [{e['country_hint']}]" if e.get("country_hint") else "")
-        for e in entries
-    )
-
     try:
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": METADATA_PROMPT.format(film_list=film_list)}]
-        )
-        raw = message.content[0].text.strip()
+        from filmlog.ai import call_ai
+        raw = call_ai(METADATA_PROMPT.format(film_list=film_list), max_tokens=2048)
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
