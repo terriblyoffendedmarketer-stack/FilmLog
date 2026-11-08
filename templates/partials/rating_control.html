@@ -1,21 +1,40 @@
 <div class="detail-rating" id="rating-section">
-  <div class="star-rating-inline">
-    {% for i in range(1, 6) %}
-    <button type="button" class="star-btn-sm{% if current_rating and current_rating >= i %} active{% endif %}"
-            hx-post="/films/{{ tmdb_id }}/rating"
+  <div class="star-rating-inline" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+    <div style="display: flex; align-items: center;">
+      {% for i in range(1, 6) %}
+      <button type="button" class="star-btn-sm{% if current_rating and current_rating >= i %} active{% endif %}"
+              hx-post="/films/{{ tmdb_id }}/rating"
+              hx-target="#rating-section"
+              hx-swap="outerHTML"
+              hx-vals='{"rating": "{{ i }}"}'
+              title="{{ i }} star{{ 's' if i > 1 }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="{% if current_rating and current_rating >= i %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+      </button>
+      {% endfor %}
+      {% if current_rating %}
+      <span class="star-rating-label" style="margin-left: 6px;">{{ current_rating }}★</span>
+      {% else %}
+      <span class="star-rating-label star-rating-unrated" style="margin-left: 6px;">unrated</span>
+      {% endif %}
+    </div>
+
+    {% if is_owner %}
+    <button type="button"
+            class="btn-ghost btn-sm hof-toggle-btn{% if current_hof %} active{% endif %}"
+            hx-post="/films/{{ tmdb_id }}/toggle-hof"
             hx-target="#rating-section"
             hx-swap="outerHTML"
-            hx-vals='{"rating": "{{ i }}"}'
-            title="{{ i }} star{{ 's' if i > 1 }}">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="{% if current_rating and current_rating >= i %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="1.5">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-      </svg>
+            title="Toggle Hall of Fame"
+            style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 0.78rem; border-radius: 999px; {% if current_hof %}background: rgba(229,169,59,0.18); color: var(--accent); border-color: rgba(229,169,59,0.4); font-weight: 600;{% else %}opacity: 0.7;{% endif %}">
+      <span>🏆</span>
+      <span>{% if current_hof %}Hall of Fame{% else %}Add to Hall of Fame{% endif %}</span>
     </button>
-    {% endfor %}
-    {% if current_rating %}
-    <span class="star-rating-label">{{ current_rating }}★{% if current_rating == 5 %} hall of fame{% endif %}</span>
-    {% else %}
-    <span class="star-rating-label star-rating-unrated">unrated</span>
+    {% elif current_hof %}
+    <span class="hof-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; font-size: 0.75rem; border-radius: 999px; background: rgba(229,169,59,0.18); color: var(--accent); border: 1px solid rgba(229,169,59,0.4); font-weight: 600;">
+      🏆 Hall of Fame
+    </span>
     {% endif %}
   </div>
 </div>

@@ -73,8 +73,12 @@ CREATE TABLE IF NOT EXISTS user_films (
     date_added TEXT,
     date_watched TEXT,
     personal_notes TEXT,
+    jellyfin_notes TEXT,
     watch_context TEXT CHECK(watch_context IN ('solo', 'family', 'partner', 'friends')),
-    source TEXT                     -- 'mubi_import', 'keep_import', 'manual', etc.
+    source TEXT,                    -- 'mubi_import', 'keep_import', 'manual', etc.
+    rating INTEGER,
+    hall_of_fame INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS taste_attributes (
@@ -170,6 +174,34 @@ def _ensure_fts_tables(conn) -> None:
             conn.executescript(ddl)
 
 
+def _migrate_jellyfin_comments(conn) -> None:
+    """Move Jellyfin-generated descriptions out of personal_notes into jellyfin_notes."""
+    from pathlib import Path
+    import json
+    comments_path = Path.home() / "Documents" / "Claude Code" / "Jellyfin Mac" / "jellyfin-mac-setup" / "film_comments.json"
+    if not comments_path.exists():
+        return
+    try:
+        with open(comments_path) as f:
+            data = json.load(f)
+        jellyfin_texts = set()
+        for cat, fdict in data.items():
+            for ftitle, comm in fdict.items():
+                if comm and comm.strip():
+                    jellyfin_texts.add(comm.strip())
+
+        rows = conn.execute("SELECT id, personal_notes FROM user_films WHERE personal_notes IS NOT NULL").fetchall()
+        for r in rows:
+            pnote = (r["personal_notes"] or "").strip()
+            if pnote in jellyfin_texts:
+                conn.execute(
+                    "UPDATE user_films SET jellyfin_notes = ?, personal_notes = NULL WHERE id = ?",
+                    (pnote, r["id"])
+                )
+    except Exception as e:
+        print("Note: Jellyfin comments migration skipped:", e)
+
+
 def _run_migrations(conn) -> None:
     """Add columns that may not exist in older databases."""
     film_cols = {r[1] for r in conn.execute("PRAGMA table_info(films)").fetchall()}
@@ -209,6 +241,19 @@ def _run_migrations(conn) -> None:
     if "updated_at" not in uf_cols:
         conn.execute("ALTER TABLE user_films ADD COLUMN updated_at TEXT")
         conn.execute("UPDATE user_films SET updated_at = date_added WHERE updated_at IS NULL")
+
+    if "hall_of_fame" not in uf_cols:
+        conn.execute("ALTER TABLE user_films ADD COLUMN hall_of_fame INTEGER NOT NULL DEFAULT 0")
+        # Initialize existing watched 5-star / loved films as Hall of Fame
+        conn.execute("""
+            UPDATE user_films SET hall_of_fame = 1
+            WHERE status = 'watched' AND (rating = 5 OR source LIKE 'loved_%')
+        """)
+
+    if "jellyfin_notes" not in uf_cols:
+        conn.execute("ALTER TABLE user_films ADD COLUMN jellyfin_notes TEXT")
+        # Migrate Jellyfin generated comments to jellyfin_notes so personal_notes stays pure
+        _migrate_jellyfin_comments(conn)
 
     j_cols = {r[1] for r in conn.execute("PRAGMA table_info(journals)").fetchall()}
     if "public" not in j_cols:
@@ -293,6 +338,12 @@ def update_film_backdrop(tmdb_id: int, backdrop_url: str) -> None:
     with get_connection() as conn:
         conn.execute("UPDATE films SET backdrop_url = ? WHERE tmdb_id = ?", (backdrop_url, tmdb_id))
         _fts_index_film(conn, tmdb_id)
+
+
+def update_film_backdrop(tmdb_id: int, backdrop_url: str) -> None:
+    """Update backdrop_url for a film."""
+    with get_connection() as conn:
+        conn.execute("UPDATE films SET backdrop_url = ? WHERE tmdb_id = ?", (backdrop_url, tmdb_id))
 
 
 def set_film_taste_attributes(tmdb_id: int, attributes: list[str]) -> None:
@@ -412,6 +463,8 @@ def add_user_film(
     date_watched: str | None = None,
     rewatch: bool = False,
     rating: int | None = None,
+    hall_of_fame: int = 0,
+    jellyfin_notes: str | None = None,
 ) -> int:
     """Add a user_film entry. Returns the new row id."""
     if status == "rewatch_candidate":
@@ -422,10 +475,10 @@ def add_user_film(
         cursor = conn.execute(
             """
             INSERT INTO user_films
-                (tmdb_id, status, rewatch, date_added, date_watched, personal_notes, watch_context, source, rating)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (tmdb_id, status, rewatch, date_added, date_watched, personal_notes, jellyfin_notes, watch_context, source, rating, hall_of_fame)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (tmdb_id, status, int(rewatch), now, date_watched, personal_notes, watch_context, source, rating),
+            (tmdb_id, status, int(rewatch), now, date_watched, personal_notes, jellyfin_notes, watch_context, source, rating, int(hall_of_fame)),
         )
         return cursor.lastrowid
 
@@ -433,7 +486,7 @@ def add_user_film(
 def update_user_film(row_id: int, **kwargs) -> None:
     """Update specific fields on a user_film row."""
     allowed = {
-        "status", "rewatch", "date_watched", "personal_notes", "watch_context", "source", "rating"
+        "status", "rewatch", "date_watched", "personal_notes", "jellyfin_notes", "watch_context", "source", "rating", "hall_of_fame"
     }
     updates = {k: v for k, v in kwargs.items() if k in allowed}
     if not updates:
@@ -495,15 +548,16 @@ def get_watched_films() -> list[dict]:
 
 
 def get_hall_of_fame() -> list[dict]:
-    """Return all films rated 5 stars (Hall of Fame), joined with film metadata."""
+    """Return all films designated as Hall of Fame (deeply moving taste anchors)."""
     with get_connection() as conn:
         rows = conn.execute(
             """
             SELECT f.*, uf.id as user_film_id, uf.status, uf.rewatch, uf.date_added,
-                   uf.date_watched, uf.personal_notes, uf.watch_context, uf.source, uf.rating
+                   uf.date_watched, uf.personal_notes, uf.jellyfin_notes, uf.watch_context,
+                   uf.source, uf.rating, uf.hall_of_fame
             FROM user_films uf
             JOIN films f ON uf.tmdb_id = f.tmdb_id
-            WHERE uf.rating = 5
+            WHERE uf.hall_of_fame = 1
               AND uf.id = (
                   SELECT MAX(id) FROM user_films u2
                   WHERE u2.tmdb_id = uf.tmdb_id
@@ -512,6 +566,18 @@ def get_hall_of_fame() -> list[dict]:
             """,
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def toggle_hall_of_fame(tmdb_id: int) -> bool:
+    """Toggle the Hall of Fame status for a film. Returns the new state (True/False)."""
+    with get_connection() as conn:
+        row = conn.execute("SELECT hall_of_fame FROM user_films WHERE tmdb_id = ? ORDER BY id DESC LIMIT 1", (tmdb_id,)).fetchone()
+        if not row:
+            return False
+        current = bool(row["hall_of_fame"])
+        new_val = 0 if current else 1
+        conn.execute("UPDATE user_films SET hall_of_fame = ? WHERE tmdb_id = ?", (new_val, tmdb_id))
+        return bool(new_val)
 
 
 def get_rated_films(min_rating: int = 1) -> list[dict]:
@@ -1341,108 +1407,162 @@ def get_enrichment_count() -> int:
     return row[0] if row else 0
 
 
-def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None, exclude_ids: list[int] | None = None) -> list[dict]:
+def get_enrichment_queue(
+    limit: int = 100,
+    exclude_tmdb_id: int | None = None,
+    exclude_ids: list[int] | None = None,
+    active_prompt: str | None = None,
+) -> list[dict]:
     """
-    Return films that have no personal notes, ordered by priority:
-    1. Watched 5-star films
-    2. Watched 4-star films
-    3. Other watched films
-    4. Watchlist films
-    Optionally exclude tmdb_ids already seen during this browsing session.
+    Return films that have no personal notes, prioritized by taste relevance & status:
+    1. Un-annotated watched films (Hall of Fame, 5-star, 4-star, unrated)
+    2. Relevance boost from stored taste attributes and active recommendation themes
+    3. Skipped films are deprioritized to a 'later pile' (oldest skipped first),
+       avoiding repetitive cycling while resurfacing organically if relevant to active queries.
+    4. Watchlist films as fallback when watched queue is exhausted.
     """
+    import random
+    from datetime import datetime, timezone
+
     conn = get_connection()
     excludes = set(exclude_ids or [])
     if exclude_tmdb_id:
         excludes.add(exclude_tmdb_id)
 
-    # Multi-day cooldown for skipped films so they don't fatigue the user
-    recent_skips = get_recently_skipped_tmdb_ids(days=7)
-    excludes_with_skips = excludes | recent_skips
+    # 1. Gather taste relevance keywords
+    taste_keywords = set()
+    try:
+        attr_rows = conn.execute(
+            "SELECT attribute_name FROM taste_attributes WHERE polarity = 'positive' ORDER BY confidence_score DESC LIMIT 15"
+        ).fetchall()
+        for ar in attr_rows:
+            for word in (ar["attribute_name"] or "").lower().split():
+                if len(word) > 3:
+                    taste_keywords.add(word)
+
+        issue_row = conn.execute(
+            "SELECT issue_text FROM recommendation_issues WHERE archived = 0 ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if issue_row and issue_row["issue_text"]:
+            for word in issue_row["issue_text"].lower().split():
+                if len(word) > 4:
+                    taste_keywords.add(word)
+    except Exception:
+        pass
+
+    prompt_words = {w.lower() for w in (active_prompt or "").split() if len(w) > 3}
 
     exclude_clause = ""
     params = []
-    if excludes_with_skips:
-        placeholders = ",".join(["?"] * len(excludes_with_skips))
+    if excludes:
+        placeholders = ",".join(["?"] * len(excludes))
         exclude_clause = f"AND f.tmdb_id NOT IN ({placeholders})"
-        params.extend(list(excludes_with_skips))
+        params.extend(list(excludes))
 
-    # First attempt: watched films without notes
-    params_watched = list(params) + [limit]
-    rows = conn.execute(
+    # 2. Fetch un-annotated watched films
+    watched_rows = conn.execute(
         f"""
-        SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url,
-               uf.rating, uf.personal_notes, uf.status
+        SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url, f.overview,
+               f.tmdb_genres, f.default_taste_attributes,
+               uf.rating, uf.personal_notes, uf.jellyfin_notes, uf.status, uf.hall_of_fame,
+               es.skipped_at
         FROM user_films uf
         JOIN films f ON uf.tmdb_id = f.tmdb_id
+        LEFT JOIN enrichment_skips es ON es.tmdb_id = f.tmdb_id
         WHERE uf.status = 'watched'
-          AND (uf.personal_notes IS NULL OR uf.personal_notes = '')
+          AND (uf.personal_notes IS NULL OR TRIM(uf.personal_notes) = '')
           AND uf.id = (
               SELECT MAX(id) FROM user_films u2
               WHERE u2.tmdb_id = uf.tmdb_id
           )
           {exclude_clause}
-        ORDER BY
-          CASE
-            WHEN uf.rating = 5 THEN 1
-            WHEN uf.rating = 4 THEN 2
-            WHEN uf.rating IS NOT NULL AND uf.rating <= 3 THEN 3
-            ELSE 4
-          END,
-          RANDOM()
-        LIMIT ?
         """,
-        params_watched,
+        params,
     ).fetchall()
 
-    results = [dict(r) for r in rows]
+    now_utc = datetime.now(timezone.utc)
 
-    # If recent skips filtered out everything, fall back to session excludes
-    if not results and recent_skips:
-        params_fallback = list(excludes) + [limit]
-        fallback_clause = f"AND f.tmdb_id NOT IN ({','.join(['?']*len(excludes))})" if excludes else ""
-        rows = conn.execute(
-            f"""
-            SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url,
-                   uf.rating, uf.personal_notes, uf.status
-            FROM user_films uf
-            JOIN films f ON uf.tmdb_id = f.tmdb_id
-            WHERE uf.status = 'watched'
-              AND (uf.personal_notes IS NULL OR uf.personal_notes = '')
-              AND uf.id = (
-                  SELECT MAX(id) FROM user_films u2
-                  WHERE u2.tmdb_id = uf.tmdb_id
-              )
-              {fallback_clause}
-            ORDER BY RANDOM()
-            LIMIT ?
-            """,
-            params_fallback,
-        ).fetchall()
-        results = [dict(r) for r in rows]
+    def score_candidate(film_row, is_watched: bool) -> float:
+        # Base status score
+        if is_watched:
+            if film_row["hall_of_fame"]:
+                score = 100.0
+            elif film_row["rating"] == 5:
+                score = 90.0
+            elif film_row["rating"] == 4:
+                score = 75.0
+            elif film_row["rating"]:
+                score = 60.0
+            else:
+                score = 50.0
+        else:
+            score = 15.0  # Watchlist baseline
 
-    # If watched queue is exhausted for this session, fallback to watchlist films
+        # Relevance scoring from taste keywords & active prompt
+        film_text = f"{film_row['title'] or ''} {film_row['overview'] or ''} {film_row['tmdb_genres'] or ''} {film_row['default_taste_attributes'] or ''}".lower()
+        relevance_hits = sum(1 for kw in taste_keywords if kw in film_text)
+        prompt_hits = sum(1 for pw in prompt_words if pw in film_text)
+
+        score += min(relevance_hits * 3.0, 25.0)
+        score += min(prompt_hits * 15.0, 45.0)
+
+        # Skip penalty ("later pile")
+        skipped_at = film_row["skipped_at"]
+        if skipped_at:
+            score -= 200.0
+            try:
+                # Parsed ISO timestamp
+                dt = datetime.fromisoformat(skipped_at.replace("Z", "+00:00"))
+                age_hours = (now_utc - dt).total_seconds() / 3600.0
+                # Old skips slowly regain priority; very recent skips stay at the bottom
+                score += min(age_hours * 0.5, 30.0)
+            except Exception:
+                pass
+
+        # Small jitter for rotation among identical scores
+        score += random.uniform(0.0, 2.0)
+        return score
+
+    scored_watched = []
+    for r in watched_rows:
+        d = dict(r)
+        d["_score"] = score_candidate(d, is_watched=True)
+        scored_watched.append(d)
+
+    scored_watched.sort(key=lambda x: x["_score"], reverse=True)
+    results = scored_watched[:limit]
+
+    # Fallback to watchlist if needed
     if len(results) < limit:
         needed = limit - len(results)
-        params_wl = list(params) + [needed]
         wl_rows = conn.execute(
             f"""
-            SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url,
-                   uf.rating, uf.personal_notes, uf.status
+            SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url, f.overview,
+                   f.tmdb_genres, f.default_taste_attributes,
+                   uf.rating, uf.personal_notes, uf.jellyfin_notes, uf.status, uf.hall_of_fame,
+                   es.skipped_at
             FROM user_films uf
             JOIN films f ON uf.tmdb_id = f.tmdb_id
+            LEFT JOIN enrichment_skips es ON es.tmdb_id = f.tmdb_id
             WHERE uf.status = 'watchlist'
-              AND (uf.personal_notes IS NULL OR uf.personal_notes = '')
+              AND (uf.personal_notes IS NULL OR TRIM(uf.personal_notes) = '')
               AND uf.id = (
                   SELECT MAX(id) FROM user_films u2
                   WHERE u2.tmdb_id = uf.tmdb_id
               )
               {exclude_clause}
-            ORDER BY RANDOM()
-            LIMIT ?
             """,
-            params_wl,
+            params,
         ).fetchall()
-        results.extend([dict(r) for r in wl_rows])
+
+        scored_wl = []
+        for r in wl_rows:
+            d = dict(r)
+            d["_score"] = score_candidate(d, is_watched=False)
+            scored_wl.append(d)
+
+        scored_wl.sort(key=lambda x: x["_score"], reverse=True)
+        results.extend(scored_wl[:needed])
 
     conn.close()
     return results

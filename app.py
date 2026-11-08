@@ -87,7 +87,7 @@ TASTE_MODEL_PATH = Path(__file__).parent / "taste_model.md"
 # Template helpers
 # ---------------------------------------------------------------------------
 
-def _parse_film(film: dict) -> dict:
+def _parse_film(film: dict, fetch_backdrop: bool = False) -> dict:
     """
     Parse JSON-encoded fields in a film dict and add computed display helpers.
     Safe to call repeatedly — idempotent.
@@ -133,7 +133,24 @@ def _parse_film(film: dict) -> dict:
     else:
         f["tagline"] = ""
 
-    f["cover_url"] = f.get("backdrop_url") or f.get("poster_url") or ""
+    backdrop = f.get("backdrop_url")
+    if not backdrop and f.get("tmdb_id") and fetch_backdrop:
+        try:
+            from filmlog import tmdb
+            m_type = f.get("media_type") or "movie"
+            if m_type == "tv":
+                det = tmdb.get_tv_details(f["tmdb_id"])
+            else:
+                det = tmdb.get_movie_details(f["tmdb_id"])
+            backdrop = det.get("backdrop_url")
+            if backdrop:
+                f["backdrop_url"] = backdrop
+                db.update_film_backdrop(f["tmdb_id"], backdrop)
+        except Exception:
+            pass
+
+    # Cover image must be a genuine landscape backdrop (never fallback to vertical poster)
+    f["cover_url"] = backdrop or ""
 
     return f
 
@@ -279,28 +296,29 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
             meta_parts = [x for x in [year, runtime, lang] if x]
             meta_str = " · ".join(meta_parts)
 
-            if not is_hero:
-                cover = matched_fc.get("backdrop_url") or matched_fc.get("cover_url") or matched_fc.get("poster_url", "")
-                img_tag = (
-                    f'<img src="{cover}" alt="{title}" class="companion-break-img" loading="lazy">'
-                    if cover
-                    else f'<div class="figure-poster-ph">{title[:2]}</div>'
-                )
-                figure_html = (
-                    f'<figure class="companion-editorial-break">'
-                    f'<div class="companion-break-frame">'
-                    f'<a href="/films/{tmdb_id}" class="companion-break-link">{img_tag}</a>'
-                    f'<div class="companion-break-vignette"></div>'
-                    f'<figcaption class="companion-break-caption">'
-                    f'<div class="companion-badge-line">'
-                    f'<span class="companion-pill">COMPANION DOOR</span>'
-                    f'<span class="companion-meta-line">{meta_str}</span>'
-                    f'</div>'
-                    f'<h3 class="companion-heading"><a href="/films/{tmdb_id}">{title}</a></h3>'
-                    f'</figcaption>'
-                    f'</div>'
-                    f'</figure>'
-                )
+            img_tag = (
+                f'<img src="{poster}" alt="{title}" class="film-inline-poster-img" loading="lazy">'
+                if poster
+                else f'<div class="film-inline-poster-ph">{title[:2]}</div>'
+            )
+            badge_class = "hero-pill" if is_hero else "companion-pill"
+            badge_text = "★ TONIGHT'S ANCHOR" if is_hero else "✦ COMPANION DOOR"
+            figure_class = "hero-figure" if is_hero else "companion-figure"
+
+            figure_html = (
+                f'<figure class="film-inline-editorial-figure {figure_class}">'
+                f'<div class="film-inline-card">'
+                f'<a href="/films/{tmdb_id}" class="film-inline-poster-link" title="View {title} details">{img_tag}</a>'
+                f'<div class="film-inline-info">'
+                f'<div class="film-inline-badge-line">'
+                f'<span class="film-inline-pill {badge_class}">{badge_text}</span>'
+                f'<span class="film-inline-meta">{meta_str}</span>'
+                f'</div>'
+                f'<h3 class="film-inline-title"><a href="/films/{tmdb_id}">{title}</a></h3>'
+                f'</div>'
+                f'</div>'
+                f'</figure>'
+            )
 
         p_html = md_lib.markdown(p)
         is_last = (i == len(paragraphs) - 1 and not matches and len(seen_film_ids) > 0)
@@ -453,6 +471,7 @@ def enrich_save(tmdb_id: int):
     from flask import g
     notes = request.form.get("personal_notes", "").strip()
     rating = request.form.get("rating")
+    hof = request.form.get("hall_of_fame")
     user_film = db.get_user_film_by_tmdb(tmdb_id)
     if user_film and not g.get("visitor_mode"):
         kwargs = {}
@@ -463,6 +482,8 @@ def enrich_save(tmdb_id: int):
                 kwargs["rating"] = int(rating)
             except ValueError:
                 pass
+        if hof is not None:
+            kwargs["hall_of_fame"] = 1 if hof in ("1", "true", "on") else 0
         if kwargs:
             db.update_user_film(user_film["id"], **kwargs)
 
@@ -481,6 +502,14 @@ def enrich_save(tmdb_id: int):
     if film and film["tmdb_id"] not in seen:
         seen.append(film["tmdb_id"])
         session["seen_enrich"] = seen
+
+    # If called from inline micro-enrich card on Tonight page, return micro-enrich partial
+    if request.headers.get("HX-Target") in ("micro-enrich-container", "#micro-enrich-container"):
+        return render_template(
+            "partials/micro_enrich_card.html",
+            micro_film=_parse_film(film) if film else None,
+            calibration=calibration,
+        )
 
     remaining = db.get_enrichment_count()
     placeholder = random.choice(ENRICH_PLACEHOLDERS)
@@ -519,6 +548,14 @@ def enrich_skip(tmdb_id: int):
     if film and film["tmdb_id"] not in seen:
         seen.append(film["tmdb_id"])
         session["seen_enrich"] = seen
+
+    # If called from inline micro-enrich card on Tonight page, return micro-enrich partial
+    if request.headers.get("HX-Target") in ("micro-enrich-container", "#micro-enrich-container"):
+        return render_template(
+            "partials/micro_enrich_card.html",
+            micro_film=_parse_film(film) if film else None,
+            calibration=calibration,
+        )
 
     remaining = db.get_enrichment_count()
     placeholder = random.choice(ENRICH_PLACEHOLDERS)
@@ -748,7 +785,7 @@ def tonight():
         for tmdb_id in raw_issue.get("films_referenced", [])[:4]:
             film = db.get_film(tmdb_id)
             if film:
-                film_cards.append(_parse_film(film))
+                film_cards.append(_parse_film(film, fetch_backdrop=True))
         parsed = _parse_magazine_issue(raw_issue, film_cards)
         parsed["film_cards"] = film_cards
         parsed_issues.append(parsed)
@@ -790,6 +827,7 @@ def tonight_micro_enrich(tmdb_id: int):
     from flask import g
     notes = request.form.get("personal_notes", "").strip()
     rating = request.form.get("rating")
+    hof = request.form.get("hall_of_fame")
     user_film = db.get_user_film_by_tmdb(tmdb_id)
     if user_film and not g.get("visitor_mode"):
         kwargs = {}
@@ -800,6 +838,8 @@ def tonight_micro_enrich(tmdb_id: int):
                 kwargs["rating"] = int(rating)
             except ValueError:
                 pass
+        if hof is not None:
+            kwargs["hall_of_fame"] = 1 if hof in ("1", "true", "on") else 0
         if kwargs:
             db.update_user_film(user_film["id"], **kwargs)
 
@@ -845,7 +885,7 @@ def tonight_generate():
     for tmdb_id in result.get("films_referenced", [])[:4]:
         film = db.get_film(tmdb_id)
         if film:
-            film_cards.append(_parse_film(film))
+            film_cards.append(_parse_film(film, fetch_backdrop=True))
 
     hero_film = film_cards[0] if film_cards else None
     companion_films = film_cards[1:4] if len(film_cards) > 1 else []
@@ -894,7 +934,7 @@ def tonight_cached():
     for tmdb_id in issue.get("films_referenced", [])[:4]:
         film = db.get_film(tmdb_id)
         if film:
-            film_cards.append(_parse_film(film))
+            film_cards.append(_parse_film(film, fetch_backdrop=True))
 
     magazine_issue = _parse_magazine_issue(issue, film_cards)
     magazine_issue["film_cards"] = film_cards
@@ -929,7 +969,7 @@ def tonight_rewrite(issue_id: int):
     for tmdb_id in issue.get("films_referenced", [])[:4]:
         film = db.get_film(tmdb_id)
         if film:
-            film_cards.append(_parse_film(film))
+            film_cards.append(_parse_film(film, fetch_backdrop=True))
 
     magazine_issue = _parse_magazine_issue(issue, film_cards)
     magazine_issue["film_cards"] = film_cards
@@ -1526,11 +1566,33 @@ def update_rating(tmdb_id: int):
     rating = int(rating_str) if rating_str and rating_str.isdigit() else None
     if not g.get("visitor_mode"):
         db.update_user_film(user_film["id"], rating=rating)
+        user_film = db.get_user_film_by_tmdb(tmdb_id)
 
     return render_template(
         "partials/rating_control.html",
         tmdb_id=tmdb_id,
         current_rating=rating,
+        current_hof=user_film.get("hall_of_fame", 0) if user_film else 0,
+    )
+
+
+@app.route("/films/<int:tmdb_id>/toggle-hof", methods=["POST"])
+def toggle_film_hof(tmdb_id: int):
+    """Toggle Hall of Fame status for a film via HTMX."""
+    from flask import g
+    if g.get("visitor_mode"):
+        abort(403)
+
+    db.toggle_hall_of_fame(tmdb_id)
+    user_film = db.get_user_film_by_tmdb(tmdb_id)
+    current_rating = user_film.get("rating") if user_film else None
+    current_hof = user_film.get("hall_of_fame", 0) if user_film else 0
+
+    return render_template(
+        "partials/rating_control.html",
+        tmdb_id=tmdb_id,
+        current_rating=current_rating,
+        current_hof=current_hof,
     )
 
 

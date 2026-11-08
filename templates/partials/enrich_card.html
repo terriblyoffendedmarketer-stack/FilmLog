@@ -29,6 +29,10 @@
           <label for="star-enrich-{{ film.tmdb_id }}-{{ star }}" title="{{ star }} star{{ 's' if star > 1 }}">★</label>
           {% endfor %}
         </div>
+        <label class="enrich-hof-toggle" style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem; color: var(--accent); user-select: none;">
+          <input type="checkbox" name="hall_of_fame" value="1" {% if film.hall_of_fame %}checked{% endif %} style="accent-color: var(--accent);">
+          <span>🏆 Hall of Fame</span>
+        </label>
       </div>
 
       <textarea
@@ -42,7 +46,7 @@
         <button type="submit" class="btn-primary enrich-save">+1 Save Note</button>
         <button type="button" class="btn-ghost enrich-skip"
                 hx-post="/enrich/{{ film.tmdb_id }}/skip"
-                hx-target="#enrich-card" hx-swap="outerHTML">Skip (7-day cooldown)</button>
+                hx-target="#enrich-card" hx-swap="outerHTML">Skip for now</button>
       </div>
     </form>
   </div>

@@ -2,17 +2,17 @@
   {# ── Substack-style Full-Width Landscape Cover Image ── #}
   {% if issue.hero_film and issue.hero_film.cover_url %}
   <div class="article-cover-wrap">
-    <div class="article-cover-frame">
+    <a href="/films/{{ issue.hero_film.tmdb_id }}" class="article-cover-frame" title="View {{ issue.hero_film.title }} details">
       <img src="{{ issue.hero_film.cover_url }}" alt="{{ issue.hero_film.title }}" class="article-cover-img" loading="eager">
       <div class="article-cover-vignette"></div>
       <div class="article-cover-caption">
         <span class="cover-badge">★ ANCHOR FEATURE</span>
-        <span class="cover-caption-title"><a href="/films/{{ issue.hero_film.tmdb_id }}">{{ issue.hero_film.title }}</a></span>
+        <span class="cover-caption-title">{{ issue.hero_film.title }}</span>
         {% if issue.hero_film.year %}<span class="cover-caption-meta">({{ issue.hero_film.year }})</span>{% endif %}
         {% if issue.hero_film.runtime %}<span class="cover-caption-meta">· {{ issue.hero_film.runtime }}m</span>{% endif %}
         {% if issue.hero_film.language %}<span class="cover-caption-meta">· {{ issue.hero_film.language | upper }}</span>{% endif %}
       </div>
-    </div>
+    </a>
   </div>
   {% endif %}
 

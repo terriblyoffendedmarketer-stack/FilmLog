@@ -47,6 +47,11 @@
               <label for="star-micro-{{ micro_film.tmdb_id }}-{{ star }}" title="{{ star }} star{{ 's' if star > 1 }}">★</label>
               {% endfor %}
             </div>
+
+            <label class="micro-hof-toggle" style="margin-left: 10px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.8rem; color: var(--accent); user-select: none;">
+              <input type="checkbox" name="hall_of_fame" value="1" {% if micro_film.hall_of_fame %}checked{% endif %} style="accent-color: var(--accent);">
+              <span>🏆 HOF</span>
+            </label>
           </div>
 
           <input type="text" name="personal_notes" class="micro-notes-input"

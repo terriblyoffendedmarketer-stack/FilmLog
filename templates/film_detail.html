@@ -31,7 +31,7 @@
 
     {# Rating control — HTMX swap target #}
     {% if user_film %}
-    {% with current_rating = curr_rating %}
+    {% with current_rating = curr_rating, current_hof = user_film.get('hall_of_fame', 0) %}
     {% include 'partials/rating_control.html' %}
     {% endwith %}
     {% endif %}
@@ -87,6 +87,16 @@
         {% include 'partials/notes_view.html' %}
       </div>
     </div>
+
+    {# Notes from Jellyfin #}
+    {% if user_film and user_film.get('jellyfin_notes') %}
+    <div>
+      <div class="section-label">Notes from Jellyfin</div>
+      <div class="jellyfin-notes-box" style="background: var(--surface-2); padding: 14px 18px; border-radius: var(--r); border-left: 3px solid var(--accent); color: var(--text-dim); font-size: 0.92rem; line-height: 1.55; margin-bottom: 20px;">
+        {{ user_film.jellyfin_notes }}
+      </div>
+    </div>
+    {% endif %}
 
     {# Linked recommendation issues #}
     {% if linked_recs %}

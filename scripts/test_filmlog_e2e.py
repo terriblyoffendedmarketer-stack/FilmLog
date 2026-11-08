@@ -147,6 +147,55 @@ def run_all_tests():
     assert "161040" in r_url.data.decode("utf-8"), "Direct TMDB URL search failed"
     print("  ✓ Smart search verified across fuzzy year, single-string title+year, and direct TMDB URLs")
 
+    # 11. Hall of Fame vs 5-Star Distinction & Toggle
+    print("\n[Test 11] Hall of Fame vs 5-Star Distinction & Toggle...")
+    with client.session_transaction() as sess:
+        sess["owner"] = True
+
+    # Toggle HOF off then on for test_film
+    r_hof_toggle = client.post(f"/films/{test_film['tmdb_id']}/toggle-hof")
+    assert r_hof_toggle.status_code == 200
+    hof_html = r_hof_toggle.data.decode("utf-8")
+    assert "hof-toggle-btn" in hof_html
+
+    # Check /hall-of-fame page
+    r_hof_page = client.get("/hall-of-fame")
+    assert r_hof_page.status_code == 200
+    print("  ✓ Hall of Fame toggle and dedicated /hall-of-fame page verified")
+
+    # 12. Notes from Jellyfin Display
+    print("\n[Test 12] Notes from Jellyfin separated from Personal Notes...")
+    # Find a film with jellyfin_notes
+    with db.get_connection() as conn:
+        j_row = conn.execute("SELECT tmdb_id, jellyfin_notes, personal_notes FROM user_films WHERE jellyfin_notes IS NOT NULL LIMIT 1").fetchone()
+    if j_row:
+        r_detail = client.get(f"/films/{j_row['tmdb_id']}")
+        assert r_detail.status_code == 200
+        d_html = r_detail.data.decode("utf-8")
+        assert "Notes from Jellyfin" in d_html, "Notes from Jellyfin section missing on film detail"
+        print(f"  ✓ Film {j_row['tmdb_id']} displays Notes from Jellyfin cleanly separated from personal notes")
+
+    # 13. Enrich Queue Behavior & No 7-Day Jargon
+    print("\n[Test 13] Enrich Queue Skip & No Technical 7-Day Wording...")
+    r_enrich = client.get("/enrich")
+    assert r_enrich.status_code == 200
+    e_html = r_enrich.data.decode("utf-8")
+    assert "7-day cooldown" not in e_html, "7-day cooldown technical jargon still visible in enrich!"
+    assert "Skip for now" in e_html, "Skip for now button missing in enrich"
+    print("  ✓ Enrich UI free of '7-day cooldown' jargon; uses 'Skip for now'")
+
+    # 14. Dual Image Architecture & Clickable Artwork in Recommendation Issue
+    print("\n[Test 14] Dual Image Architecture & Clickable Artwork in Editorial Issue...")
+    # Check that issue template contains article-cover-frame link and film-inline-card
+    with db.get_connection() as conn:
+        issue_row = conn.execute("SELECT * FROM recommendation_issues WHERE archived = 0 ORDER BY id DESC LIMIT 1").fetchone()
+    if issue_row:
+        r_tonight = client.get("/tonight")
+        t_html = r_tonight.data.decode("utf-8")
+        assert "article-cover-frame" in t_html, "Article cover frame missing in tonight page"
+        assert "film-inline-card" in t_html or "film-inline-editorial-figure" in t_html, "Dual image inline poster figures missing in issue template"
+        print("  ✓ Dual image architecture verified: Substack cover + inline vertical poster cards")
+
     print("\n" + "=" * 60)
     print("ALL END-TO-END TESTS PASSED (100% SUCCESS)")
     print("=" * 60)

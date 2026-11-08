@@ -89,8 +89,8 @@ def sync_library():
             existing_films[(r[1].strip(), r[2])] = r[0]
             existing_films[(r[1].strip(), None)] = r[0]
 
-        cursor.execute("SELECT tmdb_id, id, personal_notes, status FROM user_films")
-        user_films = {r[0]: {"row_id": r[1], "notes": r[2], "status": r[3]} for r in cursor.fetchall()}
+        cursor.execute("SELECT tmdb_id, id, personal_notes, jellyfin_notes, status FROM user_films")
+        user_films = {r[0]: {"row_id": r[1], "notes": r[2], "jellyfin_notes": r[3], "status": r[4]} for r in cursor.fetchall()}
 
     added_count = 0
     skipped_count = 0
@@ -189,20 +189,18 @@ def sync_library():
                                 break
 
                     if match_id and match_id in user_films:
-                        current_notes = user_films[match_id].get("notes") or ""
-                        # Only update if empty or generic placeholder
-                        is_generic = current_notes.startswith("Hall of Fame") or not current_notes.strip()
-                        if is_generic:
+                        current_jelly = user_films[match_id].get("jellyfin_notes") or ""
+                        if not current_jelly.strip():
                             cursor.execute(
-                                "UPDATE user_films SET personal_notes = ? WHERE tmdb_id = ?",
+                                "UPDATE user_films SET jellyfin_notes = ? WHERE tmdb_id = ?",
                                 (comment.strip(), match_id)
                             )
-                            user_films[match_id]["notes"] = comment.strip()
+                            user_films[match_id]["jellyfin_notes"] = comment.strip()
                             updated_notes_count += 1
 
             conn.commit()
 
-        print(f"✅ Merged {updated_notes_count} rich personal comments into FilmLog personal notes!")
+        print(f"✅ Merged {updated_notes_count} rich personal comments into FilmLog jellyfin notes!")
 
 
 if __name__ == "__main__":
