@@ -1315,6 +1315,19 @@ def get_library_stats() -> dict:
 # Enrichment queue
 # ---------------------------------------------------------------------------
 
+def get_enrichment_count() -> int:
+    """Return count of watched films that have no personal notes."""
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT COUNT(*) FROM user_films
+        WHERE status = 'watched'
+          AND (personal_notes IS NULL OR TRIM(personal_notes) = '')
+        """
+    ).fetchone()
+    return row[0] if row else 0
+
+
 def get_enrichment_queue(limit: int = 100, exclude_tmdb_id: int | None = None, exclude_ids: list[int] | None = None) -> list[dict]:
     """
     Return films that have no personal notes, ordered by priority:

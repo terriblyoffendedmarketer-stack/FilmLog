@@ -23,12 +23,10 @@
     <form class="enrich-form" hx-post="/enrich/{{ film.tmdb_id }}" hx-target="#enrich-card" hx-swap="outerHTML">
       <div class="enrich-card-stars-row">
         <span class="stars-label">Your Rating:</span>
-        <div class="micro-star-picker">
-          {% for star in [1, 2, 3, 4, 5] %}
-          <label class="star-label">
-            <input type="radio" name="rating" value="{{ star }}" {% if film.rating == star %}checked{% endif %}>
-            <span class="star-icon">★</span>
-          </label>
+        <div class="interactive-star-rating">
+          {% for star in [5, 4, 3, 2, 1] %}
+          <input type="radio" id="star-enrich-{{ film.tmdb_id }}-{{ star }}" name="rating" value="{{ star }}" {% if film.rating == star %}checked{% endif %}>
+          <label for="star-enrich-{{ film.tmdb_id }}-{{ star }}" title="{{ star }} star{{ 's' if star > 1 }}">★</label>
           {% endfor %}
         </div>
       </div>

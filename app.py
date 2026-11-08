@@ -454,12 +454,22 @@ def enrich():
 
 @app.route("/enrich/<int:tmdb_id>", methods=["POST"])
 def enrich_save(tmdb_id: int):
-    """Save notes from enrichment card, return next card."""
+    """Save notes and rating from enrichment card, return next card."""
     from flask import g
     notes = request.form.get("personal_notes", "").strip()
+    rating = request.form.get("rating")
     user_film = db.get_user_film_by_tmdb(tmdb_id)
-    if user_film and notes and not g.get("visitor_mode"):
-        db.update_user_film(user_film["id"], personal_notes=notes)
+    if user_film and not g.get("visitor_mode"):
+        kwargs = {}
+        if notes:
+            kwargs["personal_notes"] = notes
+        if rating:
+            try:
+                kwargs["rating"] = int(rating)
+            except ValueError:
+                pass
+        if kwargs:
+            db.update_user_film(user_film["id"], **kwargs)
 
     seen = list(session.get("seen_enrich", []))
     if tmdb_id not in seen:
