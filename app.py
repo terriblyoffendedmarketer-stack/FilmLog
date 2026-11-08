@@ -681,9 +681,21 @@ def film_detail(tmdb_id: int):
     film = _parse_film(film)
     user_film = db.get_user_film_by_tmdb(tmdb_id)
 
-    # Linked recommendation issues that mention this film
+    # Linked recommendation issues that mention this film (non-archived only)
     try:
-        linked_recs = db.get_recommendations_for_film(tmdb_id)
+        raw_recs = db.get_recommendations_for_film(tmdb_id, limit=50)
+        linked_recs = []
+        for r in raw_recs:
+            if r.get("archived"):
+                continue
+            film_cards = []
+            for ref_id in r.get("films_referenced", [])[:4]:
+                f_ref = db.get_film(ref_id)
+                if f_ref:
+                    film_cards.append(_parse_film(f_ref))
+            parsed = _parse_magazine_issue(r, film_cards)
+            parsed["film_cards"] = film_cards
+            linked_recs.append(parsed)
     except Exception:
         linked_recs = []
 
@@ -830,6 +842,27 @@ def tonight():
     companion_films = latest_issue.get("companion_films", []) if latest_issue else []
     older_issues = parsed_issues[1:] if len(parsed_issues) > 1 else []
 
+    # Check if a specific issue was requested via query parameter (?issue=<id>)
+    req_issue_id = request.args.get("issue")
+    selected_issue = None
+    if req_issue_id:
+        try:
+            req_id_int = int(req_issue_id)
+            selected_issue = next((i for i in parsed_issues if i.get("id") == req_id_int), None)
+            if not selected_issue:
+                raw_target = db.get_recommendation_issue(req_id_int)
+                if raw_target and not raw_target.get("archived"):
+                    target_films = []
+                    for tmdb_id in raw_target.get("films_referenced", [])[:4]:
+                        film = db.get_film(tmdb_id)
+                        if film:
+                            target_films.append(_parse_film(film, fetch_backdrop=True))
+                    selected_issue = _parse_magazine_issue(raw_target, target_films)
+                    selected_issue["film_cards"] = target_films
+                    parsed_issues.append(selected_issue)
+        except Exception:
+            pass
+
     # Gamified taste calibration & ambient taste vault insight
     calibration = db.get_taste_calibration_stats()
     taste_insight = db.get_random_taste_insight()
@@ -837,6 +870,7 @@ def tonight():
     # Contextual micro-enrich candidate for seamless piping
     enrich_queue = db.get_enrichment_queue(limit=1)
     micro_film = _parse_film(enrich_queue[0]) if enrich_queue else None
+    archived_count = db.get_archived_issues_count()
 
     return render_template(
         "tonight.html",
@@ -848,6 +882,8 @@ def tonight():
         companion_films=companion_films,
         older_issues=older_issues,
         past_issues=parsed_issues,
+        selected_issue=selected_issue,
+        archived_count=archived_count,
         calibration=calibration,
         taste_insight=taste_insight,
         micro_film=micro_film,

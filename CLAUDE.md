@@ -1,8 +1,8 @@
 # Filmlog — Personal Taste Engine for Films
 
 ## Status
-- **Current Phase:** Phase 6 — Desktop Right-Rail, Mobile Single-Line Ribbon, Persistent Owner Auth & Serverless Resilience Complete
-- **In Progress:** Session wrap-up & handoff
+- **Current Phase:** Phase 6 — Linked Recommendations Deep-Linking, Film Detail Accordion, Active Issue Archiving & Archive Cleanup Complete
+- **In Progress:** Live Vercel verification & session wrap-up
 - **What's Next:** Automated background GitHub commit poller for web-generated notes
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
 - **Active AI:** Google Gemini API (REST, $0/month, zero external SDK dependencies)

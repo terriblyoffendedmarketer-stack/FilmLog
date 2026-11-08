@@ -824,6 +824,31 @@ def get_archived_issues(limit: int = 50) -> list[dict]:
     return result
 
 
+def get_archived_issues_count() -> int:
+    """Return total count of archived issues."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) as n FROM recommendation_issues WHERE archived = 1"
+        ).fetchone()
+    return row["n"] if row else 0
+
+
+def get_recommendation_issue(issue_id: int) -> dict | None:
+    """Return a single recommendation issue by ID."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM recommendation_issues WHERE id = ?", (issue_id,)
+        ).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    d["films_referenced"] = (
+        json.loads(d["films_referenced"]) if d["films_referenced"] else []
+    )
+    d.setdefault("archived", 0)
+    return d
+
+
 def archive_issue(issue_id: int) -> None:
     """Archive a single issue."""
     with get_connection() as conn:
@@ -961,13 +986,14 @@ def get_all_films_with_status(status_filter: str | None = None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def get_recommendations_for_film(tmdb_id: int, limit: int = 5) -> list[dict]:
-    """Return recommendation issues that reference a given film."""
+def get_recommendations_for_film(tmdb_id: int, limit: int = 50) -> list[dict]:
+    """Return recommendation issues that reference a given film (non-archived only)."""
     with get_connection() as conn:
         rows = conn.execute(
             """
             SELECT * FROM recommendation_issues
-            WHERE films_referenced LIKE ?
+            WHERE (archived = 0 OR archived IS NULL)
+              AND films_referenced LIKE ?
             ORDER BY generated_at DESC
             LIMIT ?
             """,
@@ -979,6 +1005,7 @@ def get_recommendations_for_film(tmdb_id: int, limit: int = 5) -> list[dict]:
         d["films_referenced"] = (
             json.loads(d["films_referenced"]) if d["films_referenced"] else []
         )
+        d.setdefault("archived", 0)
         result.append(d)
     # LIKE can match partial integers — verify the actual id is in the list
     return [r for r in result if tmdb_id in r["films_referenced"]]

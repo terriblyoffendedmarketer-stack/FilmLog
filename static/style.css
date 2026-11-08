@@ -715,6 +715,110 @@ html, body {
   padding: 16px 18px;
 }
 
+.rec-card-link {
+  display: block;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  border: 1px solid var(--border);
+}
+
+.rec-card-link:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  transform: translateY(-1px);
+}
+
+.editorial-type-badge {
+  background: rgba(224, 116, 58, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(224, 116, 58, 0.35);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 6px;
+}
+
+.rec-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+
+.rec-teaser-clean {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.rec-read-cta {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rec-card-link:hover .rec-read-cta {
+  text-decoration: underline;
+}
+
+.btn-extra-recs-toggle {
+  background: transparent;
+  border: 1px dashed var(--border-light);
+  color: var(--text-muted);
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-extra-recs-toggle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* Owner Issue Admin Bar (Archive action) */
+.issue-admin-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-archive-issue {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-archive-issue:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
 .rec-meta {
   font-size: 0.73rem;
   color: var(--text-dim);

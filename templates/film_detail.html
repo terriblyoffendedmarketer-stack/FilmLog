@@ -117,17 +117,45 @@
     </div>
     {% endif %}
 
-    {# Linked recommendation issues #}
+    {# Linked recommendation issues (Editorial) #}
     {% if linked_recs %}
     <div>
-      <div class="section-label">Linked recommendations ({{ linked_recs | length }})</div>
+      <div class="section-label">Editorial recommendations ({{ linked_recs | length }})</div>
       <div class="rec-list">
-        {% for issue in linked_recs %}
-        <div class="rec-card">
-          <div class="rec-meta">Issue #{{ issue.issue_number }} · {{ issue.generated_at[:10] }}</div>
-          <div class="rec-text">{{ issue.issue_text }}</div>
-        </div>
+        {% for issue in linked_recs[:3] %}
+        <a href="/tonight?issue={{ issue.id }}" class="rec-card rec-card-link">
+          <div class="rec-meta">
+            <span class="editorial-type-badge">★ Issue #{{ issue.issue_number }}</span>
+            <span class="rec-date">{{ issue.generated_at[:10] }}</span>
+          </div>
+          <div class="rec-card-title">{{ issue.headline or ('Editorial Issue #' ~ issue.issue_number) }}</div>
+          {% if issue.teaser_text %}
+          <div class="rec-teaser-clean">{{ issue.teaser_text | strip_md | truncate(140, true, '…') }}</div>
+          {% endif %}
+          <div class="rec-read-cta">Read full editorial &rarr;</div>
+        </a>
         {% endfor %}
+
+        {% if linked_recs | length > 3 %}
+        <div id="extra-recs-tray" style="display: none; display: flex; flex-direction: column; gap: 12px;">
+          {% for issue in linked_recs[3:] %}
+          <a href="/tonight?issue={{ issue.id }}" class="rec-card rec-card-link">
+            <div class="rec-meta">
+              <span class="editorial-type-badge">★ Issue #{{ issue.issue_number }}</span>
+              <span class="rec-date">{{ issue.generated_at[:10] }}</span>
+            </div>
+            <div class="rec-card-title">{{ issue.headline or ('Editorial Issue #' ~ issue.issue_number) }}</div>
+            {% if issue.teaser_text %}
+            <div class="rec-teaser-clean">{{ issue.teaser_text | strip_md | truncate(140, true, '…') }}</div>
+            {% endif %}
+            <div class="rec-read-cta">Read full editorial &rarr;</div>
+          </a>
+          {% endfor %}
+        </div>
+        <button type="button" class="btn-extra-recs-toggle" onclick="toggleExtraRecs(this)">
+          Show {{ (linked_recs | length) - 3 }} more recommendation{% if (linked_recs | length) - 3 > 1 %}s{% endif %} &dtrif;
+        </button>
+        {% endif %}
       </div>
     </div>
     {% endif %}
@@ -202,5 +230,20 @@
 
   </div>
 </div>
+
+<script>
+function toggleExtraRecs(btn) {
+  var tray = document.getElementById('extra-recs-tray');
+  if (!tray) return;
+  if (tray.style.display === 'none') {
+    tray.style.display = 'flex';
+    btn.innerHTML = 'Hide extra recommendations &utrif;';
+  } else {
+    tray.style.display = 'none';
+    var total = {{ linked_recs | length if linked_recs else 0 }};
+    btn.innerHTML = 'Show ' + (total - 3) + ' more recommendation' + (total - 3 > 1 ? 's' : '') + ' &dtrif;';
+  }
+}
+</script>
 
 {% endblock %}
