@@ -1114,6 +1114,36 @@ def api_film_search():
     return render_template("partials/film_search_results.html", films=results)
 
 
+def _generate_journal_title(content: str) -> str:
+    """Generate an evocative 3-6 word title from raw journal content using AI with clean fallback."""
+    clean_text = content.strip()
+    if not clean_text:
+        return "Untitled Reflection"
+
+    try:
+        from filmlog.ai import call_ai
+        prompt = (
+            "You are an expert film critic and editor. Generate a short, punchy, evocative title "
+            "(3 to 6 words max, no quotes, no markdown, Title Case) capturing the core theme of this raw cinema reflection:\n\n"
+            f"{clean_text[:1200]}"
+        )
+        ai_title = call_ai(prompt, max_tokens=25).strip()
+        ai_title = re.sub(r'^["\'#\*\s]+|["\'\s]+$', '', ai_title)
+        first_line = ai_title.split("\n")[0].strip()
+        if first_line and len(first_line) < 80:
+            return first_line
+    except Exception:
+        pass
+
+    # Fallback: extract clean title from first sentence
+    first_line = clean_text.split("\n")[0].strip()
+    first_sentence = re.split(r'(?<=[.!?])\s', first_line, maxsplit=1)[0].strip()
+    clean_sentence = re.sub(r'^#+\s*', '', first_sentence)
+    if len(clean_sentence) > 60:
+        clean_sentence = clean_sentence[:57].rsplit(" ", 1)[0] + "…"
+    return clean_sentence or "Cinema Reflection"
+
+
 @app.route("/journal/new", methods=["GET", "POST"])
 def journal_new():
     from flask import g
@@ -1126,20 +1156,43 @@ def journal_new():
         raw_ids = request.form.get("linked_film_ids", "")
         raw_tags = request.form.get("tags", "")
 
-        if not title or not content:
+        # Only content is strictly required! Everything else is optional
+        if not content:
             return render_template(
                 "journal_form.html",
                 page="journal",
                 title="New entry",
                 stats=_get_stats(),
                 entry=None,
-                error="Title and content are required.",
+                error="Please enter your reflection before saving.",
                 form_values=request.form,
                 prelinked_films=[],
             )
 
+        # AI auto-generates title if omitted
+        if not title:
+            title = _generate_journal_title(content)
+
         film_ids = _extract_film_ids_from_text(raw_ids)
+        # Automatically detect films mentioned in content if not manually picked
+        if not film_ids:
+            try:
+                from filmlog.journal_ingest import _build_film_index, _find_mentioned_films
+                film_index = _build_film_index()
+                film_ids = _find_mentioned_films(title, content, film_index)
+            except Exception:
+                film_ids = []
+
         tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+        # Automatically extract tags and classify type if omitted
+        if not tags:
+            try:
+                from filmlog.journal_ingest import _extract_tags, _detect_type
+                if not entry_type or entry_type == "musing":
+                    entry_type = _detect_type(title, content, None)
+                tags = _extract_tags(title, content, entry_type)
+            except Exception:
+                tags = []
 
         entry_id = db.create_journal_entry(
             title=title,
@@ -1205,18 +1258,29 @@ def journal_edit(entry_id: int):
         raw_ids = request.form.get("linked_film_ids", "")
         raw_tags = request.form.get("tags", "")
 
-        if not title or not content:
+        if not content:
             return render_template(
                 "journal_form.html",
                 page="journal",
                 title=f"Edit — {entry['title']}",
                 stats=_get_stats(),
                 entry=entry,
-                error="Title and content are required.",
+                error="Content cannot be empty.",
                 form_values=request.form,
             )
 
+        if not title:
+            title = _generate_journal_title(content)
+
         film_ids = _extract_film_ids_from_text(raw_ids)
+        if not film_ids:
+            try:
+                from filmlog.journal_ingest import _build_film_index, _find_mentioned_films
+                film_index = _build_film_index()
+                film_ids = _find_mentioned_films(title, content, film_index)
+            except Exception:
+                film_ids = []
+
         tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
 
         db.update_journal_entry(

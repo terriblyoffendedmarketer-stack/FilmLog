@@ -210,12 +210,12 @@
   </section>
   {% endif %}
 
-  {# ── Full taste model ──────────────────────────────────────────────────────── #}
-  {% if taste_model_text %}
+  {# ── Full taste model (Owner only) ────────────────────────────────────────── #}
+  {% if is_owner and taste_model_text %}
   <section class="taste-section">
     <details class="model-details">
       <summary class="model-summary">
-        <span>Full taste model</span>
+        <span>Full taste model (Owner View)</span>
         {% if stats.taste_model_version %}
         <span class="model-meta">v{{ stats.taste_model_version.version_number }} · {{ stats.taste_model_version.generated_at[:10] }}</span>
         {% endif %}

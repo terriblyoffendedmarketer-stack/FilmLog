@@ -16,17 +16,33 @@
 
   <form class="journal-form" method="POST" id="journal-form">
 
-    {# Title #}
+    {# Content (Primary focus) #}
     <div class="form-field">
-      <label class="form-label" for="f-title">Title</label>
-      <input type="text" id="f-title" name="title" class="form-input"
-             value="{{ form_values.get('title', '') if form_values else (entry.title if entry else '') }}"
-             placeholder="What's this about?" required autofocus>
+      <label class="form-label" for="f-content">
+        Your Thoughts & Reflections
+        <span class="form-label-hint">Markdown supported · Everything else is optional</span>
+      </label>
+      <textarea id="f-content" name="content" class="form-textarea" required autofocus rows="10"
+                placeholder="Write your raw thoughts on films, scenes, directors, themes, pacing, or whatever struck you. AI will automatically gauge mentioned films, craft tags, and generate a title if left blank.">{{ form_values.get('content', '') if form_values else (entry.content if entry else '') }}</textarea>
     </div>
 
-    {# Type #}
+    {# Title (Optional) #}
+    <div class="form-field">
+      <label class="form-label" for="f-title">
+        Title
+        <span class="form-label-hint">Optional — AI will generate an evocative title if left blank</span>
+      </label>
+      <input type="text" id="f-title" name="title" class="form-input"
+             value="{{ form_values.get('title', '') if form_values else (entry.title if entry else '') }}"
+             placeholder="Leave blank for AI-generated title, or enter your own…">
+    </div>
+
+    {# Type (Optional) #}
     <div class="form-field form-field-small">
-      <label class="form-label" for="f-type">Type</label>
+      <label class="form-label" for="f-type">
+        Type
+        <span class="form-label-hint">Optional</span>
+      </label>
       <select id="f-type" name="type" class="filter-select form-select">
         {% set cur_type = (form_values.get('type') if form_values else None) or (entry.type if entry else 'musing') %}
         {% for val, label, desc in [
@@ -39,21 +55,11 @@
       </select>
     </div>
 
-    {# Content #}
-    <div class="form-field">
-      <label class="form-label" for="f-content">
-        Content
-        <span class="form-label-hint">Markdown supported</span>
-      </label>
-      <textarea id="f-content" name="content" class="form-textarea" required
-                placeholder="Write whatever you're thinking about film. Directors, themes, a scene that stuck with you, a question about your own taste. The more honest, the more useful.">{{ form_values.get('content', '') if form_values else (entry.content if entry else '') }}</textarea>
-    </div>
-
     {# ── Film linker ───────────────────────────────────────────────────────── #}
     <div class="form-field">
       <label class="form-label">
         Films mentioned
-        <span class="form-label-hint">Search your library and link films discussed in this entry</span>
+        <span class="form-label-hint">Optional — automatically detected from your writing, or search manually</span>
       </label>
 
       {# Film picker #}

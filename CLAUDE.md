@@ -15,8 +15,9 @@
 - [x] Phase 3: AI Migration (Anthropic Claude -> Google Gemini REST via `filmlog/ai.py`)
 - [x] Phase 4: Cloud Deployment & PWA (Vercel serverless Python runtime, Service Worker, web manifest)
 - [x] Phase 5: Editorial Redesign & Knowledge Graph (Substack edge-to-edge covers, reading overlay, interactive Taste Brain canvas)
-- [x] Phase 6: Taste Refinements & Asset Architecture (Hall of Fame separation from 5★, Notes from Jellyfin segregation, dual image architecture with uncropped 2:3 vertical posters and 1280px landscape covers, smart TMDB multi-entry search, anti-cycling enrich queue without 7-day jargon)
+- [x] Phase 6: Taste Refinements & Asset Architecture (Hall of Fame separation from 5★, Notes from Jellyfin segregation, dual image architecture with uncropped 2:3 vertical posters and 1280px landscape covers, smart TMDB multi-entry search, anti-cycling enrich queue without 7-day jargon, zero-friction journal auto-titling and film detection)
 - [ ] Phase 7: Sync web updates back to local Jellyfin & GitHub automatically
+- [ ] Phase 8 (Vision): Multi-User Personal Taste Platform — independent user accounts/passwords, multimodal watchlist imports (TMDB/IMDb/Jellyfin APIs, screenshot OCR of Keep notes, raw text dumps), and individual Taste Brains & Knowledge Graphs
 
 ---
 

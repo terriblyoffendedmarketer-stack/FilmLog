@@ -196,6 +196,19 @@ def run_all_tests():
         assert "film-inline-card" in t_html or "film-inline-editorial-figure" in t_html, "Dual image inline poster figures missing in issue template"
         print("  ✓ Dual image architecture verified: Substack cover + inline vertical poster cards")
 
+    # 15. Zero-Friction Journal (Auto Title & Auto Film Detection)
+    print("\n[Test 15] Zero-Friction Journal Entry (Content-Only Input)...")
+    raw_thought = "Thinking about Seven Samurai and Kurosawa's spatial blocking in the rain."
+    r_j = client.post("/journal/new", data={"content": raw_thought}, follow_redirects=True)
+    assert r_j.status_code == 200
+    with db.get_connection() as conn:
+        last_j = conn.execute("SELECT * FROM journals ORDER BY id DESC LIMIT 1").fetchone()
+        assert last_j and last_j["title"], "Auto title generation failed!"
+        assert "346" in (last_j["linked_film_ids"] or ""), "Auto film detection failed to find Seven Samurai!"
+        # Cleanup
+        conn.execute("DELETE FROM journals WHERE id = ?", (last_j["id"],))
+    print("  ✓ Content-only journal entry succeeded: title and film links auto-inferred by AI")
+
     print("\n" + "=" * 60)
     print("ALL END-TO-END TESTS PASSED (100% SUCCESS)")
     print("=" * 60)
