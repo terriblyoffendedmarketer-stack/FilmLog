@@ -159,16 +159,39 @@ def _context_summary(answers: dict) -> str:
 
 def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
     """
-    Score the full watchlist against tonight's context.
-    Returns up to 10 best candidates for Claude to choose from.
-    Claude picks the final 2-3 — we give it a generous pool.
+    Score the full watchlist against tonight's context and specific prompt query.
+    Returns up to 14 best candidates for Claude/Gemini to choose from.
+    Claude picks the final 3 (hero anchor + 2 companions).
     """
+    import re
+
     watchlist = db.get_watchlist()
     rewatch = [f for f in db.get_watched_films() if f.get("rewatch", 0)]
     candidates = watchlist + rewatch
 
     if not candidates:
         return []
+
+    # Parse user prompt for positive keywords and negative exclusions
+    free_text = (answers.get("free_text") or "").strip().lower()
+    positive_query_tokens = []
+    negative_query_tokens = []
+
+    if free_text:
+        neg_phrases = re.findall(r'(?:no|not|without|dont want|don\'t want|dont feel like|don\'t feel like)\s+([a-zA-Z0-9_\-]+)', free_text)
+        for np in neg_phrases:
+            negative_query_tokens.append(np.strip().lower())
+
+        words = re.findall(r'[a-zA-Z0-9_\-]+', free_text)
+        stop_words = {
+            'the', 'and', 'for', 'with', 'that', 'this', 'want', 'film', 'films',
+            'movie', 'movies', 'watch', 'watching', 'tonight', 'give', 'like', 'some',
+            'something', 'feel', 'surprise', 'based', 'taste', 'model', 'not', 'dont',
+            'don', 'just', 'more', 'about', 'from', 'what', 'can', 'you', 'please'
+        }
+        for w in words:
+            if len(w) > 2 and w not in stop_words and w not in negative_query_tokens:
+                positive_query_tokens.append(w)
 
     # Get positive taste attributes for tonight's cluster
     pos_attrs = db.get_taste_attributes(cluster=cluster, polarity="positive")
@@ -211,6 +234,33 @@ def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
                 if neg_attr in fa_lower or fa_lower in neg_attr:
                     score -= 0.4
 
+        # Specific user prompt relevance boost
+        if positive_query_tokens:
+            haystack = (
+                (film.get("title") or "") + " " +
+                (film.get("overview") or "") + " " +
+                (film.get("tmdb_genres") or "") + " " +
+                (film.get("personal_notes") or "") + " " +
+                " ".join(film_attrs)
+            ).lower()
+
+            for token in positive_query_tokens:
+                if token in haystack:
+                    score += 3.5
+
+        # Negative constraint penalty
+        if negative_query_tokens:
+            haystack = (
+                (film.get("title") or "") + " " +
+                (film.get("overview") or "") + " " +
+                (film.get("tmdb_genres") or "") + " " +
+                " ".join(film_attrs)
+            ).lower()
+
+            for token in negative_query_tokens:
+                if token in haystack:
+                    score -= 5.0
+
         # Personal notes boost (film has context = more thought went into adding it)
         if film.get("personal_notes"):
             score += 0.3
@@ -220,9 +270,8 @@ def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
             score += 0.5
 
         # Anti-fatigue cooldown: heavily penalise films recommended in recent issues.
-        # This prevents "rejection fatigue" where a film gets pestered repeatedly until it becomes tainted.
         if film.get("tmdb_id") in recently_recommended_ids:
-            score -= 3.0
+            score -= 3.5
 
         # Rewatch candidates get a small boost (they stuck for a reason)
         if film.get("rewatch", 0):
@@ -232,7 +281,7 @@ def _score_candidates(cluster: str | None, answers: dict) -> list[dict]:
             scored.append((score, film))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    return [film for _, film in scored[:10]]
+    return [film for _, film in scored[:14]]
 
 
 def _format_hall_of_fame(limit: int = 20) -> str:
@@ -278,23 +327,38 @@ RECOMMENDATION_PROMPT = """You are writing a curated editorial recommendation is
 
 Voice: A genuine, deeply film-literate critic and confidant (like an editor at Sight & Sound or Criterion). Razor-sharp, organic, grounded, zero pretentious jargon. You write like someone who actually understands directing, rhythm, tension, editing, and texture—not someone stuffing random buzzwords or forcing tenuous connections just to sound smart. Zero corporate filler.
 
-Write 380–550 words as ONE SINGLE, COHESIVE ESSAY exploring an overarching cinematic theme for tonight. Do NOT split this into separate disconnected buckets, bulleted lists, or isolated product entries. All 2–3 films must belong to the exact same essay narrative.
+Write 400–600 words as ONE SINGLE, COHESIVE ESSAY exploring an overarching cinematic theme for tonight. Do NOT split this into separate disconnected buckets, bulleted lists, or isolated product entries. All 3 films must belong to the exact same essay narrative.
 
 ## ESSAY STRUCTURE & THEME
 
-1. **Thematic Headline**: Start with a single `# ` line giving an evocative, thematic title to the essay (e.g. `# The Architecture of Suffocating Dread`, `# Night Wheels & The Concrete Jaws of Mumbai`, or `# Claustrophobia in Broad Daylight`).
-   - Draw directly from Prashil's prompt/vibe if provided; if no prompt was given, invent an organic cinematic theme connecting the chosen films.
+1. **Thematic Headline**:
+   - Start with a single `# ` line giving an evocative, atmospheric, curiosity-inducing title.
+   - VARY YOUR HEADLINE STYLE DRAMATICALLY.
+   - STRICT NEGATIVE CONSTRAINT: NEVER use formulaic, repetitive boilerplate titles such as:
+     * "The Architecture of..."
+     * "The Geometry of..."
+     * "The Instrument of..."
+     * "The Anatomy of..."
+     * "The Symphony of..."
+     * "Echoes of..."
+     * "A Study in..."
+   - Instead, write sharp, curiosity-sparking titles with varied syntactic structures:
+     * High-contrast juxtapositions (e.g., `# Claustrophobia in Broad Daylight`, `# Concrete, Sweat, and Bad Decisions`, `# Neon Bleed and Cold Coffee`)
+     * Provocative statements or questions (e.g., `# When the Room Closes In`, `# How Far Can You Push Before the Dam Breaks?`, `# The Clock is Ticking in the Dark`)
+     * Sensory & textural territory (e.g., `# Steel, Smoke, and Unfinished Business`, `# Whispers in Empty Corridors`, `# Blood on White Snow`)
+     * Psychological portraits (e.g., `# Drifting Through Other People's Lives`, `# The Weight of an Unspoken Secret`, `# Two Strangers, One Cornered Night`)
 
 2. **Thematic Opening (2–3 sentences)**:
-   - Begin with the overarching aesthetic or emotional lens of the night. Frame the mood, the philosophical question, or the textural territory before dropping any film title. This sets the stage so the article feels like a unified piece of film criticism.
+   - Begin with the overarching aesthetic, emotional, or philosophical lens of the night. Frame the mood or textural territory before dropping any film title. This sets the stage so the article feels like a unified piece of film criticism.
 
 3. **The Centerpiece (Hero Anchor Film)**:
-   - Introduce the primary recommendation (**Film Title**) as the anchor of the essay.
+   - Introduce the primary recommendation (**Film Title** (Year)) as the anchor of the essay.
    - Dive straight into why this film works: sensory details, camera movements, the rhythm of dread or exhilaration, the physical feeling in the room. Not a plot synopsis. An organic, expert sell of why it's an extraordinary film to experience tonight.
 
-4. **The Companion Paths (woven organically into the essay)**:
-   - Transition smoothly to the second (and optional third) film within the same narrative flow.
-   - The transition must feel fluid and conversational (e.g., "If you want that same claustrophobia pushed into kinetic hysteria, the alternate door tonight is...", or "Conversely, if you prefer the dread stripped of supernatural ambiguity and played with clinical precision...").
+4. **The Companion Paths (Exactly 2 Companion Films)**:
+   - MUST RECOMMEND EXACTLY 2 COMPANION FILMS (making a tight, cohesive 3-film spread total, or up to 4 if an extra alternative distinctly complements the spread). NEVER recommend only 2 films total.
+   - Transition smoothly to the second and third films within the same continuous prose flow.
+   - The transitions must feel fluid and conversational (e.g., "If you want that same claustrophobia pushed into kinetic hysteria, the alternate door tonight is...", "Conversely, if you prefer the dread stripped of supernatural ambiguity and played with clinical precision...").
    - Frame how each companion film branches out, contrasts, or deepens the night's theme.
    - Give each film its own punchy, authentic sell from the perspective of craft, atmosphere, and impact.
 
@@ -321,9 +385,8 @@ Good sell: "Ninety minutes of a man in a car being hunted by a truck whose drive
 
 - **Taste First**: Anchor everything on Prashil's core taste engines. Never sacrifice emotional precision or engagement for novelty.
 - **Spread Sizing**:
-  - For solo / general nights: Pick 1 clear "Hero Pick" (the sharpest match for tonight), plus 1–2 distinct alternative doors.
-  - If Prashil provided a query or rant (e.g., asking for specific vibes like horror, or specifying what NOT to watch): Address his prompt directly with 2–4 targeted picks matching that exact wavelength.
-  - If watching with others (Friends, Family, Partner): Broaden the spread to 3–5 films to provide enough common ground for a group consensus.
+   - Always recommend EXACTLY 3 FILMS (1 Hero Anchor + 2 Companion Doors), or 4 if a third companion is exceptionally relevant. Never recommend fewer than 3 films.
+   - If Prashil provided a query or rant (e.g., asking for specific vibes like horror, or specifying what NOT to watch): Address his prompt directly with targeted picks matching that exact wavelength.
 - **Curated Balance**:
   - Don't only suggest recent additions, and don't recycle films passed on recently. Pair fresh momentum with a "Vault Rediscovery" — an older, overlooked gem from his watchlist whose time has come.
 - Vary across energy (visceral vs contemplative), tone, and origin.

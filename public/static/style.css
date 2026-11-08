@@ -1211,6 +1211,41 @@ html, body {
 
 .archive-link:hover { color: var(--text-muted); }
 
+/* ── Earlier Issues Accordion Drawer ───────────────────────────────────────── */
+.earlier-issues-drawer {
+  animation: fadeSlideIn 0.25s ease;
+}
+
+.accordion-toggle-row {
+  display: flex;
+  justify-content: center;
+  margin: 18px 0 28px 0;
+}
+
+.btn-accordion-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 10px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-accordion-toggle:hover {
+  background: var(--surface-3);
+  color: var(--text);
+  border-color: rgba(224, 116, 58, 0.4);
+  transform: translateY(-1px);
+}
+
 /* ── Taste Profile page ──────────────────────────────────────────────────── */
 .taste-layout {
   max-width: 900px;

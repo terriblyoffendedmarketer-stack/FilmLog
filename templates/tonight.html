@@ -177,8 +177,9 @@
       <div class="divider-line"></div>
     </div>
 
+    {# 1. Top 3 Recent Past Issues (Always Visible) #}
     <div id="past-issues-list">
-      {% for issue in older_issues %}
+      {% for issue in older_issues[:3] %}
       <div class="past-issue-card" onclick="openIssueOverlay('{{ issue.id }}')">
         <div class="past-issue-meta">
           Issue #{{ issue.issue_number }}
@@ -225,6 +226,63 @@
       {% endfor %}
     </div>
 
+    {# 2. Accordion for Remaining Past Issues (> 3) #}
+    {% if older_issues | length > 3 %}
+    <div id="earlier-issues-accordion" class="earlier-issues-drawer" style="display: none;">
+      {% for issue in older_issues[3:] %}
+      <div class="past-issue-card" onclick="openIssueOverlay('{{ issue.id }}')">
+        <div class="past-issue-meta">
+          Issue #{{ issue.issue_number }}
+          <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
+          {% if issue.taste_model_version %}
+          <span class="past-issue-date">· model v{{ issue.taste_model_version }}</span>
+          {% endif %}
+        </div>
+
+        <h3 class="past-issue-headline">{{ issue.headline }}</h3>
+
+        {% if issue.film_cards %}
+        <div class="past-issue-posters">
+          {% for film in issue.film_cards %}
+          <div class="past-issue-poster" title="{{ film.title }}">
+            {% if film.poster_url %}
+            <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+            {% else %}
+            <div class="past-issue-poster-ph">{{ (film.title or '?')[:2] }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="past-issue-teaser-prose">
+          <p>{{ issue.teaser_text }}</p>
+        </div>
+
+        <div class="past-issue-footer-row">
+          <button type="button" class="btn-read-past-issue" onclick="event.stopPropagation(); openIssueOverlay('{{ issue.id }}')">
+            Read Issue #{{ issue.issue_number }} →
+          </button>
+        </div>
+
+        {# Template for the reading overlay #}
+        <template id="issue-full-{{ issue.id }}">
+          {% with issue=issue %}
+            {% include "partials/magazine_issue.html" %}
+          {% endwith %}
+        </template>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="accordion-toggle-row">
+      <button type="button" id="btn-toggle-earlier-issues" class="btn-accordion-toggle" onclick="toggleEarlierIssues()">
+        <span id="accordion-toggle-text">View Earlier Issues ({{ older_issues[3:] | length }}) ↓</span>
+      </button>
+    </div>
+    {% endif %}
+
+    <div id="past-issues-rehydrated-list"></div>
     <a href="/tonight/archived" class="archive-link">View archived issues</a>
   </div>
 
@@ -409,6 +467,23 @@ function syncAndRehydrateIssues() {
 document.addEventListener('DOMContentLoaded', function() {
   syncAndRehydrateIssues();
 });
+
+// ── Earlier Issues Accordion Toggle ──────────────────────────────────────────
+function toggleEarlierIssues() {
+  var drawer = document.getElementById('earlier-issues-accordion');
+  var btnText = document.getElementById('accordion-toggle-text');
+  if (!drawer || !btnText) return;
+  var isClosed = (drawer.style.display === 'none' || drawer.style.display === '');
+  if (isClosed) {
+    drawer.style.display = 'block';
+    btnText.textContent = 'Hide Earlier Issues ↑';
+    drawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else {
+    drawer.style.display = 'none';
+    var count = drawer.querySelectorAll('.past-issue-card').length;
+    btnText.textContent = 'View Earlier Issues (' + count + ') ↓';
+  }
+}
 
 // ── Past issue toggle ───────────────────────────────────────────────────────
 function toggleIssue(id, btn) {
