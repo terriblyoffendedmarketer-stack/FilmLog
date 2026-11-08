@@ -1570,40 +1570,31 @@ def get_enrichment_queue(
     scored_watched.sort(key=lambda x: x["_score"], reverse=True)
     results = scored_watched[:limit]
 
-    # Fallback to watchlist if needed
-    if len(results) < limit:
-        needed = limit - len(results)
-        wl_rows = conn.execute(
-            f"""
-            SELECT f.tmdb_id, f.title, f.year, f.language, f.poster_url, f.overview,
-                   f.tmdb_genres, f.default_taste_attributes,
-                   uf.rating, uf.personal_notes, uf.jellyfin_notes, uf.status, uf.hall_of_fame,
-                   es.skipped_at
-            FROM user_films uf
-            JOIN films f ON uf.tmdb_id = f.tmdb_id
-            LEFT JOIN enrichment_skips es ON es.tmdb_id = f.tmdb_id
-            WHERE uf.status = 'watchlist'
-              AND (uf.personal_notes IS NULL OR TRIM(uf.personal_notes) = '')
-              AND uf.id = (
-                  SELECT MAX(id) FROM user_films u2
-                  WHERE u2.tmdb_id = uf.tmdb_id
-              )
-              {exclude_clause}
-            """,
-            params,
-        ).fetchall()
-
-        scored_wl = []
-        for r in wl_rows:
-            d = dict(r)
-            d["_score"] = score_candidate(d, is_watched=False)
-            scored_wl.append(d)
-
-        scored_wl.sort(key=lambda x: x["_score"], reverse=True)
-        results.extend(scored_wl[:needed])
-
     conn.close()
     return results
+
+
+def mark_film_not_seen(tmdb_id: int) -> bool:
+    """
+    Mark a film as not seen: updates user_films status from 'watched' to 'watchlist',
+    clears rating, watched date, and hall of fame flag so it is treated as unwatched.
+    """
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id FROM user_films WHERE tmdb_id = ? ORDER BY id DESC LIMIT 1",
+            (tmdb_id,)
+        ).fetchone()
+        if not row:
+            return False
+        conn.execute(
+            """
+            UPDATE user_films
+            SET status = 'watchlist', rating = NULL, date_watched = NULL, hall_of_fame = 0
+            WHERE id = ?
+            """,
+            (row["id"],)
+        )
+        return True
 
 
 def record_enrichment_skip(tmdb_id: int) -> None:

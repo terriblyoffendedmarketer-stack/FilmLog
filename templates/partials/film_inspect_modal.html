@@ -1,0 +1,84 @@
+<div class="film-inspect-sheet" role="dialog" aria-modal="true" aria-labelledby="inspect-film-title" onclick="event.stopPropagation()">
+  <div class="film-inspect-backdrop-hero">
+    {% if film.backdrop_url %}
+    <img src="{{ film.backdrop_url }}" alt="{{ film.title }}" class="film-inspect-backdrop-img">
+    {% endif %}
+    <div class="film-inspect-vignette"></div>
+    <button type="button" class="film-inspect-close" onclick="closeFilmInspectModal()" aria-label="Close dialog">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+
+  <div class="film-inspect-body">
+    <div class="film-inspect-header">
+      <div class="film-inspect-poster">
+        {% if film.poster_url %}
+        <img src="{{ film.poster_url }}" alt="{{ film.title }}">
+        {% else %}
+        <div class="film-inspect-ph">{{ film.title[:2] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="film-inspect-main-meta">
+        <div class="film-inspect-status-row">
+          <span class="status-pill status-{{ user_film.status if user_film else 'watched' }}">
+            {{ '★ Marked Watched' if user_film and user_film.status == 'watched' else 'On Watchlist' }}
+          </span>
+          {% if film.year %}<span class="film-inspect-year">{{ film.year }}</span>{% endif %}
+          {% if film.runtime %}<span class="film-inspect-runtime">⏱ {{ film.runtime }}m</span>{% endif %}
+          {% if film.language %}<span class="film-inspect-lang">🌍 {{ film.language | upper }}</span>{% endif %}
+        </div>
+        <h2 id="inspect-film-title" class="film-inspect-title">{{ film.title }}</h2>
+
+        {% if film.genres %}
+        <div class="film-inspect-genres">
+          {% for g in film.genres %}
+          <span class="genre-chip">{{ g }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if film.overview %}
+    <div class="film-inspect-section">
+      <h4 class="film-inspect-sec-title">Premise &amp; Synopsis</h4>
+      <p class="film-inspect-overview">{{ film.overview }}</p>
+    </div>
+    {% endif %}
+
+    {% if film.taste_attrs %}
+    <div class="film-inspect-section">
+      <h4 class="film-inspect-sec-title">Thematic Taste Markers</h4>
+      <div class="film-inspect-attrs">
+        {% for attr in film.taste_attrs %}
+        <span class="attr-pill">{{ attr }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if user_film and user_film.jellyfin_notes %}
+    <div class="film-inspect-section">
+      <h4 class="film-inspect-sec-title">Notes from Jellyfin</h4>
+      <p class="film-inspect-jf-notes">{{ user_film.jellyfin_notes }}</p>
+    </div>
+    {% endif %}
+
+    <div class="film-inspect-actions-footer">
+      <a href="/films/{{ film.tmdb_id }}" target="_blank" class="btn-primary film-inspect-open-btn">
+        Open Full Film Page ↗
+      </a>
+      <button type="button" class="btn-ghost film-inspect-unwatch-btn"
+              hx-post="/enrich/{{ film.tmdb_id }}/not-seen"
+              hx-target="#enrich-card"
+              hx-swap="outerHTML"
+              onclick="closeFilmInspectModal()">
+        Haven't seen this (Move to Watchlist)
+      </button>
+      <a href="/films/{{ film.tmdb_id }}#correct-results" target="_blank" class="film-inspect-rematch-link">
+        Wrong film? Rematch on TMDB &rarr;
+      </a>
+    </div>
+  </div>
+</div>

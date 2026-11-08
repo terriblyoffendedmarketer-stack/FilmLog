@@ -606,6 +606,51 @@ def enrich_skip(tmdb_id: int):
     )
 
 
+@app.route("/enrich/<int:tmdb_id>/not-seen", methods=["POST"])
+def enrich_not_seen(tmdb_id: int):
+    """Mark film as not seen yet (move to watchlist), return next enrichment card."""
+    from flask import g
+    if not g.get("visitor_mode"):
+        db.mark_film_not_seen(tmdb_id)
+
+    seen = list(session.get("seen_enrich", []))
+    if tmdb_id not in seen:
+        seen.append(tmdb_id)
+    session["seen_enrich"] = seen
+
+    queue = db.get_enrichment_queue(limit=1, exclude_ids=seen)
+    if not queue:
+        seen = [tmdb_id]
+        session["seen_enrich"] = seen
+        queue = db.get_enrichment_queue(limit=1, exclude_ids=seen)
+
+    film = queue[0] if queue else None
+    if film and film["tmdb_id"] not in seen:
+        seen.append(film["tmdb_id"])
+        session["seen_enrich"] = seen
+
+    calibration = db.get_taste_calibration_stats()
+
+    # If called from inline micro-enrich card on Tonight page
+    if request.headers.get("HX-Target") in ("micro-enrich-container", "#micro-enrich-container"):
+        return render_template(
+            "partials/micro_enrich_card.html",
+            micro_film=_parse_film(film) if film else None,
+            calibration=calibration,
+        )
+
+    remaining = db.get_enrichment_count()
+    placeholder = random.choice(ENRICH_PLACEHOLDERS)
+
+    return render_template(
+        "partials/enrich_card.html",
+        film=film,
+        remaining=remaining,
+        placeholder=placeholder,
+        calibration=calibration,
+    )
+
+
 @app.route("/films")
 def films():
     # ── Filter params from query string ─────────────────────────────────────
@@ -715,6 +760,21 @@ def film_detail(tmdb_id: int):
         user_film=user_film,
         linked_recs=linked_recs,
         linked_journals=linked_journals,
+    )
+
+
+@app.route("/films/<int:tmdb_id>/inspect-modal")
+def film_inspect_modal(tmdb_id: int):
+    """Return in-place modal partial to inspect film synopsis, metadata, and status without navigating away."""
+    raw_film = db.get_film(tmdb_id)
+    if not raw_film:
+        abort(404)
+    film = _parse_film(raw_film, fetch_backdrop=True)
+    user_film = db.get_user_film_by_tmdb(tmdb_id)
+    return render_template(
+        "partials/film_inspect_modal.html",
+        film=film,
+        user_film=user_film,
     )
 
 

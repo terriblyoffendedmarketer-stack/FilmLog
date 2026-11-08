@@ -255,7 +255,7 @@
 
   function resize() {
     width = container.clientWidth;
-    height = Math.max(480, Math.min(640, window.innerHeight * 0.65));
+    height = Math.max(620, Math.min(860, window.innerHeight * 0.78));
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     canvas.style.width = width + 'px';
@@ -264,7 +264,7 @@
     if (!transform.initialized) {
       transform.x = width / 2;
       transform.y = height / 2;
-      transform.k = width < 640 ? 0.75 : 1;
+      transform.k = width < 768 ? 0.55 : 0.72;
       transform.initialized = true;
     }
   }
@@ -279,21 +279,22 @@
       nodes = data.nodes || [];
       links = data.links || [];
 
-      // Initialize positions
-      nodes.forEach(function(n, i) {
+      var CLUSTER_ANGLES = {
+        'cluster_solo': -Math.PI / 4,           // Top-Right (Thrillers)
+        'cluster_intellect': -3 * Math.PI / 4,  // Top-Left (Mindbenders)
+        'cluster_general': Math.PI / 4,         // Bottom-Right (Ensemble)
+        'cluster_partner': 3 * Math.PI / 4      // Bottom-Left (Tenderness)
+      };
+
+      // 1. Initialize core & cluster hubs
+      nodes.forEach(function(n) {
         nodeMap[n.id] = n;
         if (n.type === 'core') {
           n.x = 0; n.y = 0; n.vx = 0; n.vy = 0;
         } else if (n.type === 'cluster') {
-          var angle = (i * Math.PI * 2) / 4;
-          n.x = Math.cos(angle) * 140;
-          n.y = Math.sin(angle) * 140;
-          n.vx = 0; n.vy = 0;
-        } else {
-          var rAngle = Math.random() * Math.PI * 2;
-          var rDist = 200 + Math.random() * 120;
-          n.x = Math.cos(rAngle) * rDist;
-          n.y = Math.sin(rAngle) * rDist;
+          var angle = CLUSTER_ANGLES[n.id] !== undefined ? CLUSTER_ANGLES[n.id] : 0;
+          n.x = Math.cos(angle) * 330;
+          n.y = Math.sin(angle) * 330;
           n.vx = 0; n.vy = 0;
         }
       });
@@ -303,6 +304,39 @@
         l.targetNode = nodeMap[l.target];
       });
 
+      // 2. Fan out attribute nodes around their respective cluster hub
+      var clusterAttributeCounts = {};
+      nodes.forEach(function(n) {
+        if (n.type !== 'core' && n.type !== 'cluster') {
+          var parentLink = links.find(function(l) { return l.target === n.id; });
+          var parentNode = parentLink ? parentLink.sourceNode : null;
+          var baseAngle = 0;
+          if (parentNode && CLUSTER_ANGLES[parentNode.id] !== undefined) {
+            baseAngle = CLUSTER_ANGLES[parentNode.id];
+          } else {
+            baseAngle = Math.random() * Math.PI * 2;
+          }
+
+          var pId = parentNode ? parentNode.id : 'default';
+          var count = clusterAttributeCounts[pId] || 0;
+          clusterAttributeCounts[pId] = count + 1;
+
+          // Fan out in an outward arc with comfortable orbital distance
+          var fanSpread = (count % 2 === 0 ? 1 : -1) * Math.ceil(count / 2) * 0.42;
+          var attrAngle = baseAngle + fanSpread;
+          var attrDist = 185 + (count % 3) * 45;
+
+          if (parentNode) {
+            n.x = parentNode.x + Math.cos(attrAngle) * attrDist;
+            n.y = parentNode.y + Math.sin(attrAngle) * attrDist;
+          } else {
+            n.x = Math.cos(attrAngle) * (330 + attrDist);
+            n.y = Math.sin(attrAngle) * (330 + attrDist);
+          }
+          n.vx = 0; n.vy = 0;
+        }
+      });
+
       startSimulation();
     })
     .catch(function(err) {
@@ -310,17 +344,19 @@
     });
 
   function startSimulation() {
+    var alpha = 0.09;
     function step() {
-      // Force physics iteration
-      var alpha = 0.08;
+      // Gentle alpha decay so graph stabilizes in spacious equilibrium
+      alpha = Math.max(0.015, alpha * 0.996);
+
       // Spring forces
       links.forEach(function(l) {
         if (!l.sourceNode || !l.targetNode) return;
         var dx = l.targetNode.x - l.sourceNode.x;
         var dy = l.targetNode.y - l.sourceNode.y;
         var dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        var targetDist = l.type === 'core_link' ? 140 : 95;
-        var force = (dist - targetDist) * (l.strength || 0.1) * alpha;
+        var targetDist = l.type === 'core_link' ? 330 : 195;
+        var force = (dist - targetDist) * (l.strength || 0.08) * alpha;
         var fx = (dx / dist) * force;
         var fy = (dy / dist) * force;
 
@@ -334,7 +370,7 @@
         }
       });
 
-      // Repulsion between nodes
+      // Repulsion and anti-clumping collision between nodes
       for (var i = 0; i < nodes.length; i++) {
         var n1 = nodes[i];
         for (var j = i + 1; j < nodes.length; j++) {
@@ -342,20 +378,31 @@
           var dx = n2.x - n1.x;
           var dy = n2.y - n1.y;
           var distSq = dx * dx + dy * dy || 1;
-          var minDist = n1.radius + n2.radius + 30;
-          if (distSq < 40000) {
-            var dist = Math.sqrt(distSq);
-            var rep = (minDist * minDist) / (distSq * 1.5) * alpha;
+          var minDist = n1.radius + n2.radius + 75; // Ample spacing for node + text label
+
+          if (distSq < 360000) { // Up to 600px range
+            var dist = Math.sqrt(distSq) || 1;
+            var rep = ((minDist * minDist * 2.2) / Math.max(distSq, 400)) * alpha;
             var rx = (dx / dist) * rep;
             var ry = (dy / dist) * rep;
+
+            // Direct anti-overlap push if nodes infringe on each other's margin
+            if (dist < minDist) {
+              var overlap = (minDist - dist);
+              var push = (overlap / dist) * 0.45;
+              rx += dx * push;
+              ry += dy * push;
+            }
+
             if (n2 !== draggedNode && n2.type !== 'core') { n2.x += rx; n2.y += ry; }
             if (n1 !== draggedNode && n1.type !== 'core') { n1.x -= rx; n1.y -= ry; }
           }
         }
-        // Center gravity
+
+        // Soft center gravity (very gentle, prevents drifting without squishing)
         if (n1.type !== 'core' && n1 !== draggedNode) {
-          n1.x -= n1.x * 0.008;
-          n1.y -= n1.y * 0.008;
+          n1.x -= n1.x * 0.0006;
+          n1.y -= n1.y * 0.0006;
         }
       }
 
@@ -522,7 +569,7 @@
 
     transform.x = mouseX - (mouseX - transform.x) * zoomFactor;
     transform.y = mouseY - (mouseY - transform.y) * zoomFactor;
-    transform.k = Math.max(0.35, Math.min(2.5, transform.k * zoomFactor));
+    transform.k = Math.max(0.22, Math.min(4.0, transform.k * zoomFactor));
   }, { passive: false });
 
   // Touch Support
@@ -563,7 +610,7 @@
       var dist = Math.sqrt(dx * dx + dy * dy);
       if (touchStartDist > 0) {
         var factor = dist / touchStartDist;
-        transform.k = Math.max(0.35, Math.min(2.5, transform.k * factor));
+        transform.k = Math.max(0.22, Math.min(4.0, transform.k * factor));
       }
       touchStartDist = dist;
     }

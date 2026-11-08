@@ -1,7 +1,7 @@
 # Filmlog — Personal Taste Engine for Films
 
 ## Status
-- **Current Phase:** Phase 6 — Minimal Universal AI API Key Management & In-App Key Updater Complete
+- **Current Phase:** Phase 6 — Enrich "Haven't Seen This" Failsafe, In-Place Film Inspector & Spacious Thematic Knowledge Graph Complete
 - **In Progress:** Live Vercel verification & session wrap-up
 - **What's Next:** Automated background GitHub commit poller for web-generated notes
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
@@ -15,7 +15,7 @@
 - [x] Phase 3: AI Migration (Anthropic Claude -> Google Gemini REST via `filmlog/ai.py`)
 - [x] Phase 4: Cloud Deployment & PWA (Vercel serverless Python runtime, Service Worker, web manifest)
 - [x] Phase 5: Editorial Redesign & Knowledge Graph (Substack edge-to-edge covers, reading overlay, interactive Taste Brain canvas)
-- [x] Phase 6: Taste Refinements & Asset Architecture (Hall of Fame separation from 5★, Notes from Jellyfin segregation, widescreen multi-backdrop pipeline with distinct hero still and clickable banners, mindful NSFW-filtered quote engine with salvaged transcription stitching, zero-loss issue persistence via bidirectional localStorage sync, smart TMDB multi-entry search, anti-cycling enrich queue, zero-friction journal, 15-tier prestige ladder with 15 signals per tier, 3 metallic subgroups of 5 signals, 5-pip illuminated aperture diode gauge, clean signal stats, Pokémon-style Vault Badge Case, and universal minimal AI API key switcher with status indicator dot)
+- [x] Phase 6: Taste Refinements & Asset Architecture (Hall of Fame separation from 5★, Notes from Jellyfin segregation, widescreen multi-backdrop pipeline with distinct hero still and clickable banners, mindful NSFW-filtered quote engine with salvaged transcription stitching, zero-loss issue persistence via bidirectional localStorage sync, smart TMDB multi-entry search, anti-cycling enrich queue, zero-friction journal, 15-tier prestige ladder with 15 signals per tier, 3 metallic subgroups of 5 signals, 5-pip illuminated aperture diode gauge, clean signal stats, Pokémon-style Vault Badge Case, universal minimal AI API key switcher with status indicator dot, Enrich 'Haven't seen this' failsafe with watchlist reallocation, in-place film detail inspection modal, and spacious unbundled thematic knowledge graph physics)
 - [ ] Phase 7: Sync web updates back to local Jellyfin & GitHub automatically
 - [ ] Phase 8 (Vision): Multi-User Personal Taste Platform — independent user accounts/passwords, multimodal watchlist imports (TMDB/IMDb/Jellyfin APIs, screenshot OCR of Keep notes, raw text dumps), and individual Taste Brains & Knowledge Graphs
 

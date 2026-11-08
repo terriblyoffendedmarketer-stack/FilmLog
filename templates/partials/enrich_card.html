@@ -1,16 +1,26 @@
 {% if film %}
 <div id="enrich-card" class="enrich-card" style="animation: enrichSlideIn 0.25s ease;">
-  <div class="enrich-poster">
+  <div class="enrich-poster" onclick="openFilmInspectModal({{ film.tmdb_id }})" role="button" tabindex="0" title="Click to inspect film synopsis and details">
     {% if film.poster_url %}
       <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="eager">
     {% else %}
       <div class="enrich-poster-placeholder">{{ film.title[0] }}</div>
     {% endif %}
+    <span class="enrich-poster-expand-badge">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+      Inspect
+    </span>
   </div>
 
   <div class="enrich-overlay">
     <div class="enrich-film-info">
-      <h1 class="enrich-title">{{ film.title }}</h1>
+      <div class="enrich-title-row">
+        <h1 class="enrich-title" onclick="openFilmInspectModal({{ film.tmdb_id }})" style="cursor: pointer;" title="Click to inspect film details">{{ film.title }}</h1>
+        <button type="button" class="btn-enrich-inspect" onclick="openFilmInspectModal({{ film.tmdb_id }})" title="Inspect synopsis, genres &amp; metadata">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+          <span>Inspect Film</span>
+        </button>
+      </div>
       <div class="enrich-meta">
         {{ film.year or '' }}
         {% if film.language %} &middot; {{ film.language }}{% endif %}
@@ -47,6 +57,10 @@
         <button type="button" class="btn-ghost enrich-skip"
                 hx-post="/enrich/{{ film.tmdb_id }}/skip"
                 hx-target="#enrich-card" hx-swap="outerHTML">Skip for now</button>
+        <button type="button" class="btn-ghost enrich-not-seen"
+                hx-post="/enrich/{{ film.tmdb_id }}/not-seen"
+                hx-target="#enrich-card" hx-swap="outerHTML"
+                title="Mark as not watched yet (moves to watchlist)">Haven't seen this</button>
       </div>
     </form>
   </div>

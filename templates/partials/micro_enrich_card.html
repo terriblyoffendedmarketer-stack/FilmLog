@@ -73,8 +73,15 @@
         <button type="button" class="btn-micro-skip"
                 hx-post="/enrich/{{ micro_film.tmdb_id }}/skip"
                 hx-target="#micro-enrich-container"
-                hx-swap="innerHTML">
+                hx-swap="outerHTML">
           Skip for now
+        </button>
+        <button type="button" class="btn-micro-not-seen"
+                hx-post="/enrich/{{ micro_film.tmdb_id }}/not-seen"
+                hx-target="#micro-enrich-container"
+                hx-swap="outerHTML"
+                title="Mark as not watched yet (moves to watchlist)">
+          Haven't seen this
         </button>
         <span class="micro-hint">{{ calibration.next_hint }}</span>
       </div>

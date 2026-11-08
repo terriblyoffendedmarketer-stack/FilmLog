@@ -373,8 +373,51 @@ document.addEventListener('keydown', function(e) {
     if (modal && modal.style.display !== 'none') {
       window.closeApiKeyModal();
     }
+    var inspectModal = document.getElementById('film-inspect-modal');
+    if (inspectModal && inspectModal.style.display !== 'none') {
+      window.closeFilmInspectModal();
+    }
   }
 });
+
+// ── In-Place Film Inspection Modal ─────────────────────────────────────────
+window.openFilmInspectModal = function(tmdbId) {
+  var modal = document.getElementById('film-inspect-modal');
+  var container = document.getElementById('film-inspect-container');
+  if (!modal || !container || !tmdbId) return;
+
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  container.innerHTML = '<div class="film-inspect-loading"><span class="gen-dots"><span></span><span></span><span></span></span> Loading synopsis &amp; premise…</div>';
+
+  fetch('/films/' + tmdbId + '/inspect-modal')
+    .then(function(res) {
+      if (!res.ok) throw new Error('Film not found');
+      return res.text();
+    })
+    .then(function(html) {
+      container.innerHTML = html;
+      if (window.htmx) {
+        window.htmx.process(container);
+      }
+    })
+    .catch(function(err) {
+      container.innerHTML = '<div class="film-inspect-error"><p>Could not load film preview.</p><button type="button" class="btn-ghost" onclick="closeFilmInspectModal()">Close</button></div>';
+    });
+};
+
+window.closeFilmInspectModal = function() {
+  var modal = document.getElementById('film-inspect-modal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  document.body.style.overflow = '';
+};
+
+window.handleFilmInspectBackdrop = function(e) {
+  if (e.target && (e.target.id === 'film-inspect-modal' || e.target.classList.contains('film-inspect-modal-overlay'))) {
+    window.closeFilmInspectModal();
+  }
+};
 
 (function () {
   'use strict';
@@ -429,6 +472,13 @@ document.addEventListener('keydown', function(e) {
     if (statusMatch) {
       if (params.status) storeSet(statusMatch[1], 'status', params.status);
       if (params.rewatch !== undefined) storeSet(statusMatch[1], 'rewatch', params.rewatch);
+    }
+
+    // Not-seen from enrich: /enrich/<id>/not-seen
+    var notSeenMatch = path.match(/\/enrich\/(\d+)\/not-seen/);
+    if (notSeenMatch) {
+      storeSet(notSeenMatch[1], 'status', 'watchlist');
+      storeSet(notSeenMatch[1], 'rating', '');
     }
   });
 
