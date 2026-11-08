@@ -1,8 +1,8 @@
 # Filmlog — Personal Taste Engine for Films
 
 ## Status
-- **Current Phase:** Phase 6 — Widescreen Multi-Backdrop Pipeline, Mindful Quotes & Zero-Loss Issue Persistence Complete
-- **In Progress:** Live Vercel verification & visitor experience testing
+- **Current Phase:** Phase 6 — Granular 5-Film Micro-Milestone Progression, Smart Back Navigation & Issue Consolidation
+- **In Progress:** Visitor experience enhancements (Quick mood filtering & guest watchlists)
 - **What's Next:** Automated background GitHub commit poller for web-generated notes
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
 - **Active AI:** Google Gemini API (REST, $0/month, zero external SDK dependencies)
@@ -15,7 +15,7 @@
 - [x] Phase 3: AI Migration (Anthropic Claude -> Google Gemini REST via `filmlog/ai.py`)
 - [x] Phase 4: Cloud Deployment & PWA (Vercel serverless Python runtime, Service Worker, web manifest)
 - [x] Phase 5: Editorial Redesign & Knowledge Graph (Substack edge-to-edge covers, reading overlay, interactive Taste Brain canvas)
-- [x] Phase 6: Taste Refinements & Asset Architecture (Hall of Fame separation from 5★, Notes from Jellyfin segregation, widescreen multi-backdrop pipeline with distinct hero still and clickable banners, mindful NSFW-filtered quote engine, zero-loss issue persistence via bidirectional localStorage sync, smart TMDB multi-entry search, anti-cycling enrich queue, zero-friction journal)
+- [x] Phase 6: Taste Refinements & Asset Architecture (Hall of Fame separation from 5★, Notes from Jellyfin segregation, widescreen multi-backdrop pipeline with distinct hero still and clickable banners, mindful NSFW-filtered quote engine with salvaged transcription stitching, zero-loss issue persistence via bidirectional localStorage sync, smart TMDB multi-entry search, anti-cycling enrich queue, zero-friction journal, granular 5-film micro-milestone progression, universal smart back button)
 - [ ] Phase 7: Sync web updates back to local Jellyfin & GitHub automatically
 - [ ] Phase 8 (Vision): Multi-User Personal Taste Platform — independent user accounts/passwords, multimodal watchlist imports (TMDB/IMDb/Jellyfin APIs, screenshot OCR of Keep notes, raw text dumps), and individual Taste Brains & Knowledge Graphs
 

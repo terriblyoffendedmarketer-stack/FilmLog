@@ -1611,6 +1611,42 @@ def get_recently_skipped_tmdb_ids(days: int = 7) -> set[int]:
         return {r["tmdb_id"] for r in rows}
 
 
+# 5-Film Micro-Milestone Ladder (Threshold, Sub-level string, Major level int, Title)
+CINEPHILE_MILESTONES = [
+    (150, "5.0", 5, "Grand Auteur (Peak Taste Fidelity)"),
+    (145, "4.9", 4, "Grand Auteur in Waiting"),
+    (140, "4.8", 4, "Grand Auteur Fellow"),
+    (135, "4.7", 4, "Chief Critic · Auteur Confidant"),
+    (130, "4.6", 4, "Chief Critic · Golden Palm Juror"),
+    (125, "4.5", 4, "Senior Juror · Archival Curator"),
+    (120, "4.4", 4, "Senior Juror (Editorial Director)"),
+    (115, "4.3", 4, "Master Cinephile · Celluloid Curator"),
+    (110, "4.2", 4, "Master Cinephile · Festival Juror"),
+    (105, "4.1", 4, "Master Cinephile · Criterion Scout"),
+    (100, "4.0", 4, "Master Cinephile (Vault Patriarch)"),
+    (95,  "3.9", 3, "Auteur Critic · Jury Candidate"),
+    (90,  "3.8", 3, "Auteur Critic · Senior Essayist"),
+    (85,  "3.7", 3, "Auteur Critic · Master Reviewer"),
+    (80,  "3.6", 3, "Auteur Critic · Celluloid Historian"),
+    (75,  "3.5", 3, "Auteur Critic · Archival Fellow"),
+    (70,  "3.4", 3, "Auteur Critic · Cahiers Scout"),
+    (65,  "3.3", 3, "Auteur Critic · Critical Essayist"),
+    (60,  "3.2", 3, "Auteur Critic · Program Director"),
+    (55,  "3.1", 3, "Auteur Critic · Retrospective Curator"),
+    (50,  "3.0", 3, "Auteur Critic (Festival Scout)"),
+    (45,  "2.5", 2, "Keen Observer · Celluloid Devotee"),
+    (40,  "2.4", 2, "Keen Observer · Screen Connoisseur"),
+    (35,  "2.3", 2, "Keen Observer · Cinematheque Member"),
+    (30,  "2.2", 2, "Keen Observer · Arthouse Scout"),
+    (25,  "2.1", 2, "Keen Observer · Midnight Archivist"),
+    (20,  "2.0", 2, "Keen Observer (Repertory Regular)"),
+    (15,  "1.3", 1, "Film Explorer · Screen Scout"),
+    (10,  "1.2", 1, "Film Explorer · Arthouse Novice"),
+    (5,   "1.1", 1, "Film Explorer · Casual Observer"),
+    (0,   "1.0", 1, "Film Explorer (Vault Initiate)"),
+]
+
+
 def get_taste_calibration_stats() -> dict:
     """Compute active calibration level, progress %, and signal counts based on watched films annotated."""
     with get_connection() as conn:
@@ -1628,37 +1664,50 @@ def get_taste_calibration_stats() -> dict:
     else:
         pct = 100
 
-    # Progressive Cinephile Tiers
-    if n_notes >= 150:
-        level_title = "Grand Auteur"
-        level_num = 5
-        next_hint = f"{n_unannotated} uncalibrated films waiting · Log notes to maintain peak fidelity" if n_unannotated > 0 else "Vault fully calibrated · Next film logged sharpens your brain"
-    elif n_notes >= 100:
-        level_title = "Master Cinephile"
-        level_num = 4
-        needed = max(1, 150 - n_notes)
-        next_hint = f"{n_unannotated} uncalibrated films waiting · {needed} notes until Grand Auteur" if n_unannotated > 0 else f"{needed} notes until Grand Auteur"
-    elif n_notes >= 50:
-        level_title = "Auteur Critic"
-        level_num = 3
-        needed = max(1, 100 - n_notes)
-        next_hint = f"{n_unannotated} uncalibrated films waiting · {needed} notes until Master Cinephile"
-    elif n_notes >= 20:
-        level_title = "Keen Observer"
-        level_num = 2
-        needed = max(1, 50 - n_notes)
-        next_hint = f"{needed} notes until Auteur Critic"
+    # 5-Film Granular Micro-Milestone Evaluation
+    current_tier = None
+    next_step = None
+    for idx, step in enumerate(CINEPHILE_MILESTONES):
+        threshold, sub_lvl, maj_lvl, title = step
+        if n_notes >= threshold:
+            current_tier = step
+            next_step = CINEPHILE_MILESTONES[idx - 1] if idx > 0 else None
+            break
+
+    if not current_tier:
+        current_tier = CINEPHILE_MILESTONES[-1]
+
+    sub_lvl = current_tier[1]
+    level_num = current_tier[2]
+    level_title = current_tier[3]
+    level_display = f"Level {sub_lvl}"
+
+    if next_step:
+        needed = next_step[0] - n_notes
+        next_title = next_step[3]
+        if n_unannotated == 0:
+            next_hint = "Vault fully calibrated · Next film logged sharpens your brain"
+        elif needed == 1:
+            next_hint = f"⚡ 1 more note unlocks {next_title}!"
+        else:
+            next_hint = f"Just 1 note sharpens tonight's engine · {needed} notes until {next_title}"
     else:
-        level_title = "Film Explorer"
-        level_num = 1
-        needed = max(1, 20 - n_notes)
-        next_hint = f"Enrich {needed} more films to calibrate"
+        needed = 0
+        next_title = "Peak Fidelity"
+        if n_unannotated > 0:
+            next_hint = f"{n_unannotated} uncalibrated films waiting · Log notes to maintain peak fidelity"
+        else:
+            next_hint = "Vault fully calibrated · Next film logged sharpens your brain"
 
     return {
         "percentage": pct,
         "level_title": level_title,
         "level_num": level_num,
+        "level_sub": sub_lvl,
+        "level_display": level_display,
         "next_hint": next_hint,
+        "needed_for_next": needed,
+        "next_title": next_title,
         "n_notes": n_notes,
         "n_unannotated": n_unannotated,
         "n_watched": n_watched,

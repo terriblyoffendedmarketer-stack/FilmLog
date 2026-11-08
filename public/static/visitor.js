@@ -1,12 +1,15 @@
 /*
- * visitor.js — localStorage persistence for non-owner visitors.
- *
- * When the user isn't logged in as owner, all their interactions (notes,
- * ratings, status changes) are saved to localStorage and overlaid on
- * page load. The server processes the request but skips DB writes.
- *
- * Storage key format: "fl:<tmdb_id>:<field>" → value
+ * visitor.js — client utilities & localStorage persistence for non-owner visitors.
  */
+
+// Universal cinema back navigation with safe internal-domain fallback
+window.handleSmartBack = function() {
+  if (window.history.length > 1 && document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
+    window.history.back();
+  } else {
+    window.location.href = '/tonight';
+  }
+};
 
 (function () {
   'use strict';

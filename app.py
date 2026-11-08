@@ -506,6 +506,7 @@ def enrich_save(tmdb_id: int):
             kwargs["hall_of_fame"] = 1 if hof in ("1", "true", "on") else 0
         if kwargs:
             db.update_user_film(user_film["id"], **kwargs)
+            session["session_enrich_count"] = session.get("session_enrich_count", 0) + 1
 
     seen = list(session.get("seen_enrich", []))
     if tmdb_id not in seen:
@@ -862,6 +863,7 @@ def tonight_micro_enrich(tmdb_id: int):
             kwargs["hall_of_fame"] = 1 if hof in ("1", "true", "on") else 0
         if kwargs:
             db.update_user_film(user_film["id"], **kwargs)
+            session["session_enrich_count"] = session.get("session_enrich_count", 0) + 1
 
     # Next candidate for smooth continuous micro-enrichment
     next_queue = db.get_enrichment_queue(limit=1, exclude_tmdb_id=tmdb_id)
@@ -873,6 +875,7 @@ def tonight_micro_enrich(tmdb_id: int):
         micro_film=next_film,
         calibration=calibration,
         just_saved=True,
+        session_count=session.get("session_enrich_count", 1),
     )
 
 

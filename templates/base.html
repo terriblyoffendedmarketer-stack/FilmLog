@@ -14,6 +14,13 @@
 </head>
 <body data-owner="{{ 'true' if is_owner else 'false' }}">
   <nav class="nav">
+    {% if page not in ['tonight', 'home'] %}
+    <button type="button" class="nav-back-btn" onclick="handleSmartBack()" aria-label="Go back" title="Go back">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+    </button>
+    {% endif %}
     <a href="/" class="nav-logo">filmlog</a>
 
     <div class="nav-links">
