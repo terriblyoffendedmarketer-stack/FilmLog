@@ -1104,6 +1104,8 @@ def taste_profile():
         page="taste",
         title="Taste Profile",
         stats=stats,
+        calibration=db.get_taste_calibration_stats(),
+        session_count=session.get("session_enrich_count", 1),
         positive_attrs=positive_attrs,
         negative_attrs=negative_attrs,
         general_attrs=general_attrs,

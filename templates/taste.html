@@ -34,6 +34,13 @@
     </div>
   </div>
 
+  {# ── Cinephile Signal & Badge Progression Widget ─────────────────────────── #}
+  {% if calibration %}
+  <div style="margin: 28px 0;">
+    {% include "partials/signal_gamification_widget.html" %}
+  </div>
+  {% endif %}
+
   {# ── The Taste Brain · Interactive Knowledge Graph ──────────────────────── #}
   <section class="taste-section taste-graph-section">
     <div class="taste-section-header">

@@ -38,7 +38,7 @@ def run_all_tests():
     calib = db.get_taste_calibration_stats()
     assert "percentage" in calib and 0 <= calib["percentage"] <= 100
     assert "level_title" in calib
-    assert "level_num" in calib and 1 <= calib["level_num"] <= 5
+    assert "level_num" in calib and 1 <= calib["level_num"] <= 15
     assert "next_hint" in calib
     print(f"  ✓ Calibration: Level {calib['level_num']} · {calib['level_title']} ({calib['percentage']}%)")
     print(f"  ✓ Signals: {calib['n_watched']} watched, {calib['n_notes']} notes, {calib['n_journals']} journals")

@@ -133,6 +133,23 @@ window.showGuestWatchlistView = function() {
   grid.innerHTML = html;
 };
 
+// ── Vault Badge Case Toggle ─────────────────────────────────────────────────
+window.toggleVaultBadgeCase = function() {
+  var tray = document.getElementById('vault-badge-tray');
+  var text = document.getElementById('badge-toggle-text');
+  var arrow = document.getElementById('badge-toggle-arrow');
+  if (!tray) return;
+  if (tray.style.display === 'none' || !tray.style.display) {
+    tray.style.display = 'block';
+    if (text) text.textContent = 'Hide Badges';
+    if (arrow) arrow.textContent = '▴';
+  } else {
+    tray.style.display = 'none';
+    if (text) text.textContent = 'Show Badges';
+    if (arrow) arrow.textContent = '▾';
+  }
+};
+
 (function () {
   'use strict';
 

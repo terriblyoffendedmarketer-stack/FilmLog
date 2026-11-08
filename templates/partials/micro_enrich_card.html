@@ -18,8 +18,8 @@
   <div class="micro-enrich-card">
     <div class="micro-enrich-header">
       <div class="micro-badge-group">
-        <span class="micro-kicker">Sharpen Tonight's Algorithm</span>
-        <span class="micro-level-pill">{{ calibration.level_display }} · {{ calibration.level_title }}</span>
+        <span class="micro-kicker">✦ Capture Today's Signal</span>
+        <span class="micro-level-pill">{{ calibration.level_icon }} {{ calibration.level_display }} · {{ calibration.level_title }} ({{ calibration.subgroup_name }})</span>
       </div>
       <a href="/enrich" class="micro-deck-link">Open Full Deck ({{ calibration.n_unannotated }} left) →</a>
     </div>
@@ -68,7 +68,7 @@
 
       <div class="micro-form-actions">
         <button type="submit" class="btn-micro-save">
-          +1 Calibrate Brain
+          +1 Capture Signal
         </button>
         <button type="button" class="btn-micro-skip"
                 hx-post="/enrich/{{ micro_film.tmdb_id }}/skip"

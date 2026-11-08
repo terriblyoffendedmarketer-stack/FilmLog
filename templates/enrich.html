@@ -4,21 +4,8 @@
 <div class="enrich-layout">
 
   {% if calibration %}
-  <div class="taste-calibration-bar-widget" style="margin-bottom: 24px;">
-    <div class="calibration-top-info">
-      <div class="calibration-level-badge">
-        <span class="level-icon">⚡</span>
-        <span class="level-name">{{ calibration.level_display }} · {{ calibration.level_title }}</span>
-      </div>
-      <span class="calibration-pct">{{ calibration.percentage }}% Calibrated</span>
-    </div>
-    <div class="calibration-progress-track">
-      <div class="calibration-progress-fill" style="width: {{ calibration.percentage }}%;"></div>
-    </div>
-    <div class="calibration-sub-info">
-      <span>{{ remaining }} films need notes</span>
-      <span class="calibration-hint">{{ calibration.next_hint }}</span>
-    </div>
+  <div style="margin-bottom: 28px;">
+    {% include "partials/signal_gamification_widget.html" %}
   </div>
   {% endif %}
 

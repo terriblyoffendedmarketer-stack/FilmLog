@@ -1611,44 +1611,80 @@ def get_recently_skipped_tmdb_ids(days: int = 7) -> set[int]:
         return {r["tmdb_id"] for r in rows}
 
 
-# 5-Film Micro-Milestone Ladder (Threshold, Sub-level string, Major level int, Title)
-CINEPHILE_MILESTONES = [
-    (150, "5.0", 5, "Grand Auteur (Peak Taste Fidelity)"),
-    (145, "4.9", 4, "Grand Auteur in Waiting"),
-    (140, "4.8", 4, "Grand Auteur Fellow"),
-    (135, "4.7", 4, "Chief Critic · Auteur Confidant"),
-    (130, "4.6", 4, "Chief Critic · Golden Palm Juror"),
-    (125, "4.5", 4, "Senior Juror · Archival Curator"),
-    (120, "4.4", 4, "Senior Juror (Editorial Director)"),
-    (115, "4.3", 4, "Master Cinephile · Celluloid Curator"),
-    (110, "4.2", 4, "Master Cinephile · Festival Juror"),
-    (105, "4.1", 4, "Master Cinephile · Criterion Scout"),
-    (100, "4.0", 4, "Master Cinephile (Vault Patriarch)"),
-    (95,  "3.9", 3, "Auteur Critic · Jury Candidate"),
-    (90,  "3.8", 3, "Auteur Critic · Senior Essayist"),
-    (85,  "3.7", 3, "Auteur Critic · Master Reviewer"),
-    (80,  "3.6", 3, "Auteur Critic · Celluloid Historian"),
-    (75,  "3.5", 3, "Auteur Critic · Archival Fellow"),
-    (70,  "3.4", 3, "Auteur Critic · Cahiers Scout"),
-    (65,  "3.3", 3, "Auteur Critic · Critical Essayist"),
-    (60,  "3.2", 3, "Auteur Critic · Program Director"),
-    (55,  "3.1", 3, "Auteur Critic · Retrospective Curator"),
-    (50,  "3.0", 3, "Auteur Critic (Festival Scout)"),
-    (45,  "2.5", 2, "Keen Observer · Celluloid Devotee"),
-    (40,  "2.4", 2, "Keen Observer · Screen Connoisseur"),
-    (35,  "2.3", 2, "Keen Observer · Cinematheque Member"),
-    (30,  "2.2", 2, "Keen Observer · Arthouse Scout"),
-    (25,  "2.1", 2, "Keen Observer · Midnight Archivist"),
-    (20,  "2.0", 2, "Keen Observer (Repertory Regular)"),
-    (15,  "1.3", 1, "Film Explorer · Screen Scout"),
-    (10,  "1.2", 1, "Film Explorer · Arthouse Novice"),
-    (5,   "1.1", 1, "Film Explorer · Casual Observer"),
-    (0,   "1.0", 1, "Film Explorer (Vault Initiate)"),
+# 15-Tier Cinephile Prestige Engine (15 Signals per Tier, 3 Metallic Subgroups of 5 Signals)
+MAJOR_TIERS = [
+    (1,  "Film Explorer",       "🎬", "The initial spark — stepping into the projector beam", 0,   14),
+    (2,  "Screen Scout",        "🔭", "Developing an active radar across genres & styles",    15,  29),
+    (3,  "Repertory Regular",   "🎟️", "Dedicated to the daily ritual of the screen",          30,  44),
+    (4,  "Midnight Archivist",  "🌙", "Burning impressions to memory long after credits roll", 45,  59),
+    (5,  "Screen Connoisseur",  "🎞️", "Sharpened eye for craft, momentum, and impact",         60,  74),
+    (6,  "Celluloid Devotee",   "📽️", "Passionate, high-conviction cinematic devotion",      75,  89),
+    (7,  "Vault Curator",       "🏛️", "An unshakeable archive of personal reflections",        90,  104),
+    (8,  "Master Reviewer",     "✍️", "Authoritative, articulate, and consistent taste voice", 105, 119),
+    (9,  "Senior Juror",        "⚖️", "High-conviction taste decider and festival anchor",    120, 134),
+    (10, "Festival Director",   "🎪", "Commands multiple eras, tones, and cinematic styles",   135, 149),
+    (11, "Cinematheque Fellow", "🏛️", "Elite taste fidelity with vast cross-genre intuition",  150, 164),
+    (12, "Auteur Critic",       "✒️", "Incisive, unmistakable signature aesthetic voice",     165, 179),
+    (13, "Master Cinephile",    "🏆", "Rare cinematic command backed by hundreds of signals",  180, 194),
+    (14, "Grand Auteur",        "👑", "Near-total taste calibration and authorial clarity",    195, 209),
+    (15, "Vault Sovereign",     "⚡", "The summit of personal cinema intelligence",           210, 99999),
 ]
 
 
+def get_signal_streaks() -> tuple[int, int]:
+    """Calculate current consecutive day streak and all-time longest streak from note dates."""
+    from datetime import datetime, date, timedelta
+    with get_connection() as conn:
+        rows = conn.execute("""
+            SELECT DISTINCT d FROM (
+                SELECT substr(updated_at, 1, 10) as d FROM user_films WHERE personal_notes IS NOT NULL AND trim(personal_notes) != '' AND updated_at IS NOT NULL
+                UNION
+                SELECT substr(created_at, 1, 10) as d FROM journals WHERE created_at IS NOT NULL
+                UNION
+                SELECT substr(date_watched, 1, 10) as d FROM user_films WHERE personal_notes IS NOT NULL AND trim(personal_notes) != '' AND date_watched IS NOT NULL
+            ) WHERE d IS NOT NULL AND length(d) >= 10 ORDER BY d DESC
+        """).fetchall()
+
+    parsed = set()
+    for r in rows:
+        try:
+            parsed.add(datetime.strptime(r[0][:10], "%Y-%m-%d").date())
+        except Exception:
+            pass
+
+    if not parsed:
+        return 0, 0
+
+    sorted_dates = sorted(parsed)
+    longest = 1
+    current = 1
+    for i in range(1, len(sorted_dates)):
+        if sorted_dates[i] == sorted_dates[i - 1] + timedelta(days=1):
+            current += 1
+            if current > longest:
+                longest = current
+        elif sorted_dates[i] > sorted_dates[i - 1] + timedelta(days=1):
+            current = 1
+
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    active = 0
+    check_day = today if today in parsed else (yesterday if yesterday in parsed else None)
+    if check_day:
+        active = 1
+        d = check_day - timedelta(days=1)
+        while d in parsed:
+            active += 1
+            d -= timedelta(days=1)
+
+    if longest < active:
+        longest = active
+
+    return active, longest
+
+
 def get_taste_calibration_stats() -> dict:
-    """Compute active calibration level, progress %, and signal counts based on watched films annotated."""
+    """Compute active calibration tier, metallic subgroup, 5-pip fuel gauge, badges, and signal counts."""
     with get_connection() as conn:
         n_watched = conn.execute("SELECT COUNT(*) FROM user_films WHERE status = 'watched'").fetchone()[0]
         n_notes = conn.execute("SELECT COUNT(*) FROM user_films WHERE status = 'watched' AND personal_notes IS NOT NULL AND trim(personal_notes) != ''").fetchone()[0]
@@ -1664,50 +1700,86 @@ def get_taste_calibration_stats() -> dict:
     else:
         pct = 100
 
-    # 5-Film Granular Micro-Milestone Evaluation
-    current_tier = None
-    next_step = None
-    for idx, step in enumerate(CINEPHILE_MILESTONES):
-        threshold, sub_lvl, maj_lvl, title = step
-        if n_notes >= threshold:
-            current_tier = step
-            next_step = CINEPHILE_MILESTONES[idx - 1] if idx > 0 else None
+    # Locate Major Tier (1 to 15)
+    curr_tier = MAJOR_TIERS[-1]
+    for tier in MAJOR_TIERS:
+        lvl, name, icon, desc, start, end = tier
+        if start <= n_notes <= end:
+            curr_tier = tier
             break
 
-    if not current_tier:
-        current_tier = CINEPHILE_MILESTONES[-1]
+    lvl, name, icon, desc, start, end = curr_tier
+    tier_progress = n_notes - start
+    subgroup_idx = min(2, tier_progress // 5)
+    subgroup_names = ["Bronze Rank", "Silver Rank", "Gold Rank"]
+    subgroup_name = subgroup_names[subgroup_idx]
 
-    sub_lvl = current_tier[1]
-    level_num = current_tier[2]
-    level_title = current_tier[3]
-    level_display = f"Level {sub_lvl}"
+    # 5-pip progress inside current metallic subgroup
+    subgroup_progress = tier_progress % 5
+    pips_filled = subgroup_progress
+    pips_needed = 5 - subgroup_progress
+    pips = [i < pips_filled for i in range(5)]
 
-    if next_step:
-        needed = next_step[0] - n_notes
-        next_title = next_step[3]
-        if n_unannotated == 0:
-            next_hint = "Vault fully calibrated · Next film logged sharpens your brain"
-        elif needed == 1:
-            next_hint = f"⚡ 1 more note unlocks {next_title}!"
-        else:
-            next_hint = f"Just 1 note sharpens tonight's engine · {needed} notes until {next_title}"
+    if subgroup_idx == 0:
+        next_milestone_name = f"{name} · Silver Rank"
+    elif subgroup_idx == 1:
+        next_milestone_name = f"{name} · Gold Rank"
     else:
-        needed = 0
-        next_title = "Peak Fidelity"
-        if n_unannotated > 0:
-            next_hint = f"{n_unannotated} uncalibrated films waiting · Log notes to maintain peak fidelity"
+        next_lvl = min(15, lvl + 1)
+        next_tier_name = MAJOR_TIERS[next_lvl - 1][1]
+        next_milestone_name = f"{next_tier_name} (Level {next_lvl})"
+
+    if n_unannotated == 0:
+        next_hint = "Vault fully calibrated · Next signal logged sharpens your brain"
+    elif pips_needed == 1:
+        next_hint = f"⚡ 1 more signal unlocks {next_milestone_name}!"
+    else:
+        next_hint = f"Capture today's signal · {pips_needed} signals to {next_milestone_name}"
+
+    active_streak, longest_streak = get_signal_streaks()
+
+    # Generate Vault Badge Case (Gym Badges / Conquered and Active Tier Crests)
+    badges = []
+    for t_lvl, t_name, t_icon, t_desc, t_start, t_end in MAJOR_TIERS:
+        if t_lvl < lvl:
+            b_status = "earned"
+            b_pct = 100
+        elif t_lvl == lvl:
+            b_status = "active"
+            b_pct = int((tier_progress / 15) * 100)
         else:
-            next_hint = "Vault fully calibrated · Next film logged sharpens your brain"
+            b_status = "locked"
+            b_pct = 0
+
+        badges.append({
+            "level": t_lvl,
+            "name": t_name,
+            "icon": t_icon,
+            "desc": t_desc,
+            "status": b_status,
+            "progress_pct": b_pct,
+            "range": f"{t_start}–{t_end if t_end < 90000 else '210+'}",
+        })
 
     return {
         "percentage": pct,
-        "level_title": level_title,
-        "level_num": level_num,
-        "level_sub": sub_lvl,
-        "level_display": level_display,
+        "level_title": name,
+        "level_num": lvl,
+        "level_icon": icon,
+        "level_desc": desc,
+        "level_display": f"Level {lvl}",
+        "subgroup_name": subgroup_name,
+        "subgroup_idx": subgroup_idx,
+        "tier_progress": tier_progress,
+        "tier_total": 15,
+        "pips_filled": pips_filled,
+        "pips_needed": pips_needed,
+        "pips": pips,
+        "next_milestone_name": next_milestone_name,
         "next_hint": next_hint,
-        "needed_for_next": needed,
-        "next_title": next_title,
+        "active_streak": active_streak,
+        "longest_streak": longest_streak,
+        "badges": badges,
         "n_notes": n_notes,
         "n_unannotated": n_unannotated,
         "n_watched": n_watched,

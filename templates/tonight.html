@@ -166,7 +166,12 @@
   </div>
   {% endif %}
 
-  {# ── Psychological Enrich Piping (Micro-Enrich Card) ─────────────────────── #}
+  {# ── Psychological Enrich Piping (Signal Badges & Micro-Enrich Card) ─────── #}
+  {% if calibration %}
+  <div style="margin: 28px 0 16px;">
+    {% include "partials/signal_gamification_widget.html" %}
+  </div>
+  {% endif %}
   {% include "partials/micro_enrich_card.html" %}
 
   {# ── Older issues archive ─────────────────────────────────────────────────── #}
