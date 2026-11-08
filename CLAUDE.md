@@ -1,9 +1,9 @@
 # Filmlog — Personal Taste Engine for Films
 
 ## Status
-- **Current Phase:** Phase 6 — Hall of Fame Overhaul, Dual Image Architecture & Jellyfin Separation Complete
-- **In Progress:** Verification of live Vercel deployment
-- **What's Next:** Automated daily GitHub sync for notes written on web
+- **Current Phase:** Phase 6 — Widescreen Multi-Backdrop Pipeline, Mindful Quotes & Zero-Loss Issue Persistence Complete
+- **In Progress:** Live Vercel verification & visitor experience testing
+- **What's Next:** Automated background GitHub commit poller for web-generated notes
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
 - **Active AI:** Google Gemini API (REST, $0/month, zero external SDK dependencies)
 
@@ -15,7 +15,7 @@
 - [x] Phase 3: AI Migration (Anthropic Claude -> Google Gemini REST via `filmlog/ai.py`)
 - [x] Phase 4: Cloud Deployment & PWA (Vercel serverless Python runtime, Service Worker, web manifest)
 - [x] Phase 5: Editorial Redesign & Knowledge Graph (Substack edge-to-edge covers, reading overlay, interactive Taste Brain canvas)
-- [x] Phase 6: Taste Refinements & Asset Architecture (Hall of Fame separation from 5★, Notes from Jellyfin segregation, dual image architecture with uncropped 2:3 vertical posters and 1280px landscape covers, smart TMDB multi-entry search, anti-cycling enrich queue without 7-day jargon, zero-friction journal auto-titling and film detection)
+- [x] Phase 6: Taste Refinements & Asset Architecture (Hall of Fame separation from 5★, Notes from Jellyfin segregation, widescreen multi-backdrop pipeline with distinct hero still and clickable banners, mindful NSFW-filtered quote engine, zero-loss issue persistence via bidirectional localStorage sync, smart TMDB multi-entry search, anti-cycling enrich queue, zero-friction journal)
 - [ ] Phase 7: Sync web updates back to local Jellyfin & GitHub automatically
 - [ ] Phase 8 (Vision): Multi-User Personal Taste Platform — independent user accounts/passwords, multimodal watchlist imports (TMDB/IMDb/Jellyfin APIs, screenshot OCR of Keep notes, raw text dumps), and individual Taste Brains & Knowledge Graphs
 

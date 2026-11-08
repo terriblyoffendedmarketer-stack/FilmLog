@@ -76,6 +76,29 @@ def build_backdrop_url(backdrop_path: str | None) -> str | None:
     return f"{TMDB_BACKDROP_BASE}{backdrop_path}"
 
 
+def fetch_film_backdrops(tmdb_id: int, limit: int = 5, media_type: str = "movie") -> list[str]:
+    """
+    Fetch genuine widescreen landscape backdrop URLs from TMDB /images endpoint.
+    Filters out missing paths and returns high-resolution w1280 URLs.
+    """
+    endpoint = f"/{media_type}/{tmdb_id}/images"
+    try:
+        data = _get(endpoint)
+        backdrops = data.get("backdrops", [])
+        urls = []
+        for b in backdrops:
+            fp = b.get("file_path")
+            if fp:
+                url = build_backdrop_url(fp)
+                if url and url not in urls:
+                    urls.append(url)
+            if len(urls) >= limit:
+                break
+        return urls
+    except Exception:
+        return []
+
+
 def search_movies(query: str, year: int | None = None) -> list[dict]:
     """
     Search TMDB for movies by title. Returns a list of candidate dicts.

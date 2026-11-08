@@ -133,24 +133,27 @@ def _parse_film(film: dict, fetch_backdrop: bool = False) -> dict:
     else:
         f["tagline"] = ""
 
-    backdrop = f.get("backdrop_url")
-    if not backdrop and f.get("tmdb_id") and fetch_backdrop:
+    if f.get("tmdb_id") and fetch_backdrop:
         try:
             from filmlog import tmdb
             m_type = f.get("media_type") or "movie"
-            if m_type == "tv":
-                det = tmdb.get_tv_details(f["tmdb_id"])
-            else:
-                det = tmdb.get_movie_details(f["tmdb_id"])
-            backdrop = det.get("backdrop_url")
-            if backdrop:
-                f["backdrop_url"] = backdrop
-                db.update_film_backdrop(f["tmdb_id"], backdrop)
+            if not f.get("backdrop_url") or not f.get("secondary_backdrop_url"):
+                backdrops = tmdb.fetch_film_backdrops(f["tmdb_id"], limit=3, media_type=m_type)
+                if backdrops:
+                    f["backdrop_url"] = backdrops[0]
+                    f["secondary_backdrop_url"] = backdrops[1] if len(backdrops) > 1 else backdrops[0]
+                    db.update_film_backdrops(
+                        f["tmdb_id"],
+                        f["backdrop_url"],
+                        f["secondary_backdrop_url"],
+                    )
         except Exception:
             pass
 
-    # Cover image must be a genuine landscape backdrop (never fallback to vertical poster)
+    backdrop = f.get("backdrop_url")
     f["cover_url"] = backdrop or ""
+    if not f.get("secondary_backdrop_url"):
+        f["secondary_backdrop_url"] = backdrop or ""
 
     return f
 
@@ -286,7 +289,6 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
         figure_html = ""
         if matched_fc:
             is_hero = (len(seen_film_ids) == 1)
-            poster = matched_fc.get("poster_url", "")
             title = matched_fc.get("title", "")
             year = str(matched_fc.get("year") or "")
             tmdb_id = str(matched_fc.get("tmdb_id") or "")
@@ -296,27 +298,45 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
             meta_parts = [x for x in [year, runtime, lang] if x]
             meta_str = " · ".join(meta_parts)
 
+            # Hero in essay body gets a distinct landscape still (secondary_backdrop)
+            # Companion doors get their authentic 16:9 landscape backdrop
+            if is_hero:
+                cover = (
+                    matched_fc.get("secondary_backdrop_url")
+                    or matched_fc.get("backdrop_url")
+                    or matched_fc.get("cover_url")
+                )
+                badge_class = "hero-pill"
+                badge_text = "★ TONIGHT'S ANCHOR"
+                figure_class = "hero-editorial-break"
+            else:
+                cover = (
+                    matched_fc.get("backdrop_url")
+                    or matched_fc.get("cover_url")
+                )
+                badge_class = "companion-pill"
+                badge_text = "✦ COMPANION DOOR"
+                figure_class = "companion-editorial-break"
+
             img_tag = (
-                f'<img src="{poster}" alt="{title}" class="film-inline-poster-img" loading="lazy">'
-                if poster
-                else f'<div class="film-inline-poster-ph">{title[:2]}</div>'
+                f'<img src="{cover}" alt="{title}" class="editorial-break-img" loading="lazy">'
+                if cover
+                else f'<div class="editorial-break-ph">{title[:2]}</div>'
             )
-            badge_class = "hero-pill" if is_hero else "companion-pill"
-            badge_text = "★ TONIGHT'S ANCHOR" if is_hero else "✦ COMPANION DOOR"
-            figure_class = "hero-figure" if is_hero else "companion-figure"
 
             figure_html = (
-                f'<figure class="film-inline-editorial-figure {figure_class}">'
-                f'<div class="film-inline-card">'
-                f'<a href="/films/{tmdb_id}" class="film-inline-poster-link" title="View {title} details">{img_tag}</a>'
-                f'<div class="film-inline-info">'
-                f'<div class="film-inline-badge-line">'
-                f'<span class="film-inline-pill {badge_class}">{badge_text}</span>'
-                f'<span class="film-inline-meta">{meta_str}</span>'
+                f'<figure class="editorial-landscape-break {figure_class}">'
+                f'<a href="/films/{tmdb_id}" class="editorial-break-frame" title="Explore {title}">'
+                f'{img_tag}'
+                f'<div class="editorial-break-vignette"></div>'
+                f'<figcaption class="editorial-break-caption">'
+                f'<div class="editorial-badge-line">'
+                f'<span class="editorial-pill {badge_class}">{badge_text}</span>'
+                f'<span class="editorial-meta-line">{meta_str}</span>'
                 f'</div>'
-                f'<h3 class="film-inline-title"><a href="/films/{tmdb_id}">{title}</a></h3>'
-                f'</div>'
-                f'</div>'
+                f'<h3 class="editorial-heading">{title}</h3>'
+                f'</figcaption>'
+                f'</a>'
                 f'</figure>'
             )
 
@@ -778,7 +798,7 @@ def update_status(tmdb_id: int):
 
 @app.route("/tonight")
 def tonight():
-    past_issues = db.get_recommendation_history(limit=10)
+    past_issues = db.get_recommendation_history(limit=50)
     parsed_issues = []
     for raw_issue in past_issues:
         film_cards = []
@@ -877,10 +897,7 @@ def tonight_generate():
 
     result = generate_web_recommendation(answers)
 
-    # Auto-archive: keep only the 2 most recent issues visible
-    db.auto_archive_issues(keep=2)
-
-    # Fetch referenced films for inline posters + hero pick + companion doors
+    # Fetch referenced films for inline landscape banners + hero pick + companion doors
     film_cards = []
     for tmdb_id in result.get("films_referenced", [])[:4]:
         film = db.get_film(tmdb_id)
@@ -891,7 +908,7 @@ def tonight_generate():
     companion_films = film_cards[1:4] if len(film_cards) > 1 else []
 
     issue_data = {
-        "id": None,
+        "id": result.get("id"),
         "issue_number": result.get("issue_number", "New"),
         "issue_text": result.get("issue_text", ""),
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
@@ -1102,6 +1119,65 @@ def journal():
 def api_taste_graph():
     """Return JSON knowledge graph data for the Taste Profile Brain visualization."""
     return jsonify(db.get_taste_knowledge_graph())
+
+
+@app.route("/api/issues/restore", methods=["POST"])
+def api_issues_restore():
+    """
+    Restore cached recommendation issues from browser localStorage into SQLite.
+    Protects against Vercel serverless /tmp resets and container recycling.
+    """
+    data = request.get_json(silent=True) or {}
+    cached_issues = data.get("issues", [])
+    restored_count = 0
+    if not isinstance(cached_issues, list):
+        return jsonify({"restored": 0}), 400
+
+    with db.get_connection() as conn:
+        for item in cached_issues:
+            issue_text = (item.get("issue_text") or "").strip()
+            if not issue_text:
+                continue
+            # Check if this issue is already present in DB
+            existing = conn.execute(
+                "SELECT id FROM recommendation_issues WHERE issue_text = ? OR (issue_number = ? AND issue_number IS NOT NULL)",
+                (issue_text, item.get("issue_number")),
+            ).fetchone()
+            if existing:
+                continue
+
+            films_ref = item.get("films_referenced") or []
+            if isinstance(films_ref, str):
+                try:
+                    films_ref = json.loads(films_ref)
+                except Exception:
+                    films_ref = []
+
+            gen_at = item.get("generated_at") or datetime.now(timezone.utc).isoformat()
+            issue_num = item.get("issue_number")
+            if not issue_num:
+                row = conn.execute("SELECT MAX(issue_number) as m FROM recommendation_issues").fetchone()
+                issue_num = (row["m"] or 0) + 1
+
+            conn.execute(
+                """
+                INSERT INTO recommendation_issues (
+                    issue_number, generated_at, issue_text, films_referenced, archived
+                )
+                VALUES (?, ?, ?, ?, 0)
+                """,
+                (issue_num, gen_at, issue_text, json.dumps(films_ref)),
+            )
+            restored_count += 1
+
+    return jsonify({"restored": restored_count, "ok": True})
+
+
+@app.route("/api/issues/export")
+def api_issues_export():
+    """Export all recommendation issues as JSON for backup."""
+    issues = db.get_recommendation_history(limit=100, include_archived=True)
+    return jsonify({"issues": issues})
 
 
 @app.route("/api/films/search")

@@ -234,9 +234,16 @@ def _run_migrations(conn) -> None:
             WHERE status = 'watched' AND rating IS NULL
         """)
 
+    f_cols = {r[1] for r in conn.execute("PRAGMA table_info(films)").fetchall()}
+    if "secondary_backdrop_url" not in f_cols:
+        conn.execute("ALTER TABLE films ADD COLUMN secondary_backdrop_url TEXT")
+
     ri_cols = {r[1] for r in conn.execute("PRAGMA table_info(recommendation_issues)").fetchall()}
     if "archived" not in ri_cols:
         conn.execute("ALTER TABLE recommendation_issues ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+
+    # Unarchive all existing recommendation issues so past editorial issues are never hidden
+    conn.execute("UPDATE recommendation_issues SET archived = 0")
 
     if "updated_at" not in uf_cols:
         conn.execute("ALTER TABLE user_films ADD COLUMN updated_at TEXT")
@@ -340,10 +347,14 @@ def update_film_backdrop(tmdb_id: int, backdrop_url: str) -> None:
         _fts_index_film(conn, tmdb_id)
 
 
-def update_film_backdrop(tmdb_id: int, backdrop_url: str) -> None:
-    """Update backdrop_url for a film."""
+def update_film_backdrops(tmdb_id: int, backdrop_url: str, secondary_backdrop_url: str | None = None) -> None:
+    """Update primary and optional secondary backdrop_url for a film."""
     with get_connection() as conn:
-        conn.execute("UPDATE films SET backdrop_url = ? WHERE tmdb_id = ?", (backdrop_url, tmdb_id))
+        conn.execute(
+            "UPDATE films SET backdrop_url = ?, secondary_backdrop_url = ? WHERE tmdb_id = ?",
+            (backdrop_url, secondary_backdrop_url, tmdb_id),
+        )
+        _fts_index_film(conn, tmdb_id)
 
 
 def set_film_taste_attributes(tmdb_id: int, attributes: list[str]) -> None:
@@ -1658,21 +1669,75 @@ def get_taste_calibration_stats() -> dict:
 
 
 def get_random_taste_insight() -> dict | None:
-    """Pull a polished, quotable cinephile insight from past journals or personal notes."""
+    """
+    Pull a polished, mindful, and self-contained cinephile insight from past journals or personal notes.
+    Strictly filters out any NSFW, sexual, vulgar, or fragmented thoughts.
+    """
     import random
     import re
+
+    SENSITIVE_WORDS = {
+        "sex", "sexual", "sexuality", "nudity", "naked", "erotic", "lesbian",
+        "gay", "porn", "pervert", "vagina", "penis", "boob", "breast",
+        "masturbat", "climax", "intercourse", "lust", "pussy", "dick",
+        "fetish", "horny", "intimate scene", "bed scene"
+    }
+
+    DISQUALIFIED_PATTERNS = [
+        re.compile(r'\b(honourable|honorable)\s+mention\b', re.IGNORECASE),
+        re.compile(r'\bhall\s+of\s+fame\b', re.IGNORECASE),
+        re.compile(r'\bon\s+hard\s+drive\b', re.IGNORECASE),
+        re.compile(r'\bsole\s+focus\b', re.IGNORECASE),
+        re.compile(r'\badult\s+parody\b', re.IGNORECASE),
+    ]
 
     CURATED_FALLBACKS = [
         {
             "source_type": "Journal",
             "title": "Thoughts on Jigra",
             "quote": "Jigra has soul. And soul supersedes everything in a film.",
-            "link": "/journal",
+            "link": "/journal/20",
+        },
+        {
+            "source_type": "Journal",
+            "title": "Reverse Chekhov's Gun",
+            "quote": "If you want to build suspense without losing audience attention, introduce the unfamiliar element quietly before it goes guns blazing.",
+            "link": "/journal/21",
+        },
+        {
+            "source_type": "Journal",
+            "title": "Voiceless Characters",
+            "quote": "To build memorable heroes, you must recognize that audiences have a moral code of their own that trumps any legal one.",
+            "link": "/journal/22",
+        },
+        {
+            "source_type": "Personal Note",
+            "title": "Days of Heaven (1978)",
+            "quote": "Cinematographer Néstor Almendros was going blind while filming, yet delivered what remains one of the most visually stunning films ever made.",
+            "link": "/films/16642",
+        },
+        {
+            "source_type": "Personal Note",
+            "title": "Burning (2018)",
+            "quote": "A slow-burn psychological thriller exploring class divide and obsession — a true masterclass in simmering, unresolved tension.",
+            "link": "/films/491584",
+        },
+        {
+            "source_type": "Personal Note",
+            "title": "Hereditary (2018)",
+            "quote": "A devastating family drama disguised as horror; Toni Collette's performance makes the descent into grief deeply visceral.",
+            "link": "/films/493922",
+        },
+        {
+            "source_type": "Personal Note",
+            "title": "Sairat (2016)",
+            "quote": "A powerful social commentary disguised as a romantic drama; the tonal shift in the second half hits hard and stays with you.",
+            "link": "/films/395642",
         },
         {
             "source_type": "Personal Note",
             "title": "Fight Club (1999)",
-            "quote": "Fincher builds a world out of IKEA catalogs and testosterone, then asks what it's actually made of. The visual grammar is baked into the cinematography.",
+            "quote": "Fincher builds a world out of IKEA catalogs and testosterone, then asks what it's actually made of. The visual grammar is baked into every cut.",
             "link": "/films/550",
         },
         {
@@ -1683,70 +1748,86 @@ def get_random_taste_insight() -> dict | None:
         },
         {
             "source_type": "Personal Note",
+            "title": "Everything Everywhere All at Once (2022)",
+            "quote": "The Daniels use multiverse theory to tell an intimate story about family. The visual invention is relentless — every universe has its own distinct grammar.",
+            "link": "/films/545611",
+        },
+        {
+            "source_type": "Personal Note",
             "title": "Jagga Jasoos (2017)",
             "quote": "Anurag Basu makes a musical detective adventure entirely in song. The ambition is wild — a Tintin film made in Bollywood.",
             "link": "/films/378236",
         },
         {
-            "source_type": "Journal",
-            "title": "Reverse Chekhov's Gun",
-            "quote": "The device exists to crack open something tender or destabilizing about identity, regret, or love.",
-            "link": "/journal",
-        },
-        {
             "source_type": "Personal Note",
-            "title": "Everything Everywhere All at Once (2022)",
-            "quote": "The Daniels use multiverse theory to tell an intimate story about family. The visual invention is relentless — every universe has its own distinct grammar.",
-            "link": "/films/545611",
+            "title": "Hometown Cha-Cha-Cha",
+            "quote": "Never stopped smiling. Even the clichés were endearing because the emotional warmth was completely earned.",
+            "link": "/films/129888",
         },
     ]
 
     with get_connection() as conn:
-        # Try finding a high-quality journal reflection
+        # 1. Search journals (exclude explicitly NSFW journal IDs and titles)
         journal_rows = conn.execute(
             """
             SELECT id, title, content, created_at
             FROM journals
-            WHERE length(content) > 50
+            WHERE length(content) > 60
+              AND id NOT IN (32, 36, 37)
+              AND LOWER(title) NOT LIKE '%handmaiden%'
+              AND LOWER(title) NOT LIKE '%sex%'
+              AND LOWER(title) NOT LIKE '%shinji%'
             ORDER BY RANDOM()
-            LIMIT 6
+            LIMIT 10
             """
         ).fetchall()
 
         for j in journal_rows:
             raw = j["content"]
-            # Clean markdown artifacts, URLs, and headers
             cleaned = re.sub(r'https?://\S+', '', raw)
             cleaned = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', cleaned)
+            cleaned = re.sub(r'\\([+*_\-\[\]()])', r'\1', cleaned)
             cleaned = re.sub(r'[#*>`_]', '', cleaned).strip()
 
-            sentences = [
-                s.strip() for s in re.split(r'(?<=[.!?])\s+', cleaned)
-                if 35 <= len(s.strip()) <= 240
-                and not s.strip().startswith(('1.', '2.', '3.', '-', '•', 'http'))
-                and any(w in s.lower() for w in ['soul', 'cinema', 'tension', 'visual', 'frame', 'craft', 'feel', 'character', 'heart', 'story', 'pacing', 'world', 'moment', 'structure', 'love', 'human'])
-            ]
-            if sentences:
-                quote = re.sub(r'\s+', ' ', sentences[0]).strip()
-                if not quote.endswith(('.', '!', '?')):
-                    quote += '.'
-                return {
-                    "source_type": "Journal",
-                    "title": j["title"],
-                    "quote": quote,
-                    "date": j["created_at"][:10] if j["created_at"] else "",
-                    "link": f"/journal/{j['id']}",
-                }
+            paragraphs = [p.strip() for p in cleaned.split('\n\n') if p.strip()]
+            for para in paragraphs:
+                para_lower = para.lower()
+                if any(w in para_lower for w in SENSITIVE_WORDS):
+                    continue
 
-        # Try finding a high-quality personal note
+                sentences = [
+                    s.strip() for s in re.split(r'(?<=[.!?])\s+', para)
+                    if 45 <= len(s.strip()) <= 230
+                    and not s.strip().startswith(('1.', '2.', '3.', '-', '•', 'http', 'And ', 'Because ', 'Or ', 'So if ', 'Which '))
+                    and not (s.strip().endswith('?') and len(s.strip()) < 90)
+                    and s.strip()[0].isupper()
+                    and any(w in s.lower() for w in ['soul', 'cinema', 'tension', 'visual', 'frame', 'craft', 'character', 'heart', 'story', 'pacing', 'world', 'moment', 'structure', 'hero', 'moral'])
+                    and not any(w in s.lower() for w in SENSITIVE_WORDS)
+                ]
+                if sentences:
+                    quote = re.sub(r'\s+', ' ', sentences[0]).strip()
+                    if not quote.endswith(('.', '!', '?')):
+                        quote += '.'
+                    return {
+                        "source_type": "Journal",
+                        "title": j["title"],
+                        "quote": quote,
+                        "date": j["created_at"][:10] if j["created_at"] else "",
+                        "link": f"/journal/{j['id']}",
+                    }
+
+        # 2. Search personal notes
         note_rows = conn.execute(
             """
             SELECT f.tmdb_id, f.title, f.year, uf.personal_notes
             FROM user_films uf
             JOIN films f ON uf.tmdb_id = f.tmdb_id
             WHERE uf.personal_notes IS NOT NULL AND length(uf.personal_notes) > 40
+              AND LOWER(f.title) NOT LIKE '%handmaiden%'
+              AND LOWER(f.title) NOT LIKE '%jan dara%'
+              AND LOWER(f.title) NOT LIKE '%intimacy%'
             ORDER BY RANDOM()
-            LIMIT 8
+            LIMIT 15
             """
         ).fetchall()
 
@@ -1754,11 +1835,19 @@ def get_random_taste_insight() -> dict | None:
             raw = n["personal_notes"]
             cleaned = re.sub(r'https?://\S+', '', raw)
             cleaned = re.sub(r'[#*>`_]', '', cleaned).strip()
+
+            if any(p.search(cleaned) for p in DISQUALIFIED_PATTERNS):
+                continue
+            if any(w in cleaned.lower() for w in SENSITIVE_WORDS):
+                continue
+
             sentences = [
                 s.strip() for s in re.split(r'(?<=[.!?])\s+', cleaned)
-                if 35 <= len(s.strip()) <= 220
-                and not s.strip().startswith(('1.', '2.', '3.', '-', '•', 'Honourable', 'Mention'))
-                and any(w in s.lower() for w in ['film', 'director', 'scene', 'visual', 'craft', 'story', 'frame', 'pacing', 'camera', 'moment', 'feel', 'ambition', 'acting', 'script', 'genius', 'dread', 'tension'])
+                if 42 <= len(s.strip()) <= 230
+                and not s.strip().startswith(('1.', '2.', '3.', '-', '•', 'Honourable', 'Mention', 'Hall of Fame', 'And ', 'Because '))
+                and s.strip()[0].isupper()
+                and any(w in s.lower() for w in ['film', 'director', 'scene', 'visual', 'craft', 'story', 'frame', 'pacing', 'camera', 'moment', 'feel', 'ambition', 'acting', 'script', 'genius', 'dread', 'tension', 'performance'])
+                and not any(w in s.lower() for w in SENSITIVE_WORDS)
             ]
             if sentences:
                 quote = re.sub(r'\s+', ' ', sentences[0]).strip()

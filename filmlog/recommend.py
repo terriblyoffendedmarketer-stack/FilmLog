@@ -706,8 +706,10 @@ def generate_web_recommendation(answers: dict) -> dict:
         )
         issues = db.get_recommendation_history(limit=1)
         issue_number = issues[0]["issue_number"] if issues else 1
+        issue_id = issues[0]["id"] if issues else None
 
         return {
+            "id": issue_id,
             "issue_text": issue_text,
             "issue_number": issue_number,
             "films_referenced": film_ids,
@@ -746,8 +748,10 @@ def generate_web_recommendation(answers: dict) -> dict:
     )
     issues = db.get_recommendation_history(limit=1)
     issue_number = issues[0]["issue_number"] if issues else 1
+    issue_id = issues[0]["id"] if issues else None
 
     return {
+        "id": issue_id,
         "issue_text": issue_text,
         "issue_number": issue_number,
         "films_referenced": film_ids,

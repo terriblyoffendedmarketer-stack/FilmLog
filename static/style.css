@@ -5125,6 +5125,131 @@ html, body {
   }
 }
 
+/* ── Unified Widescreen Editorial Breaks (Hero Anchor + Companion Doors) ─── */
+.editorial-landscape-break {
+  margin: 36px 0 24px 0;
+  padding: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border-light);
+  border-radius: calc(var(--r) * 1.2);
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.editorial-break-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  max-height: 250px;
+  overflow: hidden;
+  background: #0d0d0d;
+  display: block;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.editorial-break-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.editorial-landscape-break:hover .editorial-break-img {
+  transform: scale(1.025);
+}
+
+.editorial-break-ph {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+  font-size: 2rem;
+  color: var(--text-dim);
+  background: #141414;
+}
+
+.editorial-break-vignette {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.4) 45%, rgba(14, 14, 14, 0.95) 100%);
+  pointer-events: none;
+}
+
+.editorial-break-caption {
+  position: absolute;
+  bottom: 14px;
+  left: 20px;
+  right: 20px;
+  z-index: 2;
+}
+
+.editorial-badge-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.editorial-pill {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.editorial-pill.hero-pill {
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.editorial-pill.companion-pill {
+  color: var(--accent);
+  border: 1px solid rgba(224, 116, 58, 0.35);
+}
+
+.editorial-meta-line {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.editorial-heading {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  transition: color 0.2s ease;
+}
+
+.editorial-landscape-break:hover .editorial-heading {
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .editorial-break-frame {
+    aspect-ratio: 16 / 9;
+    max-height: 190px;
+  }
+  .editorial-break-caption {
+    left: 14px;
+    right: 14px;
+    bottom: 10px;
+  }
+  .editorial-heading {
+    font-size: 1.1rem;
+  }
+}
+
 /* ── Companion Editorial Inline Break (Legacy compatibility) ────────────────── */
 .companion-editorial-break {
   margin: 36px 0 24px 0;

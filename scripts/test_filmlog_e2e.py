@@ -184,17 +184,16 @@ def run_all_tests():
     assert "Skip for now" in e_html, "Skip for now button missing in enrich"
     print("  ✓ Enrich UI free of '7-day cooldown' jargon; uses 'Skip for now'")
 
-    # 14. Dual Image Architecture & Clickable Artwork in Recommendation Issue
-    print("\n[Test 14] Dual Image Architecture & Clickable Artwork in Editorial Issue...")
-    # Check that issue template contains article-cover-frame link and film-inline-card
+    # 14. Widescreen Multi-Backdrop & Clickable Landscape Banners in Editorial Issue
+    print("\n[Test 14] Widescreen Multi-Backdrop & Clickable Landscape Banners in Editorial Issue...")
     with db.get_connection() as conn:
         issue_row = conn.execute("SELECT * FROM recommendation_issues WHERE archived = 0 ORDER BY id DESC LIMIT 1").fetchone()
     if issue_row:
         r_tonight = client.get("/tonight")
         t_html = r_tonight.data.decode("utf-8")
         assert "article-cover-frame" in t_html, "Article cover frame missing in tonight page"
-        assert "film-inline-card" in t_html or "film-inline-editorial-figure" in t_html, "Dual image inline poster figures missing in issue template"
-        print("  ✓ Dual image architecture verified: Substack cover + inline vertical poster cards")
+        assert "editorial-landscape-break" in t_html or "editorial-break-frame" in t_html, "Wide landscape editorial break missing in issue template"
+        print("  ✓ Widescreen multi-backdrop architecture verified: Substack cover + clickable landscape break banners")
 
     # 15. Zero-Friction Journal (Auto Title & Auto Film Detection)
     print("\n[Test 15] Zero-Friction Journal Entry (Content-Only Input)...")
@@ -208,6 +207,31 @@ def run_all_tests():
         # Cleanup
         conn.execute("DELETE FROM journals WHERE id = ?", (last_j["id"],))
     print("  ✓ Content-only journal entry succeeded: title and film links auto-inferred by AI")
+
+    # 16. Multi-Container Persistence & Issue Restore API
+    print("\n[Test 16] Multi-Container Persistence & /api/issues/restore Endpoint...")
+    sample_issue = {
+        "issue_number": 999,
+        "headline": "Testing Persistence & Zero Issue Loss",
+        "issue_text": "# Testing Persistence & Zero Issue Loss\n\n**Seven Samurai** (1954) anchors tonight with breathtaking spatial blocking.\n\n**The Dark Knight** (2008) follows with escalating ethical pressure.",
+        "films_referenced": [346, 155],
+        "generated_at": "2026-11-08T12:00:00+00:00"
+    }
+    r_restore = client.post("/api/issues/restore", json={"issues": [sample_issue]})
+    assert r_restore.status_code == 200
+    res_data = r_restore.get_json()
+    assert res_data.get("ok") is True
+
+    # Verify export endpoint
+    r_exp = client.get("/api/issues/export")
+    assert r_exp.status_code == 200
+    exp_issues = r_exp.get_json().get("issues", [])
+    assert any(i["issue_number"] == 999 for i in exp_issues), "Restored issue 999 not found in exported issues!"
+
+    # Clean up test issue 999
+    with db.get_connection() as conn:
+        conn.execute("DELETE FROM recommendation_issues WHERE issue_number = 999")
+    print("  ✓ Issue persistence & restore verified: client issues safely rehydrated to SQLite")
 
     print("\n" + "=" * 60)
     print("ALL END-TO-END TESTS PASSED (100% SUCCESS)")

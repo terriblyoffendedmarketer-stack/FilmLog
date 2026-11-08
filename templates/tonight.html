@@ -170,63 +170,63 @@
   {% include "partials/micro_enrich_card.html" %}
 
   {# ── Older issues archive ─────────────────────────────────────────────────── #}
-  {% if older_issues %}
-  <div class="past-issues-section">
+  <div class="past-issues-section" id="past-issues-section" {% if not older_issues %}style="display: none;"{% endif %}>
     <div class="section-divider">
       <div class="divider-line"></div>
       <span class="divider-label">Previous issues</span>
       <div class="divider-line"></div>
     </div>
 
-    {% for issue in older_issues %}
-    <div class="past-issue-card" onclick="openIssueOverlay('{{ issue.id }}')">
-      <div class="past-issue-meta">
-        Issue #{{ issue.issue_number }}
-        <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
-        {% if issue.taste_model_version %}
-        <span class="past-issue-date">· model v{{ issue.taste_model_version }}</span>
-        {% endif %}
-      </div>
-
-      <h3 class="past-issue-headline">{{ issue.headline }}</h3>
-
-      {# Preview: film posters + blurred teaser text #}
-      {% if issue.film_cards %}
-      <div class="past-issue-posters">
-        {% for film in issue.film_cards %}
-        <div class="past-issue-poster" title="{{ film.title }}">
-          {% if film.poster_url %}
-          <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
-          {% else %}
-          <div class="past-issue-poster-ph">{{ (film.title or '?')[:2] }}</div>
+    <div id="past-issues-list">
+      {% for issue in older_issues %}
+      <div class="past-issue-card" onclick="openIssueOverlay('{{ issue.id }}')">
+        <div class="past-issue-meta">
+          Issue #{{ issue.issue_number }}
+          <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
+          {% if issue.taste_model_version %}
+          <span class="past-issue-date">· model v{{ issue.taste_model_version }}</span>
           {% endif %}
         </div>
-        {% endfor %}
-      </div>
-      {% endif %}
 
-      <div class="past-issue-teaser-prose">
-        <p>{{ issue.teaser_text }}</p>
-      </div>
+        <h3 class="past-issue-headline">{{ issue.headline }}</h3>
 
-      <div class="past-issue-footer-row">
-        <button type="button" class="btn-read-past-issue" onclick="event.stopPropagation(); openIssueOverlay('{{ issue.id }}')">
-          Read Issue #{{ issue.issue_number }} →
-        </button>
-      </div>
+        {# Preview: film posters + blurred teaser text #}
+        {% if issue.film_cards %}
+        <div class="past-issue-posters">
+          {% for film in issue.film_cards %}
+          <div class="past-issue-poster" title="{{ film.title }}">
+            {% if film.poster_url %}
+            <img src="{{ film.poster_url }}" alt="{{ film.title }}" loading="lazy">
+            {% else %}
+            <div class="past-issue-poster-ph">{{ (film.title or '?')[:2] }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
 
-      {# Template for the reading overlay #}
-      <template id="issue-full-{{ issue.id }}">
-        {% with issue=issue %}
-          {% include "partials/magazine_issue.html" %}
-        {% endwith %}
-      </template>
+        <div class="past-issue-teaser-prose">
+          <p>{{ issue.teaser_text }}</p>
+        </div>
+
+        <div class="past-issue-footer-row">
+          <button type="button" class="btn-read-past-issue" onclick="event.stopPropagation(); openIssueOverlay('{{ issue.id }}')">
+            Read Issue #{{ issue.issue_number }} →
+          </button>
+        </div>
+
+        {# Template for the reading overlay #}
+        <template id="issue-full-{{ issue.id }}">
+          {% with issue=issue %}
+            {% include "partials/magazine_issue.html" %}
+          {% endwith %}
+        </template>
+      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
 
     <a href="/tonight/archived" class="archive-link">View archived issues</a>
   </div>
-  {% endif %}
 
 </div>
 
@@ -328,6 +328,87 @@ if (form) {
     }
   });
 }
+
+// ── Issue Persistence & Multi-Container Sync ─────────────────────────────────
+var CACHE_KEY = 'filmlog_cached_issues_v2';
+
+function getStoredIssues() {
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function persistGeneratedIssue(issue) {
+  if (!issue || !issue.headline) return;
+  var list = getStoredIssues();
+  var filtered = list.filter(function(x) {
+    return x.headline !== issue.headline && (issue.id == null || x.id !== issue.id);
+  });
+  filtered.unshift(issue);
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(filtered.slice(0, 30)));
+  } catch (e) {}
+
+  // Sync to server so /tmp/filmlog.db is restored if container was recycled
+  fetch('/api/issues/restore', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ issues: [issue] })
+  }).catch(function() {});
+}
+
+window.persistGeneratedIssue = persistGeneratedIssue;
+
+function syncAndRehydrateIssues() {
+  var stored = getStoredIssues();
+  var missingOnServer = [];
+
+  stored.forEach(function(issue) {
+    var key = issue.id || ('issue-' + issue.issue_number);
+    var tpl = document.getElementById('issue-full-' + key);
+    if (!tpl && issue.full_html) {
+      // Re-inject template so overlay works
+      var newTpl = document.createElement('template');
+      newTpl.id = 'issue-full-' + key;
+      newTpl.innerHTML = issue.full_html;
+      document.body.appendChild(newTpl);
+
+      // Re-inject card into past issues if not already rendered
+      var pastList = document.getElementById('past-issues-list');
+      var pastSection = document.getElementById('past-issues-section');
+      if (pastList) {
+        if (pastSection) pastSection.style.display = 'block';
+        var card = document.createElement('div');
+        card.className = 'past-issue-card';
+        card.onclick = function() { openIssueOverlay(key); };
+        card.innerHTML =
+          '<div class="past-issue-meta">Issue #' + (issue.issue_number || '') +
+          (issue.generated_at ? '<span class="past-issue-date"> · ' + issue.generated_at.slice(0, 10) + '</span>' : '') +
+          '</div>' +
+          '<h3 class="past-issue-headline">' + (issue.headline || 'Critique') + '</h3>' +
+          '<div class="past-issue-teaser-prose"><p>' + (issue.teaser_text || '') + '</p></div>' +
+          '<div class="past-issue-footer-row"><button type="button" class="btn-read-past-issue">Read Issue #' + (issue.issue_number || '') + ' →</button></div>';
+        pastList.appendChild(card);
+      }
+      missingOnServer.push(issue);
+    }
+  });
+
+  if (missingOnServer.length > 0) {
+    fetch('/api/issues/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issues: missingOnServer })
+    }).catch(function() {});
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  syncAndRehydrateIssues();
+});
 
 // ── Past issue toggle ───────────────────────────────────────────────────────
 function toggleIssue(id, btn) {

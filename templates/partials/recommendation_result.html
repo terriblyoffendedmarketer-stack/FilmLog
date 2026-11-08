@@ -54,12 +54,33 @@
   <template id="issue-full-fresh">
     {% include "partials/magazine_issue.html" %}
   </template>
+  {% if issue.id %}
+  <template id="issue-full-{{ issue.id }}">
+    {% include "partials/magazine_issue.html" %}
+  </template>
+  {% endif %}
 
   <script>
-    // Reveal the newly generated issue in the reading overlay
-    setTimeout(function() {
-      openIssueOverlay('fresh');
-    }, 120);
+    (function() {
+      var issueData = {
+        id: {{ issue.id | tojson if issue.id else 'null' }},
+        issue_number: {{ issue.issue_number | tojson }},
+        headline: {{ issue.headline | tojson }},
+        teaser_text: {{ issue.teaser_text | tojson }},
+        generated_at: {{ issue.generated_at | tojson if issue.generated_at else '""' }},
+        issue_text: {{ issue.issue_text | tojson if issue.issue_text else '""' }},
+        films_referenced: [{% for f in issue.film_cards %}{{ f.tmdb_id }}{% if not loop.last %},{% endif %}{% endfor %}],
+        hero_cover_url: {{ (hero_film.cover_url if hero_film else '') | tojson }},
+        hero_title: {{ (hero_film.title if hero_film else '') | tojson }},
+        full_html: document.getElementById('issue-full-fresh') ? document.getElementById('issue-full-fresh').innerHTML : ""
+      };
+      if (window.persistGeneratedIssue) {
+        window.persistGeneratedIssue(issueData);
+      }
+      setTimeout(function() {
+        openIssueOverlay('fresh');
+      }, 120);
+    })();
   </script>
 </div>
 {% endif %}
