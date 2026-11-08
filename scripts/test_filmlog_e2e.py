@@ -131,6 +131,22 @@ def run_all_tests():
     assert "graph-node-drawer" in t_html, "Node drawer missing from /taste"
     print("  ✓ Taste Brain Knowledge Graph endpoint and interactive canvas verified")
 
+    # 10. Smart TMDB Search (Fuzzy Year, Title+Year, and TMDB URL)
+    print("\n[Test 10] Smart TMDB Search (Fuzzy Year, URL, Title+Year)...")
+    # Fuzzy year 2012 finding 2013 David
+    r_fuzzy = client.get("/api/tmdb/search?q=David&year=2012")
+    assert r_fuzzy.status_code == 200
+    assert "161040" in r_fuzzy.data.decode("utf-8"), "Fuzzy year search failed to rank 161040"
+    # Title + year single input
+    r_single = client.get("/api/tmdb/search?q=David+2013")
+    assert r_single.status_code == 200
+    assert "161040" in r_single.data.decode("utf-8"), "Title+year combined input failed"
+    # Direct TMDB URL
+    r_url = client.get("/api/tmdb/search?q=https://www.themoviedb.org/movie/161040-david")
+    assert r_url.status_code == 200
+    assert "161040" in r_url.data.decode("utf-8"), "Direct TMDB URL search failed"
+    print("  ✓ Smart search verified across fuzzy year, single-string title+year, and direct TMDB URLs")
+
     print("\n" + "=" * 60)
     print("ALL END-TO-END TESTS PASSED (100% SUCCESS)")
     print("=" * 60)

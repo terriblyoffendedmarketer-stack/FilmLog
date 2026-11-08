@@ -1382,18 +1382,17 @@ def add_film_page():
 
 @app.route("/api/tmdb/search")
 def api_tmdb_search():
-    """HTMX endpoint: search TMDB for films/TV, return HTML results."""
+    """HTMX endpoint: search TMDB for films/TV with smart URL, year, and fuzzy matching."""
     q = request.args.get("q", "").strip()
+    year_arg = request.args.get("year", "").strip()
+    year = int(year_arg) if year_arg.isdigit() else None
     media = request.args.get("media_type", "movie")
     correct_for = request.args.get("correct_for", type=int)
     resolve_for = request.args.get("resolve_for", type=int)
     if not q or len(q) < 2:
         return ""
     try:
-        if media == "tv":
-            results = tmdb.search_tv(q)[:8]
-        else:
-            results = tmdb.search_multi(q)[:8]
+        results = tmdb.search_smart(q, year=year, media_type=media)
     except Exception:
         results = []
 

@@ -10,17 +10,34 @@
 
   {# ── Search form ─────────────────────────────────────────────────────────── #}
   <div class="add-film-search-block">
-    <div class="add-film-search-row">
+    <div style="font-size: 0.82rem; color: var(--text-dim); margin-bottom: 10px; line-height: 1.45;">
+      Search by <strong>Title</strong>, enter <strong>Title + Year</strong> (e.g. <code>David 2013</code>), or paste a <strong>TMDB link</strong> directly (e.g. <code>https://www.themoviedb.org/movie/161040-david</code>).
+    </div>
+    <div class="add-film-search-row" style="display: flex; gap: 8px;">
       <input type="text" id="tmdb-search-input"
              class="form-input add-film-search-input"
-             placeholder="Search for a film or series…"
+             style="flex: 1;"
+             placeholder="Film title, 'David 2013', or TMDB URL…"
              autocomplete="off"
              hx-get="/api/tmdb/search"
-             hx-trigger="keyup changed delay:400ms"
+             hx-include="#tmdb-search-year"
+             hx-trigger="keyup changed delay:350ms, keyup[key=='Enter']"
              hx-target="#tmdb-results"
              hx-swap="innerHTML"
              hx-indicator="#tmdb-spinner"
              name="q">
+      <input type="text" id="tmdb-search-year"
+             class="form-input"
+             style="width: 110px;"
+             placeholder="Year (opt)"
+             autocomplete="off"
+             hx-get="/api/tmdb/search"
+             hx-include="#tmdb-search-input"
+             hx-trigger="keyup changed delay:350ms"
+             hx-target="#tmdb-results"
+             hx-swap="innerHTML"
+             hx-indicator="#tmdb-spinner"
+             name="year">
       <span id="tmdb-spinner" class="gen-indicator htmx-indicator">
         <span class="gen-dots"><span></span><span></span><span></span></span>
       </span>

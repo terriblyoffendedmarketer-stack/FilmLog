@@ -138,17 +138,34 @@
       </div>
 
       {# Correction search panel (hidden by default) #}
-      <div id="correct-panel" style="display:none; margin-top: 16px;">
-        <div class="film-picker-search">
-          <input type="search" class="form-input film-picker-input"
-                 placeholder="Search TMDB for the correct film…"
+      <div id="correct-panel" style="display:none; margin-top: 16px; background: var(--surface-2); padding: 18px; border-radius: var(--r); border: 1px solid var(--border-light);">
+        <div style="font-size: 0.82rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em;">
+          Swap TMDB Match
+        </div>
+        <div style="font-size: 0.82rem; color: var(--text-dim); margin-bottom: 12px; line-height: 1.45;">
+          Search by <strong>Title</strong>, enter <strong>Title + Year</strong> (e.g. <code>David 2013</code>), or paste a <strong>TMDB link</strong> directly (e.g. <code>https://www.themoviedb.org/movie/161040-david</code>).
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <input type="search" class="form-input" style="flex: 1; min-width: 220px;"
+                 id="correct-search-q"
+                 placeholder="Title, 'David 2013', or TMDB URL…"
                  hx-get="/api/tmdb/search?correct_for={{ tmdb_id }}"
-                 hx-trigger="input changed delay:400ms"
+                 hx-include="#correct-search-year"
+                 hx-trigger="input changed delay:350ms, keyup[key=='Enter']"
                  hx-target="#correct-results"
                  hx-swap="innerHTML"
                  name="q">
-          <div id="correct-results" class="film-search-results" style="position:static; border:1px solid var(--border); border-radius:var(--r); margin-top:8px;">
-          </div>
+          <input type="text" class="form-input" style="width: 105px;"
+                 id="correct-search-year"
+                 placeholder="Year (opt)"
+                 hx-get="/api/tmdb/search?correct_for={{ tmdb_id }}"
+                 hx-include="#correct-search-q"
+                 hx-trigger="input changed delay:350ms"
+                 hx-target="#correct-results"
+                 hx-swap="innerHTML"
+                 name="year">
+        </div>
+        <div id="correct-results" class="film-search-results" style="position:static; border:1px solid var(--border); border-radius:var(--r); margin-top:12px; max-height: 420px; overflow-y: auto;">
         </div>
       </div>
     </div>
