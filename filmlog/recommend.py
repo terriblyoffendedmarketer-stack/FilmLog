@@ -18,6 +18,7 @@ import os
 import json
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Optional
 
 import click
 from dotenv import load_dotenv
