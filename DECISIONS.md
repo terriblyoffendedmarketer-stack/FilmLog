@@ -125,11 +125,14 @@ If all cited evidence is gone, confidence drops to 0.15 (weakly supported). The 
 - Generated issues are rendered and cached in the visitor's local browser storage, with zero writes to Prashil's server database.
 - Owner API quota is 100% protected ($0 cost); owner taste model remains uncorrupted.
 
-### Cold Start Onboarding (Hybrid Approach)
-To eliminate blank-slate friction for new users:
-- **Option A (Seed Vault):** Pre-populate 30 curated classic/Criterion cornerstone films from Prashil's vault. The user reviews the list and quickly checks which ones they've seen.
-- **Option B (Cornerstone Calibration):** Pick and rate 5 favorite films immediately to establish Level 1.0 baseline taste vectors.
-- Both options work together in the onboarding flow.
+### Cold Start Onboarding: Engaging Starter Pack & Prashil's Vault Bridge
+To eliminate blank-slate friction without dumping slow or pretentious cinema on beginners:
+- **No Boring Arthouse Trap:** The starter pack must NEVER be boring festival snoozefests. It should feature **popular, engaging, accessible modern cornerstones and widely-loved classics** (films with momentum, tight pacing, and high emotional or narrative pull — e.g. *Parasite*, *Inception*, *Whiplash*, *Spirited Away*, *Memories of Murder*, *Fight Club*, *Mad Max: Fury Road*).
+- **The 30-Film Starter Pack (Anti-Paralysis):** Users are shown a curated grid of 30 recognizable, popular, and influential titles so they can quickly tap what they've seen without feeling overwhelmed.
+- **5-Film Minimum Threshold:** The user needs to select at least 5 films to calibrate their baseline Level 1.0 taste model.
+- **"Good to Start" Checkpoint & Vault Bridge:** Once they hit 5 selections, the UI immediately confirms:
+  > *"Good to start! Add more if needed, or explore Prashil's Hall of Fame & Watchlist to cherry-pick more favorites."*
+- **Optional Expansion:** They can keep selecting from the starter pack, or jump directly into Prashil's public Hall of Fame and curated library to tap and add any films that catch their eye.
 
 ### Multimodal Ingestion Pipeline
 - **Photo/Screenshot OCR:** Direct upload of handwritten notebook pages or Google Keep screenshots parsed by Gemini Flash Multimodal.
