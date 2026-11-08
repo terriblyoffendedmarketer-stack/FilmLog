@@ -993,67 +993,81 @@ def tonight_micro_enrich(tmdb_id: int):
 @app.route("/tonight/generate", methods=["POST"])
 def tonight_generate():
     """HTMX endpoint: receive calibration answers, stream back the editorial."""
-    from flask import g
-    owner_pwd = (
-        request.form.get("owner_password", "").strip()
-        or request.headers.get("X-Owner-Password", "").strip()
-    )
-    visitor_key = (request.headers.get("X-Gemini-Key") or request.form.get("visitor_gemini_key", "")).strip()
-    is_owner_auth = session.get("owner", False) or (owner_pwd and owner_pwd == os.getenv("FILMLOG_PASSWORD", "8544"))
+    try:
+        from flask import g
+        owner_pwd = (
+            request.form.get("owner_password", "").strip()
+            or request.headers.get("X-Owner-Password", "").strip()
+        )
+        visitor_key = (request.headers.get("X-Gemini-Key") or request.form.get("visitor_gemini_key", "")).strip()
+        is_owner_auth = session.get("owner", False) or (owner_pwd and owner_pwd == os.getenv("FILMLOG_PASSWORD", "8544"))
 
-    if is_owner_auth:
-        session["owner"] = True
-        session.permanent = True
-        g.visitor_mode = False
-        custom_key = visitor_key if visitor_key else None
-        save_to_db = True
-    elif visitor_key:
-        custom_key = visitor_key
-        save_to_db = False
-    elif g.get("visitor_mode", True):
-        return render_template("partials/byok_prompt.html")
-    else:
-        custom_key = None
-        save_to_db = True
+        if is_owner_auth:
+            session["owner"] = True
+            session.permanent = True
+            g.visitor_mode = False
+            custom_key = visitor_key if visitor_key else None
+            save_to_db = True
+        elif visitor_key:
+            custom_key = visitor_key
+            save_to_db = False
+        elif g.get("visitor_mode", True):
+            return render_template("partials/byok_prompt.html")
+        else:
+            custom_key = None
+            save_to_db = True
 
-    from filmlog.recommend import generate_web_recommendation
+        from filmlog.recommend import generate_web_recommendation
 
-    answers = {
-        "watch_context": request.form.get("watch_context", "solo") or "solo",
-        "free_text": request.form.get("free_text", "").strip(),
-    }
+        answers = {
+            "watch_context": request.form.get("watch_context", "solo") or "solo",
+            "free_text": request.form.get("free_text", "").strip(),
+        }
 
-    result = generate_web_recommendation(answers, api_key=custom_key, save_to_db=save_to_db)
+        result = generate_web_recommendation(answers, api_key=custom_key, save_to_db=save_to_db)
 
-    # Fetch referenced films for inline landscape banners + hero pick + companion doors
-    film_cards = []
-    for tmdb_id in result.get("films_referenced", [])[:4]:
-        film = db.get_film(tmdb_id)
-        if film:
-            film_cards.append(_parse_film(film, fetch_backdrop=True))
+        # Fetch referenced films for inline landscape banners + hero pick + companion doors
+        film_cards = []
+        for tmdb_id in result.get("films_referenced", [])[:4]:
+            film = db.get_film(tmdb_id)
+            if film:
+                film_cards.append(_parse_film(film, fetch_backdrop=True))
 
-    hero_film = film_cards[0] if film_cards else None
-    companion_films = film_cards[1:4] if len(film_cards) > 1 else []
+        hero_film = film_cards[0] if film_cards else None
+        companion_films = film_cards[1:4] if len(film_cards) > 1 else []
 
-    issue_data = {
-        "id": result.get("id"),
-        "issue_number": result.get("issue_number", "New"),
-        "issue_text": result.get("issue_text", ""),
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        "tier2": result.get("tier2", False),
-    }
-    magazine_issue = _parse_magazine_issue(issue_data, film_cards)
-    magazine_issue["film_cards"] = film_cards
+        issue_data = {
+            "id": result.get("id"),
+            "issue_number": result.get("issue_number", "New"),
+            "issue_text": result.get("issue_text", ""),
+            "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "tier2": result.get("tier2", False),
+        }
+        magazine_issue = _parse_magazine_issue(issue_data, film_cards)
+        magazine_issue["film_cards"] = film_cards
 
-    return render_template(
-        "partials/recommendation_result.html",
-        issue=magazine_issue,
-        hero_film=hero_film,
-        companion_films=companion_films,
-        issue_number=result.get("issue_number"),
-        error=result.get("error"),
-        tier2=result.get("tier2", False),
-    )
+        return render_template(
+            "partials/recommendation_result.html",
+            issue=magazine_issue,
+            hero_film=hero_film,
+            companion_films=companion_films,
+            issue_number=result.get("issue_number"),
+            error=result.get("error"),
+            tier2=result.get("tier2", False),
+        )
+    except Exception as e:
+        import traceback
+        err_tb = traceback.format_exc()
+        print("TONIGHT GENERATE ERROR:\n", err_tb)
+        return render_template(
+            "partials/recommendation_result.html",
+            issue=None,
+            hero_film=None,
+            companion_films=[],
+            issue_number=None,
+            error=f"Server error during generation: {e}\n\n{err_tb}",
+            tier2=False,
+        ), 200
 
 
 @app.route("/tonight/cached")

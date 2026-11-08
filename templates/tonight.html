@@ -435,7 +435,7 @@ if (form) {
     btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Ask FilmLog Tonight';
   });
 
-  form.addEventListener('htmx:responseError', function() {
+  form.addEventListener('htmx:responseError', function(evt) {
     var btn = document.getElementById('generate-btn');
     if (btn) {
       btn.disabled = false;
@@ -443,7 +443,12 @@ if (form) {
     }
     var result = document.getElementById('recommendation-result');
     if (result) {
-      result.innerHTML = '<div class="rec-result-error" style="padding: 16px; margin: 16px 0; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #fca5a5;"><p>Generation took longer than expected or server is busy. Please click again to retry.</p></div>';
+      var serverMsg = (evt.detail && evt.detail.xhr && evt.detail.xhr.responseText) ? evt.detail.xhr.responseText : "";
+      var displayMsg = "Generation took longer than expected or server encountered an error. Please click again to retry or verify your API key.";
+      if (serverMsg && serverMsg.length < 300 && !serverMsg.includes('<!doctype') && !serverMsg.includes('<html')) {
+        displayMsg = serverMsg;
+      }
+      result.innerHTML = '<div class="rec-result-error" style="padding: 16px; margin: 16px 0; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #fca5a5;"><p>' + displayMsg + '</p><div style="display: flex; gap: 10px; margin-top: 12px;"><button type="button" class="btn-error-update-key" onclick="openApiKeyModal()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Update AI API Key</button><button type="button" onclick="document.getElementById(\'generate-btn\').click()" style="padding: 6px 12px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px;">Retry</button></div></div>';
     }
   });
 
