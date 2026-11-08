@@ -4,11 +4,62 @@
 </div>
 
 {% elif issue %}
-<div class="fresh-issue-wrapper" id="fresh-issue">
-  {% include "partials/magazine_issue.html" %}
+<div class="fresh-hero-recommendation-wrapper" id="fresh-issue">
+  {# Render the new landscape cover hero tile #}
+  <div class="today-hero-tile" onclick="openIssueOverlay('fresh')" style="cursor: pointer;">
+    <div class="hero-cover-frame">
+      {% if hero_film and hero_film.cover_url %}
+      <img src="{{ hero_film.cover_url }}" alt="{{ hero_film.title }}" class="hero-cover-img" loading="eager">
+      {% else %}
+      <div class="hero-cover-ph"></div>
+      {% endif %}
+      <div class="hero-cover-vignette"></div>
 
-  <div class="rec-result-actions" style="margin-top:28px; text-align:center;">
-    <button type="button" class="btn-ghost" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑ Ask for another vibe</button>
+      <div class="hero-cover-badge-row">
+        <span class="hero-cover-kicker">★ FRESH HERO RECOMMENDATION</span>
+        <span class="hero-cover-issue-tag">Issue #{{ issue.issue_number }}</span>
+      </div>
+
+      <div class="hero-cover-title-block">
+        {% if hero_film %}
+        <div class="hero-film-subheading">
+          <span class="hero-film-name">{{ hero_film.title }}</span>
+          {% if hero_film.year %}<span class="hero-film-year">({{ hero_film.year }})</span>{% endif %}
+          {% if hero_film.runtime %}<span class="hero-film-meta-pill">{{ hero_film.runtime }}m</span>{% endif %}
+          {% if hero_film.language %}<span class="hero-film-meta-pill">{{ hero_film.language | upper }}</span>{% endif %}
+        </div>
+        {% endif %}
+        <h2 class="hero-thematic-headline">{{ issue.headline }}</h2>
+      </div>
+    </div>
+
+    <div class="hero-teaser-body">
+      <div class="hero-teaser-prose">
+        <p>{{ issue.teaser_text }}</p>
+      </div>
+
+      <div class="hero-teaser-action-row">
+        <button type="button" class="btn-open-issue-overlay">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+          </svg>
+          Read Fresh Issue #{{ issue.issue_number }} & Critique →
+        </button>
+        <span class="teaser-hint">Click anywhere to open reading overlay</span>
+      </div>
+    </div>
   </div>
+
+  <template id="issue-full-fresh">
+    {% include "partials/magazine_issue.html" %}
+  </template>
+
+  <script>
+    // Reveal the newly generated issue in the reading overlay
+    setTimeout(function() {
+      openIssueOverlay('fresh');
+    }, 120);
+  </script>
 </div>
 {% endif %}

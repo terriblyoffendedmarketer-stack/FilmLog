@@ -133,6 +133,8 @@ def _parse_film(film: dict) -> dict:
     else:
         f["tagline"] = ""
 
+    f["cover_url"] = f.get("backdrop_url") or f.get("poster_url") or ""
+
     return f
 
 
@@ -336,11 +338,16 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
 
     essay_html = Markup("\n".join(rendered_blocks))
 
+    clean_teaser = _strip_md(body_text)
+    if len(clean_teaser) > 220:
+        clean_teaser = clean_teaser[:217].rsplit(" ", 1)[0] + "…"
+
     return {
         "id": issue_dict.get("id"),
         "issue_number": issue_dict.get("issue_number", 1),
         "generated_at": issue_dict.get("generated_at", ""),
         "headline": headline,
+        "teaser_text": clean_teaser,
         "essay_html": essay_html,
         "hero_film": hero_film,
         "companion_films": companion_films,
