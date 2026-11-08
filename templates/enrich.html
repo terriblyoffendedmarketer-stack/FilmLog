@@ -3,13 +3,26 @@
 {% block content %}
 <div class="enrich-layout">
 
-  {% if calibration %}
-  <div style="margin-bottom: 28px;">
-    {% include "partials/signal_gamification_widget.html" %}
-  </div>
-  {% endif %}
+  {# ── Main Column: Enrich Card (Poster, Rating, Notes, Save/Skip) ── #}
+  <div class="enrich-main-col">
+    {% include "partials/enrich_card.html" %}
 
-  {% include "partials/enrich_card.html" %}
+    {# Mobile only: Ribbon placed below the card so the note box is never obscured! #}
+    {% if calibration %}
+    <div class="enrich-mobile-signal-wrap">
+      {% include "partials/signal_gamification_widget.html" %}
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Desktop only: Dedicated right-rail for total signals & conquered badges ── #}
+  {% if calibration %}
+  <aside class="enrich-side-col">
+    <div class="enrich-side-sticky">
+      {% include "partials/signal_gamification_widget.html" %}
+    </div>
+  </aside>
+  {% endif %}
 
 </div>
 {% endblock %}

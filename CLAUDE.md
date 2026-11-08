@@ -1,7 +1,7 @@
 # Filmlog — Personal Taste Engine for Films
 
 ## Status
-- **Current Phase:** Phase 6 — Linked Recommendations Deep-Linking, Film Detail Accordion, Active Issue Archiving & Archive Cleanup Complete
+- **Current Phase:** Phase 6 — Enrich 2-Column Desktop Grid & Mobile Notes Unobscured, Tonight Side Rail Post-Quote Realignment Complete
 - **In Progress:** Live Vercel verification & session wrap-up
 - **What's Next:** Automated background GitHub commit poller for web-generated notes
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)

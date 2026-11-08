@@ -3,8 +3,8 @@
 
 <div class="tonight-layout">
 
-  {# ── Main Interaction & Editorial Column ─────────────────────────────────── #}
-  <div class="tonight-main-col">
+  {# ── TOP SECTION: Focused Editorial Discovery (Heading, Query Engine, Hero Pick & Quote) ── #}
+  <div class="tonight-hero-section">
 
     {# ── Heading ───────────────────────────────────────────────────────────── #}
     <div class="tonight-heading-block">
@@ -156,12 +156,19 @@
   </div>
   {% endif %}
 
-  {# ── Mobile-Only Signal Ribbon (Renders above micro-enrich on phones) ──────── #}
-  {% if calibration %}
-  <div class="tonight-mobile-signal-wrap">
-    {% include "partials/signal_gamification_widget.html" %}
-  </div>
-  {% endif %}
+  </div>{# end .tonight-hero-section #}
+
+  {# ── LOWER SECTION: 2-Column Grid (Appears AFTER the Quote!) ─────────────── #}
+  <div class="tonight-lower-section">
+
+    <div class="tonight-lower-main">
+
+      {# ── Mobile-Only Signal Ribbon (Renders above micro-enrich on phones) ──────── #}
+      {% if calibration %}
+      <div class="tonight-mobile-signal-wrap">
+        {% include "partials/signal_gamification_widget.html" %}
+      </div>
+      {% endif %}
 
   {# ── Psychological Enrich Piping (Micro-Enrich Card) ─────────────────────── #}
   {% include "partials/micro_enrich_card.html" %}
@@ -283,7 +290,7 @@
     <a href="/tonight/archived" class="archive-link" id="archived-issues-link" {% if not archived_count or archived_count == 0 %}style="display: none;"{% endif %}>View archived issues ({{ archived_count }})</a>
   </div>
 
-  </div>{# end .tonight-main-col #}
+  </div>{# end .tonight-lower-main #}
 
   {# ── Desktop-Only Right Sidebar Rail (Level, Gauge, Stats & Conquered Badges) ── #}
   {% if calibration %}
@@ -293,6 +300,8 @@
     </div>
   </aside>
   {% endif %}
+
+  </div>{# end .tonight-lower-section #}
 
 </div>{# end .tonight-layout #}
 
