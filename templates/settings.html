@@ -12,6 +12,29 @@
     </p>
   </div>
 
+  {# ── Google Gemini API key ──────────────────────────────────────────────── #}
+  <div class="settings-card">
+    <div class="settings-card-header">
+      <div>
+        <h2 class="settings-card-title">Google Gemini API key</h2>
+        <p class="settings-card-desc">
+          Primary AI engine for Tonight editorial issues, candidate pool calibration, and cinema reflections.
+          Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+        </p>
+      </div>
+      <span id="gemini-status" class="key-status key-status-unknown">—</span>
+    </div>
+
+    <div class="settings-key-row">
+      <input type="password" id="gemini-key" class="form-input settings-key-input"
+             placeholder="AIzaSy…" autocomplete="off" spellcheck="false">
+      <button class="btn-ghost" onclick="toggleKeyVis('gemini-key', this)">Show</button>
+      <button class="btn-primary" onclick="testKey('gemini')">Test</button>
+      <button class="btn-ghost" onclick="clearKey('gemini')">Clear</button>
+    </div>
+    <p id="gemini-msg" class="settings-key-msg"></p>
+  </div>
+
   {# ── Anthropic API key ─────────────────────────────────────────────────── #}
   <div class="settings-card">
     <div class="settings-card-header">
@@ -93,11 +116,20 @@
 
 <script>
 // ── Key storage in localStorage ──────────────────────────────────────────────
-var KEYS = { anthropic: 'filmlog_anthropic_key', tmdb: 'filmlog_tmdb_key' };
+var KEYS = {
+  gemini: 'fl_visitor_gemini_key',
+  anthropic: 'filmlog_anthropic_key',
+  tmdb: 'filmlog_tmdb_key'
+};
 
 function loadKeys() {
+  var gk = localStorage.getItem(KEYS.gemini) || localStorage.getItem('filmlog_gemini_key') || '';
   var ak = localStorage.getItem(KEYS.anthropic) || '';
   var tk = localStorage.getItem(KEYS.tmdb) || '';
+  if (gk) {
+    document.getElementById('gemini-key').value = gk;
+    updateStatus('gemini', null);
+  }
   if (ak) {
     document.getElementById('anthropic-key').value = ak;
     updateStatus('anthropic', null); // show as set but untested
@@ -128,6 +160,10 @@ function toggleKeyVis(inputId, btn) {
 
 function clearKey(type) {
   localStorage.removeItem(KEYS[type]);
+  if (type === 'gemini') {
+    localStorage.removeItem('filmlog_gemini_key');
+    if (window.updateApiKeyModalUI) window.updateApiKeyModalUI();
+  }
   document.getElementById(type + '-key').value = '';
   document.getElementById(type + '-msg').textContent = 'Key cleared.';
   updateStatus(type, null);
@@ -135,7 +171,13 @@ function clearKey(type) {
 
 function saveKey(type) {
   var val = document.getElementById(type + '-key').value.trim();
-  if (val) localStorage.setItem(KEYS[type], val);
+  if (val) {
+    localStorage.setItem(KEYS[type], val);
+    if (type === 'gemini') {
+      localStorage.setItem('filmlog_gemini_key', val);
+      if (window.updateApiKeyModalUI) window.updateApiKeyModalUI();
+    }
+  }
 }
 
 async function testKey(type) {
@@ -171,10 +213,12 @@ async function testKey(type) {
 }
 
 // Auto-save key value on blur
-['anthropic', 'tmdb'].forEach(function(type) {
+['gemini', 'anthropic', 'tmdb'].forEach(function(type) {
   var inp = document.getElementById(type + '-key');
-  inp.addEventListener('blur', function() { saveKey(type); });
-  inp.addEventListener('input', function() { updateStatus(type, null); });
+  if (inp) {
+    inp.addEventListener('blur', function() { saveKey(type); });
+    inp.addEventListener('input', function() { updateStatus(type, null); });
+  }
 });
 
 loadKeys();

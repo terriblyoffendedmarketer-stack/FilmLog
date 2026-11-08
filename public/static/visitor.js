@@ -181,22 +181,200 @@ window.toggleVaultBadgeCase = function() {
     }
   });
 
-  // Attach X-Owner-Password to ALL HTMX requests if available
+  // Attach X-Owner-Password and X-Gemini-Key to ALL HTMX requests if available
   document.body.addEventListener('htmx:configRequest', function(evt) {
     try {
       var savedOwnerPwd = localStorage.getItem('fl_owner_pwd');
       if (savedOwnerPwd && evt.detail.headers) {
         evt.detail.headers['X-Owner-Password'] = savedOwnerPwd;
       }
+      var guestKey = localStorage.getItem('fl_visitor_gemini_key') || localStorage.getItem('filmlog_gemini_key');
+      if (guestKey && evt.detail.headers) {
+        evt.detail.headers['X-Gemini-Key'] = guestKey;
+      }
     } catch (e) {}
   });
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', checkOwnerAuth);
+    document.addEventListener('DOMContentLoaded', function() {
+      checkOwnerAuth();
+      if (window.updateApiKeyModalUI) window.updateApiKeyModalUI();
+    });
   } else {
     checkOwnerAuth();
+    if (window.updateApiKeyModalUI) window.updateApiKeyModalUI();
   }
 })();
+
+// ── Universal AI API Key Modal Management ──────────────────────────────────
+window.openApiKeyModal = function() {
+  var modal = document.getElementById('api-key-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  window.updateApiKeyModalUI();
+  var input = document.getElementById('modal-gemini-key-input');
+  if (input) {
+    var savedKey = localStorage.getItem('fl_visitor_gemini_key') || localStorage.getItem('filmlog_gemini_key') || '';
+    input.value = savedKey;
+    setTimeout(function() { input.focus(); }, 50);
+  }
+};
+
+window.closeApiKeyModal = function() {
+  var modal = document.getElementById('api-key-modal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  document.body.style.overflow = '';
+  var feedback = document.getElementById('modal-key-test-feedback');
+  if (feedback) feedback.style.display = 'none';
+};
+
+window.handleApiKeyBackdrop = function(e) {
+  if (e.target && e.target.id === 'api-key-modal') {
+    window.closeApiKeyModal();
+  }
+};
+
+window.toggleModalKeyVisibility = function() {
+  var inp = document.getElementById('modal-gemini-key-input');
+  var btn = document.getElementById('modal-key-vis-btn');
+  if (!inp || !btn) return;
+  var isPw = inp.type === 'password';
+  inp.type = isPw ? 'text' : 'password';
+  btn.textContent = isPw ? 'Hide' : 'Show';
+};
+
+window.updateApiKeyModalUI = function() {
+  var key = (localStorage.getItem('fl_visitor_gemini_key') || localStorage.getItem('filmlog_gemini_key') || '').trim();
+  var banner = document.getElementById('modal-key-status-banner');
+  var dot = document.getElementById('modal-key-status-dot');
+  var text = document.getElementById('modal-key-status-text');
+  var resetBtn = document.getElementById('modal-key-reset-btn');
+  var navIndicator = document.getElementById('nav-key-indicator');
+  var navBtn = document.querySelector('.nav-key-btn');
+
+  if (key) {
+    var masked = key.length > 8 ? key.slice(0, 6) + '...' + key.slice(-4) : '••••';
+    if (dot) dot.className = 'api-key-status-dot active';
+    if (text) text.textContent = 'Custom Key Active (' + masked + ')';
+    if (resetBtn) resetBtn.style.display = 'inline-flex';
+    if (navIndicator) navIndicator.classList.add('active');
+    if (navBtn) navBtn.setAttribute('title', 'AI API Key: Custom active (' + masked + ')');
+  } else {
+    if (dot) dot.className = 'api-key-status-dot';
+    if (text) text.textContent = 'Using Server Default Key';
+    if (resetBtn) resetBtn.style.display = 'none';
+    if (navIndicator) navIndicator.classList.remove('active');
+    if (navBtn) navBtn.setAttribute('title', 'AI API Key: Server default (Click to update)');
+  }
+};
+
+window.saveModalApiKey = function() {
+  var input = document.getElementById('modal-gemini-key-input');
+  var feedback = document.getElementById('modal-key-test-feedback');
+  if (!input) return;
+  var key = input.value.trim();
+  if (!key) {
+    window.clearModalApiKey();
+    return;
+  }
+  try {
+    localStorage.setItem('fl_visitor_gemini_key', key);
+    localStorage.setItem('filmlog_gemini_key', key);
+  } catch (e) {}
+
+  window.updateApiKeyModalUI();
+
+  if (feedback) {
+    feedback.textContent = '✓ API Key saved and activated.';
+    feedback.className = 'api-key-test-msg success';
+    feedback.style.display = 'block';
+  }
+
+  // Also sync with any existing BYOK input on page
+  var byokInp = document.getElementById('visitor-gemini-key-input');
+  if (byokInp) byokInp.value = key;
+
+  // Auto-close modal after brief pause
+  setTimeout(function() {
+    window.closeApiKeyModal();
+  }, 750);
+};
+
+window.clearModalApiKey = function() {
+  try {
+    localStorage.removeItem('fl_visitor_gemini_key');
+    localStorage.removeItem('filmlog_gemini_key');
+  } catch (e) {}
+
+  var input = document.getElementById('modal-gemini-key-input');
+  if (input) input.value = '';
+
+  window.updateApiKeyModalUI();
+
+  var feedback = document.getElementById('modal-key-test-feedback');
+  if (feedback) {
+    feedback.textContent = 'Reset to server default key.';
+    feedback.className = 'api-key-test-msg';
+    feedback.style.display = 'block';
+  }
+};
+
+window.testModalApiKey = async function() {
+  var input = document.getElementById('modal-gemini-key-input');
+  var feedback = document.getElementById('modal-key-test-feedback');
+  var testBtn = document.getElementById('modal-key-test-btn');
+  if (!input || !feedback) return;
+
+  var key = input.value.trim() || localStorage.getItem('fl_visitor_gemini_key') || '';
+  if (!key) {
+    feedback.textContent = 'Please enter an API key to test.';
+    feedback.className = 'api-key-test-msg error';
+    feedback.style.display = 'block';
+    return;
+  }
+
+  feedback.textContent = 'Testing key with Google Gemini…';
+  feedback.className = 'api-key-test-msg';
+  feedback.style.display = 'block';
+  if (testBtn) testBtn.disabled = true;
+
+  try {
+    var resp = await fetch('/api/test-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'gemini', key: key })
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      feedback.textContent = data.message || '✓ Key is valid and working with Google Gemini!';
+      feedback.className = 'api-key-test-msg success';
+      try {
+        localStorage.setItem('fl_visitor_gemini_key', key);
+        localStorage.setItem('filmlog_gemini_key', key);
+      } catch (e) {}
+      window.updateApiKeyModalUI();
+    } else {
+      feedback.textContent = '✗ ' + (data.error || 'Test failed. Please check key.');
+      feedback.className = 'api-key-test-msg error';
+    }
+  } catch (err) {
+    feedback.textContent = '✗ Network error testing key: ' + err.message;
+    feedback.className = 'api-key-test-msg error';
+  } finally {
+    if (testBtn) testBtn.disabled = false;
+  }
+};
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var modal = document.getElementById('api-key-modal');
+    if (modal && modal.style.display !== 'none') {
+      window.closeApiKeyModal();
+    }
+  }
+});
 
 (function () {
   'use strict';

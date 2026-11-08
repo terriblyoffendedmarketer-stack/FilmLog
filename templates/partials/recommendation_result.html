@@ -1,6 +1,10 @@
 {% if error %}
 <div class="rec-result-error">
   <p>{{ error }}</p>
+  <button type="button" class="btn-error-update-key" onclick="openApiKeyModal()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-1.5 1.5L12 11l-2 2-3-3 2-2 5.5-5.5z"></path><circle cx="7.5" cy="16.5" r="4.5"></circle></svg>
+    Update or Change AI API Key
+  </button>
 </div>
 
 {% elif issue %}

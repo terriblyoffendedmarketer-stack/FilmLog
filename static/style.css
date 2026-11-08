@@ -97,15 +97,353 @@ html, body {
 .nav-link:hover      { color: var(--text); background: var(--surface-2); }
 .nav-link.active     { color: var(--text); background: var(--surface-2); }
 
-.nav-stats {
+.nav-right {
   margin-left: auto;
   display: flex;
-  gap: 20px;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-stats {
+  display: flex;
+  align-items: center;
+  gap: 18px;
   font-size: 0.78rem;
   color: var(--text-dim);
 }
 
 .nav-stats strong { color: var(--text-muted); }
+
+.nav-key-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.nav-key-btn:hover {
+  color: var(--text);
+  border-color: var(--border-light);
+  background: var(--surface-2);
+}
+
+.nav-key-indicator {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  opacity: 0.4;
+  transition: all 0.2s ease;
+}
+
+.nav-key-indicator.active {
+  background: #4ade80;
+  opacity: 1;
+  box-shadow: 0 0 5px rgba(74, 222, 128, 0.7);
+}
+
+/* ── Ask Submit Row Key Icon ─────────────────────────────────────────────────── */
+.btn-ask-key-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-ask-key-icon:hover {
+  color: var(--text);
+  border-color: var(--border-light);
+  background: var(--surface-2);
+}
+
+.btn-error-update-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 6px 14px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--r-sm);
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-error-update-key:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #fff;
+}
+
+/* ── AI API Key Modal ────────────────────────────────────────────────────────── */
+.api-key-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: keyModalFadeIn 0.18s ease-out;
+}
+
+@keyframes keyModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.api-key-modal-sheet {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-lg);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+  width: 100%;
+  max-width: 480px;
+  padding: 24px;
+  box-sizing: border-box;
+  animation: keyModalSlideUp 0.18s ease-out;
+}
+
+@keyframes keyModalSlideUp {
+  from { transform: translateY(12px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.api-key-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.api-key-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.api-key-modal-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.api-key-modal-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--text);
+}
+
+.api-key-modal-sub {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin: 2px 0 0;
+}
+
+.api-key-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+.api-key-modal-close:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.api-key-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.api-key-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.api-key-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.api-key-status-dot.active {
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+}
+
+.api-key-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.api-key-input-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.api-key-input-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.api-key-input {
+  flex: 1;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.82rem;
+  padding: 9px 12px;
+}
+
+.api-key-vis-toggle {
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.api-key-input-hint {
+  font-size: 0.73rem;
+  color: var(--text-dim);
+  margin: 3px 0 0;
+  line-height: 1.4;
+}
+
+.api-key-input-hint code {
+  color: var(--text-muted);
+  background: var(--surface-2);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.api-key-test-msg {
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.api-key-test-msg.success {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.3);
+  color: #4ade80;
+}
+
+.api-key-test-msg.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.api-key-modal-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.api-key-save-btn {
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.api-key-test-btn {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+}
+
+.api-key-reset-btn {
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+.api-key-reset-btn:hover {
+  color: #f87171;
+}
+
+.api-key-modal-footer {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.api-key-ext-link {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s;
+  display: inline-block;
+}
+
+.api-key-ext-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
 
 /* ── Main layout ─────────────────────────────────────────────────────────────── */
 .main {

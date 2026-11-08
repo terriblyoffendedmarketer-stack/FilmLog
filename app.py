@@ -944,7 +944,7 @@ def tonight_generate():
         session["owner"] = True
         session.permanent = True
         g.visitor_mode = False
-        custom_key = None
+        custom_key = visitor_key if visitor_key else None
         save_to_db = True
     elif visitor_key:
         custom_key = visitor_key
@@ -1259,11 +1259,19 @@ def api_film_search():
     return render_template("partials/film_search_results.html", films=results)
 
 
-def _generate_journal_title(content: str) -> str:
+def _generate_journal_title(content: str, api_key: Optional[str] = None) -> str:
     """Generate an evocative 3-6 word title from raw journal content using AI with clean fallback."""
     clean_text = content.strip()
     if not clean_text:
         return "Untitled Reflection"
+
+    if not api_key:
+        try:
+            from flask import has_request_context
+            if has_request_context():
+                api_key = (request.headers.get("X-Gemini-Key") or "").strip() or None
+        except Exception:
+            pass
 
     try:
         from filmlog.ai import call_ai
@@ -1272,7 +1280,7 @@ def _generate_journal_title(content: str) -> str:
             "(3 to 6 words max, no quotes, no markdown, Title Case) capturing the core theme of this raw cinema reflection:\n\n"
             f"{clean_text[:1200]}"
         )
-        ai_title = call_ai(prompt, max_tokens=25).strip()
+        ai_title = call_ai(prompt, max_tokens=25, api_key=api_key).strip()
         ai_title = re.sub(r'^["\'#\*\s]+|["\'\s]+$', '', ai_title)
         first_line = ai_title.split("\n")[0].strip()
         if first_line and len(first_line) < 80:
@@ -1611,6 +1619,14 @@ def api_test_key():
             if r.ok:
                 return {"ok": True, "message": "TMDB key valid ✓"}
             return {"ok": False, "error": f"TMDB returned {r.status_code}"}, 400
+        except Exception as e:
+            return {"ok": False, "error": str(e)[:200]}, 400
+
+    elif key_type in ("gemini", "ai"):
+        try:
+            from filmlog.ai import call_ai
+            call_ai("Hi", max_tokens=5, api_key=key)
+            return {"ok": True, "message": "Google Gemini key valid ✓"}
         except Exception as e:
             return {"ok": False, "error": str(e)[:200]}, 400
 

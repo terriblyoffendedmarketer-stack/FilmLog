@@ -66,6 +66,13 @@
         {% if is_owner %}Ask FilmLog Tonight{% else %}🔒 Curate Tonight (Owner Unlock){% endif %}
       </button>
 
+      <button type="button" class="btn-ask-key-icon" onclick="openApiKeyModal()" title="AI API Key (Google Gemini)" aria-label="AI API Key">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 2l-2 2m-1.5 1.5L12 11l-2 2-3-3 2-2 5.5-5.5z"></path>
+          <circle cx="7.5" cy="16.5" r="4.5"></circle>
+        </svg>
+      </button>
+
       <span id="gen-indicator" class="gen-indicator htmx-indicator">
         <span class="gen-dots"><span></span><span></span><span></span></span>
         Calibrating your taste and candidate pool…
