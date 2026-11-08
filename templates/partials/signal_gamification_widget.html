@@ -1,106 +1,106 @@
-{# Reusable Signal Gamification Widget (5-Pip Diode Gauge, Clean Stats & Vault Badge Case) #}
+{# Reusable Signal Gamification Widget (Desktop Sidebar Rail + Mobile Single-Line Ribbon) #}
 <div class="signal-gamification-widget" id="signal-gamification-box">
-  <div class="signal-widget-main-row">
 
-    {# ── Left / Primary Column: Current Level & 5-Pip Diode Gauge ────────── #}
-    <div class="signal-level-col">
-      <div class="signal-header-line">
-        <span class="signal-kicker">✦ Capture Today's Signal</span>
-        <div class="signal-badge-group">
-          <span class="signal-tier-badge">
-            <span class="signal-icon">{{ calibration.level_icon }}</span>
-            <span>{{ calibration.level_display }} · {{ calibration.level_title }}</span>
-          </span>
-          <span class="signal-subgroup-pill subgroup-{{ calibration.subgroup_name|lower|replace(' ', '-') }}">
-            {{ calibration.subgroup_name }}
-          </span>
-        </div>
+  {# ── MOBILE VIEW: Thin Single-Line Badge Ribbon & 5-Pip Diode Strip ───── #}
+  <div class="signal-mobile-ribbon">
+    <div class="mobile-ribbon-top">
+      <div class="mobile-tier-title">
+        <span class="mobile-tier-icon">{{ calibration.level_icon }}</span>
+        <strong>{{ calibration.level_display }} · {{ calibration.level_title }}</strong>
+        <span class="mobile-subgroup-tag subgroup-{{ calibration.subgroup_name|lower|replace(' ', '-') }}">{{ calibration.subgroup_name }}</span>
       </div>
-
-      {# 5-Pip Illuminated Diode Gauge (No overwhelming 200-film slog) #}
-      <div class="signal-diode-row">
-        <div class="signal-diodes" title="{{ calibration.pips_filled }} of 5 signals captured in {{ calibration.subgroup_name }}">
-          {% for filled in calibration.pips %}
-          <span class="diode-pip {% if filled %}filled{% endif %}">
-            <span class="diode-glyph">{% if filled %}✦{% else %}✧{% endif %}</span>
-          </span>
-          {% endfor %}
-        </div>
-        <span class="signal-ratio-label">{{ calibration.pips_filled }} / 5 Signals</span>
-      </div>
-
-      <div class="signal-hint-text">
-        {{ calibration.next_hint }}
+      <div class="mobile-diodes" title="{{ calibration.pips_filled }} of 5 signals">
+        {% for filled in calibration.pips %}
+        <span class="mobile-diode {% if filled %}filled{% endif %}">{% if filled %}✦{% else %}✧{% endif %}</span>
+        {% endfor %}
       </div>
     </div>
 
-    {# ── Right / Stats Column: Real Signals, Streaks & Session Flow ───────── #}
-    <div class="signal-stats-col">
-      <div class="signal-stats-grid">
-        <div class="sig-stat-card">
-          <div class="sig-stat-val">📊 {{ calibration.n_notes }}</div>
-          <div class="sig-stat-lbl">Total Signals</div>
-        </div>
-
-        <div class="sig-stat-card">
-          <div class="sig-stat-val">
-            {% if calibration.active_streak > 0 %}
-            🔥 {{ calibration.active_streak }}d
-            {% else %}
-            ⚡ Ready
-            {% endif %}
-          </div>
-          <div class="sig-stat-lbl">Current Streak</div>
-        </div>
-
-        <div class="sig-stat-card">
-          <div class="sig-stat-val">🏆 {{ calibration.longest_streak }}d</div>
-          <div class="sig-stat-lbl">Personal Best</div>
-        </div>
-
-        <div class="sig-stat-card">
-          <div class="sig-stat-val">⚡ {{ session_count or 1 }}</div>
-          <div class="sig-stat-lbl">In Session</div>
-        </div>
+    {# Single-line horizontal earned badges strip (1 to current level) #}
+    <div class="mobile-badges-line-wrap">
+      <div class="mobile-badges-line" title="Earned Badges (Level 1 to {{ calibration.level_num }})">
+        {% for b in calibration.badges if b.level <= calibration.level_num %}
+        <span class="mobile-badge-pill {% if b.level == calibration.level_num %}active-crest{% endif %}" title="{{ b.name }} (Level {{ b.level }})">
+          {{ b.icon }}
+        </span>
+        {% endfor %}
       </div>
+      <span class="mobile-signals-count">📊 {{ calibration.n_notes }} signals</span>
     </div>
-
   </div>
 
-  {# ── Pokémon-Style Vault Badge Case (Conquered & Active Tier Crests) ──── #}
-  <div class="vault-badge-case">
-    <div class="badge-case-bar">
-      <div class="badge-case-title-wrap">
-        <span class="badge-case-trophy">🏆</span>
-        <span class="badge-case-title">Vault Badge Case</span>
-        <span class="badge-case-count">{{ calibration.level_num - 1 }} of 15 Conquered</span>
+  {# ── DESKTOP VIEW: Dedicated Right-Rail Card (Level, Gauge, Stats & 9 Badges) ── #}
+  <div class="signal-desktop-card">
+
+    <div class="signal-header-block">
+      <span class="signal-kicker">✦ Taste Engine Calibration</span>
+      <div class="signal-tier-row">
+        <span class="signal-tier-badge">
+          <span class="signal-icon">{{ calibration.level_icon }}</span>
+          <span>{{ calibration.level_display }} · {{ calibration.level_title }}</span>
+        </span>
       </div>
-      <button type="button" class="btn-badge-case-toggle" onclick="toggleVaultBadgeCase()">
-        <span id="badge-toggle-text">Show Badges</span>
-        <span id="badge-toggle-arrow">▾</span>
-      </button>
+      <div class="signal-subgroup-row">
+        <span class="signal-subgroup-pill subgroup-{{ calibration.subgroup_name|lower|replace(' ', '-') }}">
+          {{ calibration.subgroup_name }}
+        </span>
+        <span class="signal-ratio-label">{{ calibration.pips_filled }} / 5 Signals</span>
+      </div>
     </div>
 
-    <div class="badge-case-tray" id="vault-badge-tray" style="display: none;">
-      <div class="badge-grid">
-        {% for b in calibration.badges %}
-        <div class="badge-crest-card crest-{{ b.status }}" title="{{ b.name }} (Lvl {{ b.level }} · {{ b.range }} signals) — {{ b.desc }}">
-          <div class="crest-icon-wrap">
-            <span class="crest-icon">{{ b.icon }}</span>
-            {% if b.status == 'earned' %}
-            <span class="crest-check">✓</span>
-            {% elif b.status == 'locked' %}
-            <span class="crest-lock">🔒</span>
-            {% endif %}
-          </div>
-          <div class="crest-meta">
-            <span class="crest-lvl">Lvl {{ b.level }}</span>
-            <span class="crest-name">{{ b.name }}</span>
-            <span class="crest-range">{{ b.range }} sig</span>
-          </div>
+    {# 5-Pip Diode Gauge #}
+    <div class="signal-diode-row">
+      <div class="signal-diodes">
+        {% for filled in calibration.pips %}
+        <span class="diode-pip {% if filled %}filled{% endif %}">
+          <span class="diode-glyph">{% if filled %}✦{% else %}✧{% endif %}</span>
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="signal-hint-text">
+      {{ calibration.next_hint }}
+    </div>
+
+    {# Stats Grid (4 clean metrics) #}
+    <div class="signal-stats-grid">
+      <div class="sig-stat-card">
+        <div class="sig-stat-val">📊 {{ calibration.n_notes }}</div>
+        <div class="sig-stat-lbl">Total Signals</div>
+      </div>
+      <div class="sig-stat-card">
+        <div class="sig-stat-val">
+          {% if calibration.active_streak > 0 %}🔥 {{ calibration.active_streak }}d{% else %}⚡ Ready{% endif %}
+        </div>
+        <div class="sig-stat-lbl">Streak</div>
+      </div>
+      <div class="sig-stat-card">
+        <div class="sig-stat-val">🏆 {{ calibration.longest_streak }}d</div>
+        <div class="sig-stat-lbl">Personal Best</div>
+      </div>
+      <div class="sig-stat-card">
+        <div class="sig-stat-val">⚡ {{ session_count or 1 }}</div>
+        <div class="sig-stat-lbl">In Session</div>
+      </div>
+    </div>
+
+    {# Badges Showcase: All earned badges up to current level (NO accordion!) #}
+    <div class="desktop-badge-case">
+      <div class="desktop-badge-case-header">
+        <span class="badge-case-title">🏆 Conquered Badges ({{ calibration.level_num }})</span>
+      </div>
+      <div class="desktop-badge-grid">
+        {% for b in calibration.badges if b.level <= calibration.level_num %}
+        <div class="desktop-badge-card {% if b.level == calibration.level_num %}active-crest{% else %}earned-crest{% endif %}"
+             title="{{ b.name }} (Level {{ b.level }} · {{ b.range }} signals)">
+          <span class="desktop-badge-icon">{{ b.icon }}</span>
+          <span class="desktop-badge-lvl">Lvl {{ b.level }}</span>
+          <span class="desktop-badge-name">{{ b.name }}</span>
         </div>
         {% endfor %}
       </div>
     </div>
+
   </div>
+
 </div>

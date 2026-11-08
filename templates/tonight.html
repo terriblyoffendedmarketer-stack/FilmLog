@@ -3,33 +3,16 @@
 
 <div class="tonight-layout">
 
-  {# ── Heading ─────────────────────────────────────────────────────────────── #}
-  <div class="tonight-heading-block">
-    <h1 class="tonight-heading">What are we watching tonight?</h1>
-    <p class="tonight-sub">Your personal cinema brain — tuned to your taste, calibrated for your mood.</p>
-  </div>
+  {# ── Main Interaction & Editorial Column ─────────────────────────────────── #}
+  <div class="tonight-main-col">
 
-  {# ── Taste Calibration Progress Bar ──────────────────────────────────────── #}
-  {% if calibration %}
-  <div class="taste-calibration-bar-widget">
-    <div class="calibration-top-info">
-      <div class="calibration-level-badge">
-        <span class="level-icon">⚡</span>
-        <span class="level-name">{{ calibration.level_display }} · {{ calibration.level_title }}</span>
-      </div>
-      <span class="calibration-pct">{{ calibration.percentage }}% Calibrated</span>
+    {# ── Heading ───────────────────────────────────────────────────────────── #}
+    <div class="tonight-heading-block">
+      <h1 class="tonight-heading">What are we watching tonight?</h1>
+      <p class="tonight-sub">Your personal cinema brain — tuned to your taste, calibrated for your mood.</p>
     </div>
-    <div class="calibration-progress-track">
-      <div class="calibration-progress-fill" style="width: {{ calibration.percentage }}%;"></div>
-    </div>
-    <div class="calibration-sub-info">
-      <span>{{ calibration.n_watched }} watched · {{ calibration.n_notes }} personal notes</span>
-      <span class="calibration-hint">{{ calibration.next_hint }}</span>
-    </div>
-  </div>
-  {% endif %}
 
-  {# ── Query Engine: Ask What to Watch ──────────────────────────────────────── #}
+    {# ── Query Engine: Ask What to Watch ────────────────────────────────────── #}
   <form id="calibration-form" class="ask-what-to-watch-form"
     hx-post="/tonight/generate"
     hx-target="#recommendation-result"
@@ -96,7 +79,7 @@
 
   {# ── Today's Feature Pick: Landscape Cover Hero Tile ────────────────────── #}
   {% if latest_issue %}
-  <div class="today-hero-tile" onclick="openIssueOverlay('{{ latest_issue.id or 'latest' }}')">
+  <div class="today-hero-tile" id="initial-hero-tile" onclick="openIssueOverlay('{{ latest_issue.id or 'latest' }}')">
     <div class="hero-cover-frame">
       {% if hero_film and hero_film.cover_url %}
       <img src="{{ hero_film.cover_url }}" alt="{{ hero_film.title }}" class="hero-cover-img" loading="eager">
@@ -166,12 +149,14 @@
   </div>
   {% endif %}
 
-  {# ── Psychological Enrich Piping (Signal Badges & Micro-Enrich Card) ─────── #}
+  {# ── Mobile-Only Signal Ribbon (Renders above micro-enrich on phones) ──────── #}
   {% if calibration %}
-  <div style="margin: 28px 0 16px;">
+  <div class="tonight-mobile-signal-wrap">
     {% include "partials/signal_gamification_widget.html" %}
   </div>
   {% endif %}
+
+  {# ── Psychological Enrich Piping (Micro-Enrich Card) ─────────────────────── #}
   {% include "partials/micro_enrich_card.html" %}
 
   {# ── Older issues archive ─────────────────────────────────────────────────── #}
@@ -291,7 +276,18 @@
     <a href="/tonight/archived" class="archive-link">View archived issues</a>
   </div>
 
-</div>
+  </div>{# end .tonight-main-col #}
+
+  {# ── Desktop-Only Right Sidebar Rail (Level, Gauge, Stats & Conquered Badges) ── #}
+  {% if calibration %}
+  <aside class="tonight-side-col">
+    <div class="tonight-side-sticky">
+      {% include "partials/signal_gamification_widget.html" %}
+    </div>
+  </aside>
+  {% endif %}
+
+</div>{# end .tonight-layout #}
 
 {# ── Reading Overlay Pop-Up ─────────────────────────────────────────────────── #}
 <div id="issue-reading-overlay" class="reading-overlay" onclick="handleOverlayBackdropClick(event)">
@@ -382,9 +378,33 @@ if (form) {
     btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Ask FilmLog Tonight';
   });
 
+  form.addEventListener('htmx:responseError', function() {
+    var btn = document.getElementById('generate-btn');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Ask FilmLog Tonight';
+    }
+    var result = document.getElementById('recommendation-result');
+    if (result) {
+      result.innerHTML = '<div class="rec-result-error" style="padding: 16px; margin: 16px 0; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; color: #fca5a5;"><p>Generation took longer than expected or server is busy. Please click again to retry.</p></div>';
+    }
+  });
+
+  form.addEventListener('htmx:sendError', function() {
+    var btn = document.getElementById('generate-btn');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Ask FilmLog Tonight';
+    }
+  });
+
   form.addEventListener('htmx:afterSwap', function() {
     var result = document.getElementById('recommendation-result');
     if (result && result.children.length > 0) {
+      var initialTile = document.getElementById('initial-hero-tile');
+      if (initialTile) initialTile.style.display = 'none';
+      var authGroup = document.querySelector('.inline-auth-group');
+      if (authGroup) authGroup.style.display = 'none';
       setTimeout(function() {
         result.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 80);

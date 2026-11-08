@@ -739,6 +739,51 @@ html, body {
   padding: 52px 24px 100px;
 }
 
+@media (min-width: 1024px) {
+  .tonight-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 40px;
+    max-width: 1220px;
+    padding: 52px 32px 100px;
+  }
+  .tonight-main-col {
+    min-width: 0;
+  }
+  .tonight-side-col {
+    display: block;
+  }
+  .tonight-side-sticky {
+    position: sticky;
+    top: calc(var(--nav-h) + 24px);
+  }
+  .tonight-mobile-signal-wrap {
+    display: none !important;
+  }
+  .signal-mobile-ribbon {
+    display: none !important;
+  }
+  .signal-desktop-card {
+    display: block !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .tonight-side-col {
+    display: none !important;
+  }
+  .tonight-mobile-signal-wrap {
+    display: block;
+    margin: 16px 0 20px;
+  }
+  .signal-mobile-ribbon {
+    display: block !important;
+  }
+  .signal-desktop-card {
+    display: none !important;
+  }
+}
+
 .tonight-heading-block { margin-bottom: 44px; }
 
 .tonight-heading {
@@ -5947,64 +5992,16 @@ html, body {
   font-weight: 600;
 }
 
-/* ── Signal Gamification Widget (5-Pip Diode Gauge & Vault Badge Case) ──────── */
+/* ── Signal Gamification Widget (Desktop Sidebar Rail + Mobile Single-Line Ribbon) ── */
 .signal-gamification-widget {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 20px 22px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
-  margin-bottom: 24px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-.signal-widget-main-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 24px;
-  align-items: center;
-}
-
-.signal-header-line {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.signal-kicker {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-}
-
-.signal-badge-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.signal-tier-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.01em;
-}
-
-.signal-subgroup-pill {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 9999px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
+/* Metallic Subgroup Badges (Bronze, Silver, Gold) */
 .subgroup-bronze-rank {
   background: rgba(205, 127, 50, 0.16);
   color: #d88e4b;
@@ -6023,34 +6020,211 @@ html, body {
   border: 1px solid rgba(255, 215, 0, 0.45);
 }
 
+/* ── Mobile Single-Line Badge Ribbon (< 1024px) ────────────────────────────── */
+.signal-mobile-ribbon {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.mobile-ribbon-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.mobile-tier-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  color: var(--text);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-tier-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.mobile-subgroup-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mobile-diodes {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.mobile-diode {
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.mobile-diode.filled {
+  color: var(--accent);
+  text-shadow: 0 0 6px rgba(224, 116, 58, 0.45);
+}
+
+.mobile-badges-line-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 6px;
+}
+
+.mobile-badges-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-badges-line::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.mobile-badge-pill.active-crest {
+  border-color: var(--accent);
+  background: rgba(224, 116, 58, 0.18);
+  box-shadow: 0 0 8px rgba(224, 116, 58, 0.4);
+}
+
+.mobile-signals-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Desktop Right-Rail Card (>= 1024px) ──────────────────────────────────── */
+.signal-desktop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+
+.signal-header-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.signal-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.signal-tier-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.signal-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.signal-subgroup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.signal-subgroup-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.signal-ratio-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 /* 5-Pip Diode Row */
 .signal-diode-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .signal-diodes {
   display: inline-flex;
-  gap: 7px;
+  gap: 6px;
   align-items: center;
+  width: 100%;
 }
 
 .diode-pip {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  flex: 1;
+  height: 28px;
+  border-radius: 6px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.25s ease;
 }
 
 .diode-glyph {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   line-height: 1;
   color: var(--text-dim);
   transition: color 0.2s, transform 0.2s;
@@ -6067,30 +6241,26 @@ html, body {
   transform: scale(1.1);
 }
 
-.signal-ratio-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
 .signal-hint-text {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
   line-height: 1.4;
+  margin-bottom: 14px;
 }
 
-/* Stats Column */
+/* Stats 2x2 Grid */
 .signal-stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(100px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
+  margin-bottom: 14px;
 }
 
 .sig-stat-card {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
-  padding: 8px 12px;
+  padding: 8px 10px;
   text-align: center;
 }
 
@@ -6102,202 +6272,91 @@ html, body {
 }
 
 .sig-stat-lbl {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-dim);
 }
 
-/* Vault Badge Case (Trophy showcase) */
-.vault-badge-case {
-  margin-top: 18px;
-  padding-top: 16px;
+/* Desktop Badge Showcase: 3x3 Grid (No Accordion) */
+.desktop-badge-case {
+  margin-top: 14px;
+  padding-top: 14px;
   border-top: 1px solid var(--border);
 }
 
-.badge-case-bar {
+.desktop-badge-case-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.badge-case-title-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.badge-case-trophy {
-  font-size: 1.1rem;
+  margin-bottom: 10px;
 }
 
 .badge-case-title {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.badge-case-count {
   font-size: 0.78rem;
-  color: var(--text-dim);
-  margin-left: 4px;
-}
-
-.btn-badge-case-toggle {
-  background: transparent;
-  border: 1px solid var(--border);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: var(--r-sm);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
-.btn-badge-case-toggle:hover {
-  background: var(--surface-2);
-  color: var(--text);
-  border-color: var(--border-light);
-}
-
-.badge-case-tray {
-  margin-top: 14px;
-  padding: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  animation: fadeIn 0.2s ease;
-}
-
-.badge-grid {
+.desktop-badge-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-.badge-crest-card {
-  background: var(--surface);
+.desktop-badge-card {
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
-  padding: 10px 8px;
+  padding: 8px 5px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
+  min-width: 0;
   transition: all 0.15s ease;
 }
 
-.crest-icon-wrap {
-  position: relative;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
+.desktop-badge-card:hover {
+  background: var(--surface-3);
+  transform: translateY(-1px);
 }
 
-.crest-check {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  background: var(--watched);
-  color: #000;
-  font-size: 0.6rem;
-  font-weight: 900;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.crest-lock {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  font-size: 0.62rem;
-  line-height: 1;
-}
-
-.crest-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.crest-lvl {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
-
-.crest-name {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.2;
-}
-
-.crest-range {
-  font-size: 0.65rem;
-  color: var(--text-dim);
-}
-
-/* Badge states */
-.crest-earned {
-  border-color: rgba(255, 215, 0, 0.4);
+.desktop-badge-card.earned-crest {
+  border-color: rgba(255, 215, 0, 0.35);
   background: rgba(255, 215, 0, 0.04);
 }
 
-.crest-earned .crest-icon-wrap {
-  border-color: rgba(255, 215, 0, 0.6);
-  background: rgba(255, 215, 0, 0.12);
-}
-
-.crest-active {
+.desktop-badge-card.active-crest {
   border-color: var(--accent);
-  background: rgba(224, 116, 58, 0.06);
-  box-shadow: 0 0 12px rgba(224, 116, 58, 0.25);
+  background: rgba(224, 116, 58, 0.1);
+  box-shadow: 0 0 10px rgba(224, 116, 58, 0.25);
 }
 
-.crest-active .crest-icon-wrap {
-  border-color: var(--accent);
-  background: rgba(224, 116, 58, 0.18);
+.desktop-badge-icon {
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
-.crest-locked {
-  opacity: 0.45;
-  filter: grayscale(0.8);
+.desktop-badge-lvl {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-@media (max-width: 768px) {
-  .signal-widget-main-row {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  .signal-stats-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .signal-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .badge-grid {
-    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-  }
+.desktop-badge-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }

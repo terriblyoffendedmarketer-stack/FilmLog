@@ -496,6 +496,10 @@ def _load_taste_model() -> str:
 
 from filmlog.ai import call_ai
 
+def _has_ai(api_key: Optional[str] = None) -> bool:
+    return bool(api_key or os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
+
+
 def _call_claude_opus(prompt: str, api_key: Optional[str] = None) -> str:
     """Generate the recommendation issue using configured AI (Gemini or Anthropic)."""
     return call_ai(prompt, max_tokens=1500, api_key=api_key)
@@ -636,9 +640,7 @@ def generate_issue() -> None:
         return
 
     # ── 4. Try AI — fall back to Tier 2 if unavailable ──────────────────────
-    has_ai = bool(api_key or os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
-
-    if not has_ai or not taste_model:
+    if not _has_ai() or not taste_model:
         _tier2_recommendation(cluster)
         return
 
@@ -724,10 +726,8 @@ def generate_web_recommendation(answers: dict, api_key: Optional[str] = None, sa
             ),
         }
 
-    has_ai = bool(api_key or os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
-
     # ── Tier 2 fallback — no live API ────────────────────────────────────────
-    if not has_ai:
+    if not _has_ai(api_key):
         picks = recommend_from_model(cluster=cluster, limit=3)
         if not picks:
             return {
@@ -847,8 +847,7 @@ def precache_issues(count: int = 2) -> list[dict]:
 
     Returns list of generated issue dicts.
     """
-    has_ai = bool(api_key or os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
-    if not has_ai:
+    if not _has_ai():
         return []
 
     taste_model = _load_taste_model()
@@ -934,8 +933,7 @@ def rewrite_issue(issue_id: int) -> dict:
     if not film_ids:
         return {"issue_text": "", "error": "No films linked to this issue."}
 
-    has_ai = bool(api_key or os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
-    if not has_ai:
+    if not _has_ai():
         return {"issue_text": "", "error": "AI API key not set."}
 
     taste_model = _load_taste_model()

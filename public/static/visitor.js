@@ -150,6 +150,54 @@ window.toggleVaultBadgeCase = function() {
   }
 };
 
+// ── Owner Auth Persistence across Mobile & Serverless ────────────────────────
+(function() {
+  function checkOwnerAuth() {
+    try {
+      var savedOwnerPwd = localStorage.getItem('fl_owner_pwd');
+      if (savedOwnerPwd) {
+        var pwdInput = document.querySelector('input[name="owner_password"]');
+        if (pwdInput && !pwdInput.value) {
+          pwdInput.value = savedOwnerPwd;
+        }
+        var btn = document.getElementById('generate-btn');
+        if (btn && btn.textContent.indexOf('Owner Unlock') !== -1) {
+          btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Ask FilmLog Tonight';
+        }
+        var hint = document.querySelector('.inline-password-hint');
+        if (hint) {
+          hint.textContent = '🔓 Owner authenticated';
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Save owner password on input
+  document.addEventListener('input', function(e) {
+    if (e.target && e.target.name === 'owner_password' && e.target.value) {
+      try {
+        localStorage.setItem('fl_owner_pwd', e.target.value.trim());
+      } catch (err) {}
+    }
+  });
+
+  // Attach X-Owner-Password to ALL HTMX requests if available
+  document.body.addEventListener('htmx:configRequest', function(evt) {
+    try {
+      var savedOwnerPwd = localStorage.getItem('fl_owner_pwd');
+      if (savedOwnerPwd && evt.detail.headers) {
+        evt.detail.headers['X-Owner-Password'] = savedOwnerPwd;
+      }
+    } catch (e) {}
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkOwnerAuth);
+  } else {
+    checkOwnerAuth();
+  }
+})();
+
 (function () {
   'use strict';
 

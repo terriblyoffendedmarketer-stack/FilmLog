@@ -26,7 +26,11 @@ from filmlog.browse import _apply_filters, _score_by_taste
 load_dotenv(override=True)
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(32).hex())
+_secret_seed = os.getenv("FLASK_SECRET_KEY")
+if not _secret_seed:
+    _pwd = os.getenv("FILMLOG_PASSWORD", "8544")
+    _secret_seed = hashlib.sha256((_pwd + "-filmlog-static-salt-2026").encode()).hexdigest()
+app.secret_key = _secret_seed
 app.permanent_session_lifetime = 60 * 60 * 24 * 365  # 1 year
 
 
@@ -62,7 +66,17 @@ app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
 
 def _is_owner() -> bool:
     """Check if the current session belongs to the owner."""
-    return session.get("owner") is True
+    if session.get("owner") is True:
+        return True
+    try:
+        header_pwd = request.headers.get("X-Owner-Password", "").strip() if request else ""
+        correct = os.getenv("FILMLOG_PASSWORD", "8544")
+        if header_pwd and header_pwd == correct:
+            session["owner"] = True
+            return True
+    except Exception:
+        pass
+    return False
 
 
 @app.before_request
@@ -883,7 +897,10 @@ def tonight_micro_enrich(tmdb_id: int):
 def tonight_generate():
     """HTMX endpoint: receive calibration answers, stream back the editorial."""
     from flask import g
-    owner_pwd = request.form.get("owner_password", "").strip()
+    owner_pwd = (
+        request.form.get("owner_password", "").strip()
+        or request.headers.get("X-Owner-Password", "").strip()
+    )
     visitor_key = (request.headers.get("X-Gemini-Key") or request.form.get("visitor_gemini_key", "")).strip()
     is_owner_auth = session.get("owner", False) or (owner_pwd and owner_pwd == os.getenv("FILMLOG_PASSWORD", "8544"))
 
