@@ -14,6 +14,7 @@ import re
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
+from typing import Optional
 
 import markdown as md_lib
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
