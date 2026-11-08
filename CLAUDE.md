@@ -1,8 +1,8 @@
 # Filmlog — Personal Taste Engine for Films
 
 ## Status
-- **Current Phase:** Phase 6 — Enrich "Haven't Seen This" Failsafe, In-Place Film Inspector & Spacious Thematic Knowledge Graph Complete
-- **In Progress:** Live Vercel verification & session wrap-up
+- **Current Phase:** Phase 6 — Enrich "Haven't Seen This" Failsafe, In-Place Film Inspector, Spacious Thematic Knowledge Graph & Issue Generation 500 Diagnostics Fixed
+- **In Progress:** Ready for next phase / user requests
 - **What's Next:** Automated background GitHub commit poller for web-generated notes
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
 - **Active AI:** Google Gemini API (REST, $0/month, BYOK + server fallback)
