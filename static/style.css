@@ -4882,3 +4882,558 @@ html, body {
   padding: 0;
   margin: 0;
 }
+
+/* ── Article Edge-to-Edge Landscape Cover (Substack Style) ─────────────────── */
+.article-cover-wrap {
+  margin: -28px -28px 24px -28px;
+  border-bottom: 1px solid var(--border-light);
+  background: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+}
+
+.article-cover-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 380px;
+  overflow: hidden;
+  background: #000;
+}
+
+.article-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  display: block;
+}
+
+.article-cover-vignette {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.45) 55%, rgba(16, 16, 16, 0.95) 100%);
+}
+
+.article-cover-caption {
+  position: absolute;
+  bottom: 16px;
+  left: 28px;
+  right: 28px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  z-index: 2;
+}
+
+.cover-badge {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(224, 116, 58, 0.92);
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.cover-caption-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cover-caption-title a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.cover-caption-title a:hover {
+  text-decoration: underline;
+}
+
+.cover-caption-meta {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.masthead-anchor {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Companion Editorial Inline Break ───────────────────────────────────────── */
+.companion-editorial-break {
+  margin: 36px 0 24px 0;
+  padding: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border-light);
+  border-radius: calc(var(--r) * 1.2);
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.companion-break-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  max-height: 240px;
+  overflow: hidden;
+  background: #0d0d0d;
+}
+
+.companion-break-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.companion-editorial-break:hover .companion-break-img {
+  transform: scale(1.025);
+}
+
+.companion-break-vignette {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.45) 50%, rgba(16, 16, 16, 0.94) 100%);
+}
+
+.companion-break-caption {
+  position: absolute;
+  bottom: 14px;
+  left: 20px;
+  right: 20px;
+  z-index: 2;
+}
+
+.companion-badge-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.companion-pill {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(224, 116, 58, 0.35);
+}
+
+.companion-meta-line {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.companion-heading {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.companion-heading a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.companion-heading a:hover {
+  color: var(--accent);
+}
+
+/* ── Taste Vault Ambient Epigraph (Integrated literary quote) ──────────────── */
+.taste-vault-epigraph {
+  margin: 36px 0;
+  padding: 16px 20px 16px 24px;
+  border-left: 3px solid rgba(224, 116, 58, 0.55);
+  background: transparent;
+  position: relative;
+}
+
+.epigraph-glyph {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2.6rem;
+  line-height: 1;
+  color: rgba(224, 116, 58, 0.4);
+  margin-bottom: -14px;
+}
+
+.epigraph-quote {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 1.14rem;
+  line-height: 1.68;
+  color: #e6dcce;
+  margin: 0 0 10px 0;
+  letter-spacing: 0.01em;
+}
+
+.epigraph-cite {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.epigraph-author {
+  color: var(--text-dim);
+}
+
+.epigraph-link {
+  color: #c4b9aa;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.epigraph-link:hover {
+  color: var(--accent);
+}
+
+.epigraph-date {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+/* ── Mobile Overlay Refinements ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .reading-overlay-sheet {
+    margin: 0;
+    min-height: 100vh;
+    border-radius: 0;
+    border: none;
+  }
+  .reading-overlay-content {
+    padding: 18px 16px;
+  }
+  .article-cover-wrap {
+    margin: -18px -16px 18px -16px;
+  }
+  .article-cover-frame {
+    max-height: 240px;
+  }
+  .article-cover-caption {
+    left: 16px;
+    right: 16px;
+    bottom: 12px;
+  }
+  .companion-break-frame {
+    aspect-ratio: 16 / 9;
+    max-height: 180px;
+  }
+}
+
+/* ── Interactive Taste Brain Knowledge Graph ───────────────────────────────── */
+.taste-graph-section {
+  margin-top: 36px;
+  margin-bottom: 40px;
+}
+
+.taste-section-sub {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.graph-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  color: var(--text-dim);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.taste-graph-container {
+  position: relative;
+  width: 100%;
+  background: radial-gradient(circle at center, #181818 0%, #0d0d0d 70%, #070707 100%);
+  border: 1px solid var(--border-light);
+  border-radius: calc(var(--r) * 1.5);
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+  margin-top: 16px;
+}
+
+#taste-graph-canvas {
+  display: block;
+  width: 100%;
+  touch-action: none;
+}
+
+.graph-hint-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+/* ── Graph Node Slide-Out Drawer ───────────────────────────────────────────── */
+.graph-node-drawer {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  bottom: 14px;
+  width: 380px;
+  max-width: calc(100% - 28px);
+  background: rgba(18, 18, 18, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+  padding: 22px;
+  overflow-y: auto;
+  z-index: 10;
+  animation: drawerSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes drawerSlideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.drawer-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.drawer-pill {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.drawer-conf {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.btn-drawer-close {
+  background: var(--surface-3);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-drawer-close:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.drawer-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  margin: 0 0 8px 0;
+}
+
+.drawer-desc {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #b5afa7;
+  margin: 0 0 18px 0;
+}
+
+.drawer-films-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-bottom: 12px;
+}
+
+.drawer-count {
+  color: var(--accent);
+}
+
+.drawer-films-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drawer-film-item {
+  display: flex;
+  gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.drawer-film-item:hover {
+  border-color: var(--border-light);
+}
+
+.drawer-film-link {
+  flex-shrink: 0;
+  width: 48px;
+  aspect-ratio: 2/3;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #000;
+  display: block;
+}
+
+.drawer-film-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.drawer-film-poster-ph {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+
+.drawer-film-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.drawer-film-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.drawer-film-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+}
+
+.drawer-film-title:hover {
+  color: var(--accent);
+}
+
+.drawer-film-year {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.drawer-film-stars {
+  font-size: 0.75rem;
+  color: #fbbf24;
+  letter-spacing: 1px;
+}
+
+.drawer-film-note {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #c9c1b5;
+  margin-top: 2px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.drawer-empty-msg {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 12px 0;
+}
+
+@media (max-width: 640px) {
+  .graph-node-drawer {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: var(--r) var(--r) 0 0;
+  }
+}

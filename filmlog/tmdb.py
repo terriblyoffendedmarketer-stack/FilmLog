@@ -18,6 +18,7 @@ load_dotenv(override=True)
 
 TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
+TMDB_BACKDROP_BASE = "https://image.tmdb.org/t/p/w1280"
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -65,6 +66,13 @@ def build_poster_url(poster_path: str | None) -> str | None:
     if not poster_path:
         return None
     return f"{TMDB_IMAGE_BASE}{poster_path}"
+
+
+def build_backdrop_url(backdrop_path: str | None) -> str | None:
+    """Return the full landscape backdrop image URL, or None if no backdrop_path."""
+    if not backdrop_path:
+        return None
+    return f"{TMDB_BACKDROP_BASE}{backdrop_path}"
 
 
 def search_movies(query: str, year: int | None = None) -> list[dict]:
@@ -180,6 +188,7 @@ def get_movie_details(tmdb_id: int) -> dict:
         "language": data.get("original_language"),
         "country": country,
         "poster_url": build_poster_url(data.get("poster_path")),
+        "backdrop_url": build_backdrop_url(data.get("backdrop_path")),
         "tmdb_genres": genres,
         "overview": data.get("overview", ""),
         "tagline": data.get("tagline", ""),
@@ -215,6 +224,7 @@ def get_tv_details(tmdb_id: int) -> dict:
         "language": data.get("original_language"),
         "country": country,
         "poster_url": build_poster_url(data.get("poster_path")),
+        "backdrop_url": build_backdrop_url(data.get("backdrop_path")),
         "tmdb_genres": genres,
         "overview": data.get("overview", ""),
         "tagline": data.get("tagline", ""),

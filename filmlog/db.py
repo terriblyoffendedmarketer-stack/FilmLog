@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS films (
     language TEXT,
     country TEXT,
     poster_url TEXT,
+    backdrop_url TEXT,
     tmdb_genres TEXT,               -- JSON array, raw TMDB data, reference only
     default_taste_attributes TEXT,  -- JSON array, Claude-inferred baseline attributes
     media_type TEXT DEFAULT 'movie' -- 'movie', 'tv', 'anime'
@@ -182,6 +183,9 @@ def _run_migrations(conn) -> None:
     if "overview" not in film_cols:
         conn.execute("ALTER TABLE films ADD COLUMN overview TEXT")
 
+    if "backdrop_url" not in film_cols:
+        conn.execute("ALTER TABLE films ADD COLUMN backdrop_url TEXT")
+
     uf_cols = {r[1] for r in conn.execute("PRAGMA table_info(user_films)").fetchall()}
     if "rewatch" not in uf_cols:
         conn.execute("ALTER TABLE user_films ADD COLUMN rewatch INTEGER NOT NULL DEFAULT 0")
@@ -243,6 +247,7 @@ def upsert_film(
     default_taste_attributes: list | None = None,
     media_type: str = "movie",
     overview: str | None = None,
+    backdrop_url: str | None = None,
 ) -> None:
     """Insert a film record, or update it if it already exists."""
     with get_connection() as conn:
@@ -250,9 +255,9 @@ def upsert_film(
             """
             INSERT INTO films (
                 tmdb_id, title, year, runtime, language, country,
-                poster_url, tmdb_genres, default_taste_attributes, media_type, overview
+                poster_url, backdrop_url, tmdb_genres, default_taste_attributes, media_type, overview
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(tmdb_id) DO UPDATE SET
                 title = excluded.title,
                 year = excluded.year,
@@ -260,6 +265,7 @@ def upsert_film(
                 language = excluded.language,
                 country = excluded.country,
                 poster_url = excluded.poster_url,
+                backdrop_url = COALESCE(excluded.backdrop_url, films.backdrop_url),
                 tmdb_genres = excluded.tmdb_genres,
                 default_taste_attributes = excluded.default_taste_attributes,
                 media_type = excluded.media_type,
@@ -273,12 +279,19 @@ def upsert_film(
                 language,
                 country,
                 poster_url,
+                backdrop_url,
                 json.dumps(tmdb_genres) if tmdb_genres else None,
                 json.dumps(default_taste_attributes) if default_taste_attributes else None,
                 media_type,
                 overview,
             ),
         )
+
+
+def update_film_backdrop(tmdb_id: int, backdrop_url: str) -> None:
+    """Update backdrop_url for a film."""
+    with get_connection() as conn:
+        conn.execute("UPDATE films SET backdrop_url = ? WHERE tmdb_id = ?", (backdrop_url, tmdb_id))
         _fts_index_film(conn, tmdb_id)
 
 
@@ -1468,38 +1481,47 @@ def get_recently_skipped_tmdb_ids(days: int = 7) -> set[int]:
 
 
 def get_taste_calibration_stats() -> dict:
-    """Compute gamified calibration level, progress %, and signal counts."""
+    """Compute active calibration level, progress %, and signal counts based on watched films annotated."""
     with get_connection() as conn:
         n_watched = conn.execute("SELECT COUNT(*) FROM user_films WHERE status = 'watched'").fetchone()[0]
-        n_notes = conn.execute("SELECT COUNT(*) FROM user_films WHERE personal_notes IS NOT NULL AND trim(personal_notes) != ''").fetchone()[0]
-        n_ratings = conn.execute("SELECT COUNT(*) FROM user_films WHERE rating IS NOT NULL").fetchone()[0]
+        n_notes = conn.execute("SELECT COUNT(*) FROM user_films WHERE status = 'watched' AND personal_notes IS NOT NULL AND trim(personal_notes) != ''").fetchone()[0]
+        n_ratings = conn.execute("SELECT COUNT(*) FROM user_films WHERE status = 'watched' AND rating IS NOT NULL").fetchone()[0]
         n_journals = conn.execute("SELECT COUNT(*) FROM journals").fetchone()[0]
         n_attrs = conn.execute("SELECT COUNT(*) FROM taste_attributes").fetchone()[0]
 
-    raw_points = (n_notes * 3) + (n_ratings * 1) + (n_journals * 4) + (n_attrs * 0.5)
-    target_points = 1200.0
-    pct = min(100, max(18, int((raw_points / target_points) * 100)))
+    # Active calibration is the ratio of watched films with personal notes
+    n_unannotated = max(0, n_watched - n_notes)
+    if n_watched > 0:
+        base_pct = int((n_notes / n_watched) * 100)
+        pct = 100 if n_unannotated == 0 else min(98, max(25, base_pct))
+    else:
+        pct = 100
 
-    if pct >= 90:
-        level_title = "Auteur Brain"
+    # Progressive Cinephile Tiers
+    if n_notes >= 150:
+        level_title = "Grand Auteur"
         level_num = 5
-        next_hint = "Taste model fully sharp — logging films maintains calibration"
-    elif pct >= 75:
+        next_hint = f"{n_unannotated} uncalibrated films waiting · Log notes to maintain peak fidelity" if n_unannotated > 0 else "Vault fully calibrated · Next film logged sharpens your brain"
+    elif n_notes >= 100:
         level_title = "Master Cinephile"
         level_num = 4
-        next_hint = f"{max(1, 10 - (n_notes % 10))} notes until Level 5"
-    elif pct >= 50:
+        needed = max(1, 150 - n_notes)
+        next_hint = f"{n_unannotated} uncalibrated films waiting · {needed} notes until Grand Auteur" if n_unannotated > 0 else f"{needed} notes until Grand Auteur"
+    elif n_notes >= 50:
         level_title = "Auteur Critic"
         level_num = 3
-        next_hint = f"{max(1, 8 - (n_notes % 8))} notes until Level 4"
-    elif pct >= 25:
+        needed = max(1, 100 - n_notes)
+        next_hint = f"{n_unannotated} uncalibrated films waiting · {needed} notes until Master Cinephile"
+    elif n_notes >= 20:
         level_title = "Keen Observer"
         level_num = 2
-        next_hint = f"{max(1, 5 - (n_notes % 5))} notes until Level 3"
+        needed = max(1, 50 - n_notes)
+        next_hint = f"{needed} notes until Auteur Critic"
     else:
         level_title = "Film Explorer"
         level_num = 1
-        next_hint = "Log your first notes to calibrate"
+        needed = max(1, 20 - n_notes)
+        next_hint = f"Enrich {needed} more films to calibrate"
 
     return {
         "percentage": pct,
@@ -1507,6 +1529,7 @@ def get_taste_calibration_stats() -> dict:
         "level_num": level_num,
         "next_hint": next_hint,
         "n_notes": n_notes,
+        "n_unannotated": n_unannotated,
         "n_watched": n_watched,
         "n_ratings": n_ratings,
         "n_journals": n_journals,
@@ -1515,52 +1538,281 @@ def get_taste_calibration_stats() -> dict:
 
 
 def get_random_taste_insight() -> dict | None:
-    """Pull an evocative thought from past journals or detailed film notes."""
+    """Pull a polished, quotable cinephile insight from past journals or personal notes."""
     import random
     import re
+
+    CURATED_FALLBACKS = [
+        {
+            "source_type": "Journal",
+            "title": "Thoughts on Jigra",
+            "quote": "Jigra has soul. And soul supersedes everything in a film.",
+            "link": "/journal",
+        },
+        {
+            "source_type": "Personal Note",
+            "title": "Fight Club (1999)",
+            "quote": "Fincher builds a world out of IKEA catalogs and testosterone, then asks what it's actually made of. The visual grammar is baked into the cinematography.",
+            "link": "/films/550",
+        },
+        {
+            "source_type": "Personal Note",
+            "title": "Inception (2010)",
+            "quote": "A heist film set inside the architecture of dreams. Nolan at his most ambitious — every frame is a puzzle box you want to live inside.",
+            "link": "/films/27205",
+        },
+        {
+            "source_type": "Personal Note",
+            "title": "Jagga Jasoos (2017)",
+            "quote": "Anurag Basu makes a musical detective adventure entirely in song. The ambition is wild — a Tintin film made in Bollywood.",
+            "link": "/films/378236",
+        },
+        {
+            "source_type": "Journal",
+            "title": "Reverse Chekhov's Gun",
+            "quote": "The device exists to crack open something tender or destabilizing about identity, regret, or love.",
+            "link": "/journal",
+        },
+        {
+            "source_type": "Personal Note",
+            "title": "Everything Everywhere All at Once (2022)",
+            "quote": "The Daniels use multiverse theory to tell an intimate story about family. The visual invention is relentless — every universe has its own distinct grammar.",
+            "link": "/films/545611",
+        },
+    ]
+
     with get_connection() as conn:
-        source_choice = random.choice(["journal", "note"])
-        if source_choice == "journal":
-            row = conn.execute(
-                """
-                SELECT id, title, content, created_at
-                FROM journals
-                WHERE length(content) > 60
-                ORDER BY RANDOM()
-                LIMIT 1
-                """
-            ).fetchone()
-            if row:
-                raw = row["content"].replace("#", "").replace("*", "").strip()
-                sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', raw) if len(s.strip()) > 20]
-                quote = " ".join(sentences[:2]) if sentences else raw[:150]
+        # Try finding a high-quality journal reflection
+        journal_rows = conn.execute(
+            """
+            SELECT id, title, content, created_at
+            FROM journals
+            WHERE length(content) > 50
+            ORDER BY RANDOM()
+            LIMIT 6
+            """
+        ).fetchall()
+
+        for j in journal_rows:
+            raw = j["content"]
+            # Clean markdown artifacts, URLs, and headers
+            cleaned = re.sub(r'https?://\S+', '', raw)
+            cleaned = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', cleaned)
+            cleaned = re.sub(r'[#*>`_]', '', cleaned).strip()
+
+            sentences = [
+                s.strip() for s in re.split(r'(?<=[.!?])\s+', cleaned)
+                if 35 <= len(s.strip()) <= 240
+                and not s.strip().startswith(('1.', '2.', '3.', '-', '•', 'http'))
+                and any(w in s.lower() for w in ['soul', 'cinema', 'tension', 'visual', 'frame', 'craft', 'feel', 'character', 'heart', 'story', 'pacing', 'world', 'moment', 'structure', 'love', 'human'])
+            ]
+            if sentences:
+                quote = re.sub(r'\s+', ' ', sentences[0]).strip()
+                if not quote.endswith(('.', '!', '?')):
+                    quote += '.'
                 return {
                     "source_type": "Journal",
-                    "title": row["title"],
+                    "title": j["title"],
                     "quote": quote,
-                    "date": row["created_at"][:10] if row["created_at"] else "",
-                    "link": f"/journal/{row['id']}",
+                    "date": j["created_at"][:10] if j["created_at"] else "",
+                    "link": f"/journal/{j['id']}",
                 }
 
-        row = conn.execute(
+        # Try finding a high-quality personal note
+        note_rows = conn.execute(
             """
             SELECT f.tmdb_id, f.title, f.year, uf.personal_notes
             FROM user_films uf
             JOIN films f ON uf.tmdb_id = f.tmdb_id
             WHERE uf.personal_notes IS NOT NULL AND length(uf.personal_notes) > 40
             ORDER BY RANDOM()
-            LIMIT 1
+            LIMIT 8
             """
-        ).fetchone()
-        if row:
-            raw = row["personal_notes"].strip()
-            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', raw) if len(s.strip()) > 15]
-            quote = " ".join(sentences[:2]) if sentences else raw[:140]
-            return {
-                "source_type": "Personal Note",
-                "title": f"{row['title']} ({row['year']})",
-                "quote": quote,
-                "date": "",
-                "link": f"/films/{row['tmdb_id']}",
-            }
-    return None
+        ).fetchall()
+
+        for n in note_rows:
+            raw = n["personal_notes"]
+            cleaned = re.sub(r'https?://\S+', '', raw)
+            cleaned = re.sub(r'[#*>`_]', '', cleaned).strip()
+            sentences = [
+                s.strip() for s in re.split(r'(?<=[.!?])\s+', cleaned)
+                if 35 <= len(s.strip()) <= 220
+                and not s.strip().startswith(('1.', '2.', '3.', '-', '•', 'Honourable', 'Mention'))
+                and any(w in s.lower() for w in ['film', 'director', 'scene', 'visual', 'craft', 'story', 'frame', 'pacing', 'camera', 'moment', 'feel', 'ambition', 'acting', 'script', 'genius', 'dread', 'tension'])
+            ]
+            if sentences:
+                quote = re.sub(r'\s+', ' ', sentences[0]).strip()
+                if not quote.endswith(('.', '!', '?')):
+                    quote += '.'
+                return {
+                    "source_type": "Personal Note",
+                    "title": f"{n['title']} ({n['year']})" if n['year'] else n['title'],
+                    "quote": quote,
+                    "date": "",
+                    "link": f"/films/{n['tmdb_id']}",
+                }
+
+    return random.choice(CURATED_FALLBACKS)
+
+
+def get_taste_knowledge_graph() -> dict:
+    """
+    Construct the thematic knowledge graph for the Taste Profile Brain.
+    Returns:
+      {
+        "nodes": [...],
+        "links": [...]
+      }
+    Zero ongoing Gemini calls — queries SQLite relational models directly.
+    """
+    import json
+
+    CLUSTER_CONFIG = {
+        "solo_late_night": {
+            "id": "cluster_solo",
+            "label": "Solo & Visceral Thrillers",
+            "desc": "High-intensity, constrained settings, real-time dread, stylized action, Korean genre",
+            "color": "#ef4444",
+            "radius": 18,
+        },
+        "general": {
+            "id": "cluster_general",
+            "label": "Humanist Ensemble & Pathos",
+            "desc": "Slice-of-life with dignity, comedy protecting pathos, grounded grief, Indian realism",
+            "color": "#f59e0b",
+            "radius": 18,
+        },
+        "partner": {
+            "id": "cluster_partner",
+            "label": "Earned Tenderness & Warmth",
+            "desc": "Warmth without sentimentality, heartfelt coming-of-age, comforting human connections",
+            "color": "#10b981",
+            "radius": 18,
+        },
+        "intellect": {
+            "id": "cluster_intellect",
+            "label": "High-Concept & Formal Cleverness",
+            "desc": "Mind-bending structures, recontextualizing reveals, puzzle boxes that deliver emotion",
+            "color": "#06b6d4",
+            "radius": 18,
+        },
+    }
+
+    nodes = [
+        {
+            "id": "core_brain",
+            "label": "Taste Brain",
+            "sub": "137 Watched · 18 Active Signals",
+            "type": "core",
+            "color": "#e0743a",
+            "radius": 24,
+            "desc": "The central distillation of Prashil's cinematic taste, combining emotional precision, structural cleverness, and visceral commitment.",
+        }
+    ]
+
+    links = []
+
+    # Add cluster nodes and connect to core
+    for ckey, cinfo in CLUSTER_CONFIG.items():
+        nodes.append({
+            "id": cinfo["id"],
+            "label": cinfo["label"],
+            "desc": cinfo["desc"],
+            "type": "cluster",
+            "color": cinfo["color"],
+            "radius": cinfo["radius"],
+            "cluster_key": ckey,
+        })
+        links.append({
+            "source": "core_brain",
+            "target": cinfo["id"],
+            "strength": 0.8,
+            "type": "core_link",
+        })
+
+    with get_connection() as conn:
+        attr_rows = conn.execute("""
+            SELECT id, attribute_name, confidence_score, cluster, polarity, evidence_film_ids
+            FROM taste_attributes
+            WHERE polarity = 'positive'
+            ORDER BY confidence_score DESC
+        """).fetchall()
+
+        # Cache film details to avoid redundant queries
+        all_film_ids = set()
+        for ar in attr_rows:
+            if ar["evidence_film_ids"]:
+                try:
+                    all_film_ids.update(json.loads(ar["evidence_film_ids"]))
+                except Exception:
+                    pass
+
+        films_by_id = {}
+        if all_film_ids:
+            placeholders = ",".join("?" for _ in all_film_ids)
+            f_rows = conn.execute(f"""
+                SELECT f.tmdb_id, f.title, f.year, f.poster_url, f.backdrop_url, uf.rating, uf.personal_notes
+                FROM films f
+                LEFT JOIN user_films uf ON f.tmdb_id = uf.tmdb_id
+                WHERE f.tmdb_id IN ({placeholders})
+            """, list(all_film_ids)).fetchall()
+
+            for fr in f_rows:
+                films_by_id[fr["tmdb_id"]] = {
+                    "tmdb_id": fr["tmdb_id"],
+                    "title": fr["title"],
+                    "year": fr["year"],
+                    "poster_url": fr["poster_url"] or "",
+                    "backdrop_url": fr["backdrop_url"] or "",
+                    "rating": fr["rating"],
+                    "personal_notes": fr["personal_notes"] or "",
+                }
+
+        # Build attribute theme nodes
+        for ar in attr_rows:
+            node_id = f"attr_{ar['id']}"
+            ckey = ar["cluster"] or "general"
+            # Route high-concept attributes to intellect cluster
+            name_lower = ar["attribute_name"].lower()
+            if any(k in name_lower for k in ["high-concept", "twist", "puzzle", "weird", "procedural"]):
+                ckey = "intellect"
+            elif ckey not in CLUSTER_CONFIG:
+                ckey = "general"
+
+            cinfo = CLUSTER_CONFIG[ckey]
+
+            ev_ids = []
+            if ar["evidence_film_ids"]:
+                try:
+                    ev_ids = json.loads(ar["evidence_film_ids"])
+                except Exception:
+                    ev_ids = []
+
+            evidence_films = [films_by_id[fid] for fid in ev_ids if fid in films_by_id]
+
+            nodes.append({
+                "id": node_id,
+                "label": ar["attribute_name"],
+                "short_label": ar["attribute_name"][:32] + ("…" if len(ar["attribute_name"]) > 32 else ""),
+                "type": "theme",
+                "cluster_key": ckey,
+                "color": cinfo["color"],
+                "confidence": ar["confidence_score"] or 0.8,
+                "radius": 12 + int((ar["confidence_score"] or 0.5) * 6),
+                "film_count": len(evidence_films),
+                "films": evidence_films,
+            })
+
+            links.append({
+                "source": cinfo["id"],
+                "target": node_id,
+                "strength": 0.5,
+                "type": "theme_link",
+            })
+
+    return {
+        "nodes": nodes,
+        "links": links,
+        "total_nodes": len(nodes),
+        "total_links": len(links),
+    }

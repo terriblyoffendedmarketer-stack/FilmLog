@@ -84,10 +84,12 @@ def run_all_tests():
     assert "ask-what-to-watch-form" in html, "Ask what to watch form missing"
     assert "taste-calibration-bar-widget" in html, "Calibration bar missing"
     assert "today-hero-tile" in html, "Today hero tile missing"
+    assert "hero-cover-img" in html, "Hero cover image missing"
     assert "issue-reading-overlay" in html, "Reading overlay popup missing"
-    assert "magazine-issue-article" in html, "Magazine issue article missing"
+    assert "taste-vault-epigraph" in html, "Taste vault epigraph missing"
+    assert "article-cover-wrap" in html, "Substack style article cover wrap missing"
     assert "micro-enrich-wrap" in html, "Micro-enrich card missing"
-    print("  ✓ /tonight renders Landscape Cover Hero Tile, Reading Overlay Modal, Ask Form, Calibration Bar, and Micro-Enrich card")
+    print("  ✓ /tonight renders Landscape Cover Hero Tile, Substack Article Cover, Epigraph, and Reading Overlay")
 
     # 7. Micro-Enrichment POST Endpoint
     print("\n[Test 7] Tonight Micro-Enrichment endpoint...")
@@ -114,6 +116,20 @@ def run_all_tests():
     assert "today-hero-tile" in gen_html, "Today hero tile missing in fresh generation"
     assert "issue-full-fresh" in gen_html, "Issue template missing in fresh generation"
     print("  ✓ Recommendation issue generated, landscape hero selected, and logged to DB")
+
+    # 9. Taste Profile Brain & Knowledge Graph
+    print("\n[Test 9] Taste Knowledge Graph & Visual Brain...")
+    r_graph = client.get("/api/taste-graph")
+    assert r_graph.status_code == 200
+    g_data = r_graph.get_json()
+    assert "nodes" in g_data and len(g_data["nodes"]) >= 15, "Graph nodes insufficient"
+    assert "links" in g_data and len(g_data["links"]) >= 15, "Graph links insufficient"
+    r_taste = client.get("/taste")
+    assert r_taste.status_code == 200
+    t_html = r_taste.data.decode("utf-8")
+    assert "taste-graph-canvas" in t_html, "Graph canvas missing from /taste"
+    assert "graph-node-drawer" in t_html, "Node drawer missing from /taste"
+    print("  ✓ Taste Brain Knowledge Graph endpoint and interactive canvas verified")
 
     print("\n" + "=" * 60)
     print("ALL END-TO-END TESTS PASSED (100% SUCCESS)")

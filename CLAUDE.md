@@ -1,8 +1,8 @@
 # Filmlog — Personal Taste Engine for Films
 
 ## Status
-- **Current Phase:** Phase 4 — Vercel Serverless & PWA Live
-- **In Progress:** PWA installation verification, personal note enrichment flow
+- **Current Phase:** Phase 5 — Substack Editorial Issues & Taste Brain Knowledge Graph Live
+- **In Progress:** PWA installation verification, interactive knowledge graph exploration
 - **What's Next:** Automated daily GitHub sync for notes written on web
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
 - **Active AI:** Google Gemini API (REST, $0/month, zero external SDK dependencies)
@@ -14,7 +14,7 @@
 - [x] Phase 2: Web UI (Flask, HTMX, dark cinematic styling, Enrich queue, Tonight issues)
 - [x] Phase 3: AI Migration (Anthropic Claude -> Google Gemini REST via `filmlog/ai.py`)
 - [x] Phase 4: Cloud Deployment & PWA (Vercel serverless Python runtime, Service Worker, web manifest)
-- [x] Phase 5: Jellyfin Library Sync (`scripts/sync_jellyfin.py` synced 124 films + 70 personal notes)
+- [x] Phase 5: Editorial Redesign & Knowledge Graph (Substack edge-to-edge covers, reading overlay, interactive Taste Brain canvas)
 - [ ] Phase 6: Sync web updates back to local Jellyfin & GitHub automatically
 
 ---

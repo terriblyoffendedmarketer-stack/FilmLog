@@ -34,6 +34,48 @@
     </div>
   </div>
 
+  {# ── The Taste Brain · Interactive Knowledge Graph ──────────────────────── #}
+  <section class="taste-section taste-graph-section">
+    <div class="taste-section-header">
+      <div>
+        <span class="taste-section-label">Taste Brain · Interactive Knowledge Graph</span>
+        <div class="taste-section-sub">Thematic constellation connecting your emotional drivers, directing craft, and loved films. Click any node to explore.</div>
+      </div>
+      <div class="graph-legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Thrillers</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#06b6d4"></span> Mindbenders</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Ensemble</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span> Tenderness</span>
+      </div>
+    </div>
+
+    <div class="taste-graph-container" id="graph-container">
+      <canvas id="taste-graph-canvas"></canvas>
+      <div class="graph-hint-overlay">DRAG TO PAN · SCROLL TO ZOOM · TAP NODE TO INSPECT</div>
+
+      {# Floating Drawer for Inspecting Node & Example Films #}
+      <div id="graph-node-drawer" class="graph-node-drawer" style="display: none;">
+        <div class="drawer-header">
+          <div class="drawer-badge-row">
+            <span id="drawer-cluster-pill" class="drawer-pill">Cluster</span>
+            <span id="drawer-conf-pill" class="drawer-conf">95% confidence</span>
+          </div>
+          <button type="button" class="btn-drawer-close" onclick="closeGraphDrawer()" aria-label="Close drawer">✕</button>
+        </div>
+        <h3 id="drawer-node-title" class="drawer-title">Theme Title</h3>
+        <p id="drawer-node-desc" class="drawer-desc"></p>
+
+        <div class="drawer-films-header">
+          <span>Example Films in this Engine</span>
+          <span id="drawer-film-count" class="drawer-count">0 films</span>
+        </div>
+        <div id="drawer-films-list" class="drawer-films-grid">
+          {# Populated dynamically #}
+        </div>
+      </div>
+    </div>
+  </section>
+
   {% if not positive_attrs and not negative_attrs %}
   {# ── Empty state ────────────────────────────────────────────────────────────── #}
   <div class="taste-empty">
@@ -189,4 +231,416 @@
 
 </div>
 
+<script>
+// ── Interactive Taste Brain Knowledge Graph ─────────────────────────────────
+(function() {
+  var canvas = document.getElementById('taste-graph-canvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var container = document.getElementById('graph-container');
+
+  var width, height, dpr = window.devicePixelRatio || 1;
+  var nodes = [], links = [], nodeMap = {};
+  var hoveredNode = null, selectedNode = null, draggedNode = null;
+  var transform = { x: 0, y: 0, k: 1 };
+  var isPanning = false, panStart = { x: 0, y: 0 };
+  var animId = null;
+
+  function resize() {
+    width = container.clientWidth;
+    height = Math.max(480, Math.min(640, window.innerHeight * 0.65));
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.scale(dpr, dpr);
+    if (!transform.initialized) {
+      transform.x = width / 2;
+      transform.y = height / 2;
+      transform.k = width < 640 ? 0.75 : 1;
+      transform.initialized = true;
+    }
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Load Graph Data
+  fetch('/api/taste-graph')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      nodes = data.nodes || [];
+      links = data.links || [];
+
+      // Initialize positions
+      nodes.forEach(function(n, i) {
+        nodeMap[n.id] = n;
+        if (n.type === 'core') {
+          n.x = 0; n.y = 0; n.vx = 0; n.vy = 0;
+        } else if (n.type === 'cluster') {
+          var angle = (i * Math.PI * 2) / 4;
+          n.x = Math.cos(angle) * 140;
+          n.y = Math.sin(angle) * 140;
+          n.vx = 0; n.vy = 0;
+        } else {
+          var rAngle = Math.random() * Math.PI * 2;
+          var rDist = 200 + Math.random() * 120;
+          n.x = Math.cos(rAngle) * rDist;
+          n.y = Math.sin(rAngle) * rDist;
+          n.vx = 0; n.vy = 0;
+        }
+      });
+
+      links.forEach(function(l) {
+        l.sourceNode = nodeMap[l.source];
+        l.targetNode = nodeMap[l.target];
+      });
+
+      startSimulation();
+    })
+    .catch(function(err) {
+      console.error('Failed to load taste graph:', err);
+    });
+
+  function startSimulation() {
+    function step() {
+      // Force physics iteration
+      var alpha = 0.08;
+      // Spring forces
+      links.forEach(function(l) {
+        if (!l.sourceNode || !l.targetNode) return;
+        var dx = l.targetNode.x - l.sourceNode.x;
+        var dy = l.targetNode.y - l.sourceNode.y;
+        var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        var targetDist = l.type === 'core_link' ? 140 : 95;
+        var force = (dist - targetDist) * (l.strength || 0.1) * alpha;
+        var fx = (dx / dist) * force;
+        var fy = (dy / dist) * force;
+
+        if (l.targetNode !== draggedNode) {
+          l.targetNode.x -= fx;
+          l.targetNode.y -= fy;
+        }
+        if (l.sourceNode !== draggedNode && l.sourceNode.type !== 'core') {
+          l.sourceNode.x += fx;
+          l.sourceNode.y += fy;
+        }
+      });
+
+      // Repulsion between nodes
+      for (var i = 0; i < nodes.length; i++) {
+        var n1 = nodes[i];
+        for (var j = i + 1; j < nodes.length; j++) {
+          var n2 = nodes[j];
+          var dx = n2.x - n1.x;
+          var dy = n2.y - n1.y;
+          var distSq = dx * dx + dy * dy || 1;
+          var minDist = n1.radius + n2.radius + 30;
+          if (distSq < 40000) {
+            var dist = Math.sqrt(distSq);
+            var rep = (minDist * minDist) / (distSq * 1.5) * alpha;
+            var rx = (dx / dist) * rep;
+            var ry = (dy / dist) * rep;
+            if (n2 !== draggedNode && n2.type !== 'core') { n2.x += rx; n2.y += ry; }
+            if (n1 !== draggedNode && n1.type !== 'core') { n1.x -= rx; n1.y -= ry; }
+          }
+        }
+        // Center gravity
+        if (n1.type !== 'core' && n1 !== draggedNode) {
+          n1.x -= n1.x * 0.008;
+          n1.y -= n1.y * 0.008;
+        }
+      }
+
+      render();
+      animId = requestAnimationFrame(step);
+    }
+    step();
+  }
+
+  function render() {
+    ctx.save();
+    ctx.clearRect(0, 0, width, height);
+
+    // Apply pan & zoom
+    ctx.translate(transform.x, transform.y);
+    ctx.scale(transform.k, transform.k);
+
+    // Draw Links
+    links.forEach(function(l) {
+      if (!l.sourceNode || !l.targetNode) return;
+      var isHighlighted = (hoveredNode && (hoveredNode === l.sourceNode || hoveredNode === l.targetNode)) ||
+                          (selectedNode && (selectedNode === l.sourceNode || selectedNode === l.targetNode));
+      
+      ctx.beginPath();
+      ctx.moveTo(l.sourceNode.x, l.sourceNode.y);
+      ctx.lineTo(l.targetNode.x, l.targetNode.y);
+      if (isHighlighted) {
+        ctx.strokeStyle = l.targetNode.color || '#e0743a';
+        ctx.lineWidth = 2.2;
+      } else {
+        ctx.strokeStyle = l.type === 'core_link' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+      }
+      ctx.stroke();
+    });
+
+    // Draw Nodes
+    nodes.forEach(function(n) {
+      var isHover = (hoveredNode === n);
+      var isSel = (selectedNode === n);
+      var r = n.radius * (isHover ? 1.25 : 1);
+
+      // Glow halo
+      var grad = ctx.createRadialGradient(n.x, n.y, r * 0.5, n.x, n.y, r * 2.2);
+      grad.addColorStop(0, n.color || '#e0743a');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Node Body
+      ctx.fillStyle = n.color || '#e0743a';
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outline
+      ctx.lineWidth = isSel ? 3 : (isHover ? 2 : 1.5);
+      ctx.strokeStyle = isSel ? '#ffffff' : 'rgba(255,255,255,0.6)';
+      ctx.stroke();
+
+      // Inner icon or badge
+      if (n.type === 'core') {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('BRAIN', n.x, n.y);
+      } else if (n.film_count) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(n.film_count, n.x, n.y);
+      }
+
+      // Label
+      ctx.fillStyle = isHover || isSel ? '#ffffff' : '#b3aba0';
+      ctx.font = (isHover || isSel ? 'bold ' : '') + (n.type === 'core' ? '12px' : (n.type === 'cluster' ? '11px' : '10px')) + ' -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      var text = isHover ? n.label : (n.short_label || n.label);
+      ctx.fillText(text, n.x, n.y + r + 6);
+    });
+
+    ctx.restore();
+  }
+
+  // Coordinate Conversion
+  function toGraphCoords(clientX, clientY) {
+    var rect = canvas.getBoundingClientRect();
+    var x = (clientX - rect.left - transform.x) / transform.k;
+    var y = (clientY - rect.top - transform.y) / transform.k;
+    return { x: x, y: y };
+  }
+
+  function findNodeAt(clientX, clientY) {
+    var p = toGraphCoords(clientX, clientY);
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      var n = nodes[i];
+      var dx = p.x - n.x;
+      var dy = p.y - n.y;
+      if (dx * dx + dy * dy <= (n.radius + 8) * (n.radius + 8)) {
+        return n;
+      }
+    }
+    return null;
+  }
+
+  // Pointer Events
+  canvas.addEventListener('mousemove', function(e) {
+    if (draggedNode) {
+      var p = toGraphCoords(e.clientX, e.clientY);
+      draggedNode.x = p.x;
+      draggedNode.y = p.y;
+      return;
+    }
+    if (isPanning) {
+      transform.x += (e.clientX - panStart.x);
+      transform.y += (e.clientY - panStart.y);
+      panStart = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    var found = findNodeAt(e.clientX, e.clientY);
+    if (found !== hoveredNode) {
+      hoveredNode = found;
+      canvas.style.cursor = found ? 'pointer' : 'default';
+    }
+  });
+
+  canvas.addEventListener('mousedown', function(e) {
+    var found = findNodeAt(e.clientX, e.clientY);
+    if (found) {
+      draggedNode = found;
+    } else {
+      isPanning = true;
+      panStart = { x: e.clientX, y: e.clientY };
+    }
+  });
+
+  window.addEventListener('mouseup', function(e) {
+    if (draggedNode && !isPanning) {
+      // Register click if didn't move far
+      openNodeDrawer(draggedNode);
+    }
+    draggedNode = null;
+    isPanning = false;
+  });
+
+  canvas.addEventListener('click', function(e) {
+    var found = findNodeAt(e.clientX, e.clientY);
+    if (found) {
+      openNodeDrawer(found);
+    }
+  });
+
+  canvas.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    var zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+    var rect = canvas.getBoundingClientRect();
+    var mouseX = e.clientX - rect.left;
+    var mouseY = e.clientY - rect.top;
+
+    transform.x = mouseX - (mouseX - transform.x) * zoomFactor;
+    transform.y = mouseY - (mouseY - transform.y) * zoomFactor;
+    transform.k = Math.max(0.35, Math.min(2.5, transform.k * zoomFactor));
+  }, { passive: false });
+
+  // Touch Support
+  var touchStartDist = 0;
+  canvas.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) {
+      var t = e.touches[0];
+      var found = findNodeAt(t.clientX, t.clientY);
+      if (found) {
+        draggedNode = found;
+      } else {
+        isPanning = true;
+        panStart = { x: t.clientX, y: t.clientY };
+      }
+    } else if (e.touches.length === 2) {
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      touchStartDist = Math.sqrt(dx * dx + dy * dy);
+    }
+  });
+
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      var t = e.touches[0];
+      if (draggedNode) {
+        var p = toGraphCoords(t.clientX, t.clientY);
+        draggedNode.x = p.x;
+        draggedNode.y = p.y;
+      } else if (isPanning) {
+        transform.x += (t.clientX - panStart.x);
+        transform.y += (t.clientY - panStart.y);
+        panStart = { x: t.clientX, y: t.clientY };
+      }
+    } else if (e.touches.length === 2) {
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (touchStartDist > 0) {
+        var factor = dist / touchStartDist;
+        transform.k = Math.max(0.35, Math.min(2.5, transform.k * factor));
+      }
+      touchStartDist = dist;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', function(e) {
+    if (draggedNode) {
+      openNodeDrawer(draggedNode);
+    }
+    draggedNode = null;
+    isPanning = false;
+    touchStartDist = 0;
+  });
+
+  // Drawer Handler
+  function openNodeDrawer(node) {
+    selectedNode = node;
+    var drawer = document.getElementById('graph-node-drawer');
+    var titleEl = document.getElementById('drawer-node-title');
+    var descEl = document.getElementById('drawer-node-desc');
+    var clusterPill = document.getElementById('drawer-cluster-pill');
+    var confPill = document.getElementById('drawer-conf-pill');
+    var countEl = document.getElementById('drawer-film-count');
+    var listEl = document.getElementById('drawer-films-list');
+
+    titleEl.textContent = node.label;
+    descEl.textContent = node.desc || (node.type === 'theme' ? 'One of your core positive taste drivers, driving recommendations across your watchlist.' : '');
+
+    clusterPill.textContent = (node.cluster_key || node.type || 'Engine').toUpperCase();
+    clusterPill.style.background = node.color ? (node.color + '22') : 'rgba(255,255,255,0.1)';
+    clusterPill.style.color = node.color || '#fff';
+    clusterPill.style.borderColor = node.color ? (node.color + '66') : 'rgba(255,255,255,0.2)';
+
+    if (node.confidence) {
+      confPill.style.display = 'inline-block';
+      confPill.textContent = Math.round(node.confidence * 100) + '% Confidence';
+    } else {
+      confPill.style.display = 'none';
+    }
+
+    var films = node.films || [];
+    countEl.textContent = films.length + ' film' + (films.length === 1 ? '' : 's');
+
+    listEl.innerHTML = '';
+    if (films.length === 0) {
+      listEl.innerHTML = '<div class="drawer-empty-msg">No individual film evidence attached to this hub node directly.</div>';
+    } else {
+      films.forEach(function(f) {
+        var card = document.createElement('div');
+        card.className = 'drawer-film-item';
+
+        var posterImg = f.poster_url ?
+          '<img src="' + f.poster_url + '" alt="' + f.title + '" class="drawer-film-poster">' :
+          '<div class="drawer-film-poster-ph">' + (f.title ? f.title.substring(0, 2) : '?') + '</div>';
+
+        var stars = f.rating ? '★'.repeat(f.rating) : '';
+        var starsHtml = stars ? '<span class="drawer-film-stars">' + stars + '</span>' : '';
+
+        var notesHtml = f.personal_notes ?
+          '<div class="drawer-film-note">“' + f.personal_notes + '”</div>' : '';
+
+        card.innerHTML =
+          '<a href="/films/' + f.tmdb_id + '" class="drawer-film-link">' + posterImg + '</a>' +
+          '<div class="drawer-film-details">' +
+            '<div class="drawer-film-title-row">' +
+              '<a href="/films/' + f.tmdb_id + '" class="drawer-film-title">' + f.title + '</a>' +
+              (f.year ? '<span class="drawer-film-year">(' + f.year + ')</span>' : '') +
+              starsHtml +
+            '</div>' +
+            notesHtml +
+          '</div>';
+
+        listEl.appendChild(card);
+      });
+    }
+
+    drawer.style.display = 'block';
+  }
+
+  window.closeGraphDrawer = function() {
+    var drawer = document.getElementById('graph-node-drawer');
+    if (drawer) drawer.style.display = 'none';
+    selectedNode = null;
+  };
+})();
+</script>
 {% endblock %}

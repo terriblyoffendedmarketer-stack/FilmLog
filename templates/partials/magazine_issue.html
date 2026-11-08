@@ -1,11 +1,31 @@
 <article class="magazine-issue-article" id="issue-{{ issue.id or 'fresh' }}">
+  {# ── Substack-style Full-Width Landscape Cover Image ── #}
+  {% if issue.hero_film and issue.hero_film.cover_url %}
+  <div class="article-cover-wrap">
+    <div class="article-cover-frame">
+      <img src="{{ issue.hero_film.cover_url }}" alt="{{ issue.hero_film.title }}" class="article-cover-img" loading="eager">
+      <div class="article-cover-vignette"></div>
+      <div class="article-cover-caption">
+        <span class="cover-badge">★ ANCHOR FEATURE</span>
+        <span class="cover-caption-title"><a href="/films/{{ issue.hero_film.tmdb_id }}">{{ issue.hero_film.title }}</a></span>
+        {% if issue.hero_film.year %}<span class="cover-caption-meta">({{ issue.hero_film.year }})</span>{% endif %}
+        {% if issue.hero_film.runtime %}<span class="cover-caption-meta">· {{ issue.hero_film.runtime }}m</span>{% endif %}
+        {% if issue.hero_film.language %}<span class="cover-caption-meta">· {{ issue.hero_film.language | upper }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {# ── Masthead ────────────────────────────────────────────────────────── #}
   <header class="issue-masthead">
     <div class="masthead-eyebrow">
-      <span class="masthead-badge">FILMLOG ESSAY</span>
+      <span class="masthead-badge">FILMLOG EDITORIAL</span>
       <span class="masthead-issue-no">Issue #{{ issue.issue_number }}</span>
       {% if issue.generated_at %}
       <span class="masthead-date">· {{ issue.generated_at[:10] }}</span>
+      {% endif %}
+      {% if issue.hero_film %}
+      <span class="masthead-anchor">· Anchored on {{ issue.hero_film.title }}</span>
       {% endif %}
       {% if issue.tier2 %}
       <span class="masthead-offline">offline model</span>
@@ -15,7 +35,7 @@
     <h1 class="issue-editorial-headline">{{ issue.headline }}</h1>
   </header>
 
-  {# ── Single Unified Article Body (Hero gets biggest image, companions inline) ── #}
+  {# ── Single Unified Article Body ── #}
   <div class="magazine-essay-body">
     {{ issue.essay_html }}
   </div>

@@ -16,7 +16,7 @@ from functools import wraps
 from pathlib import Path
 
 import markdown as md_lib
-from flask import Flask, abort, g, redirect, render_template, request, session, url_for
+from flask import Flask, abort, g, jsonify, redirect, render_template, request, session, url_for
 from markupsafe import Markup
 from dotenv import load_dotenv
 
@@ -279,38 +279,26 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
             meta_parts = [x for x in [year, runtime, lang] if x]
             meta_str = " · ".join(meta_parts)
 
-            if is_hero:
+            if not is_hero:
+                cover = matched_fc.get("backdrop_url") or matched_fc.get("cover_url") or matched_fc.get("poster_url", "")
                 img_tag = (
-                    f'<img src="{poster}" alt="{title}" class="hero-figure-img" loading="eager">'
-                    if poster
+                    f'<img src="{cover}" alt="{title}" class="companion-break-img" loading="lazy">'
+                    if cover
                     else f'<div class="figure-poster-ph">{title[:2]}</div>'
                 )
                 figure_html = (
-                    f'<figure class="hero-inline-figure">'
-                    f'<a href="/films/{tmdb_id}" class="figure-poster-link">{img_tag}</a>'
-                    f'<figcaption class="hero-figure-caption">'
-                    f'<span class="hero-figure-badge">★ HERO RECOMMENDATION</span>'
-                    f'<span class="figure-title"><a href="/films/{tmdb_id}">{title}</a></span>'
-                    f'<span class="figure-meta">{meta_str}</span>'
-                    f'<a href="/films/{tmdb_id}" class="figure-action-link">View Film Details →</a>'
+                    f'<figure class="companion-editorial-break">'
+                    f'<div class="companion-break-frame">'
+                    f'<a href="/films/{tmdb_id}" class="companion-break-link">{img_tag}</a>'
+                    f'<div class="companion-break-vignette"></div>'
+                    f'<figcaption class="companion-break-caption">'
+                    f'<div class="companion-badge-line">'
+                    f'<span class="companion-pill">COMPANION DOOR</span>'
+                    f'<span class="companion-meta-line">{meta_str}</span>'
+                    f'</div>'
+                    f'<h3 class="companion-heading"><a href="/films/{tmdb_id}">{title}</a></h3>'
                     f'</figcaption>'
-                    f'</figure>'
-                )
-            else:
-                img_tag = (
-                    f'<img src="{poster}" alt="{title}" class="companion-figure-img" loading="lazy">'
-                    if poster
-                    else f'<div class="figure-poster-ph">{title[:2]}</div>'
-                )
-                figure_html = (
-                    f'<figure class="companion-inline-figure">'
-                    f'<a href="/films/{tmdb_id}" class="figure-poster-link">{img_tag}</a>'
-                    f'<figcaption class="companion-figure-caption">'
-                    f'<span class="companion-figure-badge">COMPANION DOOR</span>'
-                    f'<span class="figure-title"><a href="/films/{tmdb_id}">{title}</a></span>'
-                    f'<span class="figure-meta">{meta_str}</span>'
-                    f'<a href="/films/{tmdb_id}" class="figure-action-link">Explore →</a>'
-                    f'</figcaption>'
+                    f'</div>'
                     f'</figure>'
                 )
 
@@ -322,7 +310,7 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
             )
         elif figure_html:
             rendered_blocks.append(
-                f'<div class="essay-paragraph-block clearfix">{figure_html}{p_html}</div>'
+                f'{figure_html}<div class="essay-paragraph-block">{p_html}</div>'
             )
         else:
             rendered_blocks.append(f'<div class="essay-paragraph-block">{p_html}</div>')
@@ -766,8 +754,8 @@ def tonight():
         parsed_issues.append(parsed)
 
     latest_issue = parsed_issues[0] if parsed_issues else None
-    hero_film = latest_issue.get("hero", {}).get("film") if (latest_issue and latest_issue.get("hero")) else None
-    companion_films = [c["film"] for c in latest_issue.get("companions", []) if c.get("film")] if latest_issue else []
+    hero_film = latest_issue.get("hero_film") if latest_issue else None
+    companion_films = latest_issue.get("companion_films", []) if latest_issue else []
     older_issues = parsed_issues[1:] if len(parsed_issues) > 1 else []
 
     # Gamified taste calibration & ambient taste vault insight
@@ -1068,6 +1056,12 @@ def journal():
         stats=_get_stats(),
         entries=entries,
     )
+
+
+@app.route("/api/taste-graph")
+def api_taste_graph():
+    """Return JSON knowledge graph data for the Taste Profile Brain visualization."""
+    return jsonify(db.get_taste_knowledge_graph())
 
 
 @app.route("/api/films/search")
