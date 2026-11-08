@@ -1668,20 +1668,87 @@ def get_taste_calibration_stats() -> dict:
     }
 
 
+SENSITIVE_WORDS = {
+    "sex", "sexual", "sexuality", "nudity", "naked", "erotic", "lesbian",
+    "gay", "porn", "pervert", "vagina", "penis", "boob", "breast",
+    "masturbat", "climax", "intercourse", "lust", "pussy", "dick",
+    "fetish", "horny", "intimate scene", "bed scene"
+}
+
+
+def _polish_and_stitch_quotes(raw_text: str) -> list[str]:
+    """
+    Salvage, clean, and stitch raw conversational or transcription lines
+    into articulate, standalone cinephile quotes.
+    Tolerates transcription quirks, unescapes formatting, and stitches
+    broken dependent clauses into complete sentences.
+    """
+    import re
+    t = re.sub(r"https?://\S+", "", raw_text)
+    t = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", t)
+    t = re.sub(r"\\([+*_\-\[\]()])", r"\1", t)
+    t = re.sub(r"^[•*\-\d\.]+\s*", "", t, flags=re.MULTILINE)
+    t = re.sub(r"[#*>`_~]", "", t)
+
+    paragraphs = [p.strip() for p in t.split("\n\n") if p.strip()]
+    quotes = []
+
+    for para in paragraphs:
+        # Split on sentence boundaries where the next token starts with capital
+        raw_units = re.split(r"(?<=[.!?])\s+(?=[A-Z])", para)
+        stitched_units = []
+        for u in raw_units:
+            u_clean = u.strip()
+            if not u_clean:
+                continue
+            # If current unit looks like a trailing fragment ("And is...", "Than just..."), attach to previous
+            if stitched_units and re.match(r"^(?:And|Than|Which|Or|Because|Yes)\b", u_clean, re.IGNORECASE) and len(stitched_units[-1]) < 130:
+                stitched_units[-1] = stitched_units[-1].rstrip(".!?") + " — " + u_clean[0].lower() + u_clean[1:]
+            else:
+                stitched_units.append(u_clean)
+
+        for u in stitched_units:
+            q = u.strip()
+            # Trim conversational opening conjunctions
+            q = re.sub(r"^(?:And|So|Also|Because|Which is why|Like I said|Or|Basically|Honestly)\s+", "", q, flags=re.IGNORECASE)
+            # Polish transcription & informal shorthand
+            q = re.sub(r"\bi\b", "I", q)
+            q = re.sub(r"\bcant\b", "can't", q, flags=re.IGNORECASE)
+            q = re.sub(r"\bdont\b", "don't", q, flags=re.IGNORECASE)
+            q = re.sub(r"\bwanna\b", "want to", q, flags=re.IGNORECASE)
+            q = re.sub(r"\bgonna\b", "going to", q, flags=re.IGNORECASE)
+            q = re.sub(r"\bsorta\b", "sort of", q, flags=re.IGNORECASE)
+            q = re.sub(r"\bkinda\b", "kind of", q, flags=re.IGNORECASE)
+            q = re.sub(r"\blil\b", "little", q, flags=re.IGNORECASE)
+            q = re.sub(r"\bits\b(?=\s+[a-z])", "it's", q)
+            q = re.sub(r"\.\s+([a-z])", r" — \1", q)
+
+            if q and q[0].islower():
+                q = q[0].upper() + q[1:]
+
+            q = re.sub(r"\s+", " ", q).strip()
+            if q and not q.endswith((".", "!", "?")):
+                q += "."
+
+            # Validate quality & suitability
+            if 50 <= len(q) <= 240:
+                if not any(w in q.lower() for w in SENSITIVE_WORDS):
+                    if not re.match(r"^(?:Moving on|Coming to|Next is|Talking about|Fast forward)\b", q, re.IGNORECASE):
+                        if not any(meta in q.lower() for meta in ["above-mentioned", "original comment", "written in 2022", "youtube comments"]):
+                            if any(w in q.lower() for w in ["soul", "cinema", "tension", "visual", "frame", "craft", "character", "heart", "story", "pacing", "world", "moment", "structure", "hero", "moral", "direct", "scene", "feel", "human", "acting", "love", "writing"]):
+                                quotes.append(q)
+
+    return quotes
+
+
 def get_random_taste_insight() -> dict | None:
     """
-    Pull a polished, mindful, and self-contained cinephile insight from past journals or personal notes.
-    Strictly filters out any NSFW, sexual, vulgar, or fragmented thoughts.
+    Pull a polished, mindful, and self-contained cinephile insight from ANY past journal or personal note.
+    No journals are disqualified; instead, raw lines are salvaged, cleaned from an editorial standpoint,
+    and strictly filtered to ensure the presented quote is 100% non-NSFW and substantive.
     """
     import random
     import re
-
-    SENSITIVE_WORDS = {
-        "sex", "sexual", "sexuality", "nudity", "naked", "erotic", "lesbian",
-        "gay", "porn", "pervert", "vagina", "penis", "boob", "breast",
-        "masturbat", "climax", "intercourse", "lust", "pussy", "dick",
-        "fetish", "horny", "intimate scene", "bed scene"
-    }
 
     DISQUALIFIED_PATTERNS = [
         re.compile(r'\b(honourable|honorable)\s+mention\b', re.IGNORECASE),
@@ -1695,7 +1762,7 @@ def get_random_taste_insight() -> dict | None:
         {
             "source_type": "Journal",
             "title": "Thoughts on Jigra",
-            "quote": "Jigra has soul. And soul supersedes everything in a film.",
+            "quote": "Jigra has soul — and soul supersedes everything in a film.",
             "link": "/journal/20",
         },
         {
@@ -1767,96 +1834,53 @@ def get_random_taste_insight() -> dict | None:
     ]
 
     with get_connection() as conn:
-        # 1. Search journals (exclude explicitly NSFW journal IDs and titles)
+        # 1. Search ALL journals — zero blanket exclusions by ID or title
         journal_rows = conn.execute(
             """
             SELECT id, title, content, created_at
             FROM journals
-            WHERE length(content) > 60
-              AND id NOT IN (32, 36, 37)
-              AND LOWER(title) NOT LIKE '%handmaiden%'
-              AND LOWER(title) NOT LIKE '%sex%'
-              AND LOWER(title) NOT LIKE '%shinji%'
-            ORDER BY RANDOM()
-            LIMIT 10
-            """
-        ).fetchall()
-
-        for j in journal_rows:
-            raw = j["content"]
-            cleaned = re.sub(r'https?://\S+', '', raw)
-            cleaned = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', cleaned)
-            cleaned = re.sub(r'\\([+*_\-\[\]()])', r'\1', cleaned)
-            cleaned = re.sub(r'[#*>`_]', '', cleaned).strip()
-
-            paragraphs = [p.strip() for p in cleaned.split('\n\n') if p.strip()]
-            for para in paragraphs:
-                para_lower = para.lower()
-                if any(w in para_lower for w in SENSITIVE_WORDS):
-                    continue
-
-                sentences = [
-                    s.strip() for s in re.split(r'(?<=[.!?])\s+', para)
-                    if 45 <= len(s.strip()) <= 230
-                    and not s.strip().startswith(('1.', '2.', '3.', '-', '•', 'http', 'And ', 'Because ', 'Or ', 'So if ', 'Which '))
-                    and not (s.strip().endswith('?') and len(s.strip()) < 90)
-                    and s.strip()[0].isupper()
-                    and any(w in s.lower() for w in ['soul', 'cinema', 'tension', 'visual', 'frame', 'craft', 'character', 'heart', 'story', 'pacing', 'world', 'moment', 'structure', 'hero', 'moral'])
-                    and not any(w in s.lower() for w in SENSITIVE_WORDS)
-                ]
-                if sentences:
-                    quote = re.sub(r'\s+', ' ', sentences[0]).strip()
-                    if not quote.endswith(('.', '!', '?')):
-                        quote += '.'
-                    return {
-                        "source_type": "Journal",
-                        "title": j["title"],
-                        "quote": quote,
-                        "date": j["created_at"][:10] if j["created_at"] else "",
-                        "link": f"/journal/{j['id']}",
-                    }
-
-        # 2. Search personal notes
-        note_rows = conn.execute(
-            """
-            SELECT f.tmdb_id, f.title, f.year, uf.personal_notes
-            FROM user_films uf
-            JOIN films f ON uf.tmdb_id = f.tmdb_id
-            WHERE uf.personal_notes IS NOT NULL AND length(uf.personal_notes) > 40
-              AND LOWER(f.title) NOT LIKE '%handmaiden%'
-              AND LOWER(f.title) NOT LIKE '%jan dara%'
-              AND LOWER(f.title) NOT LIKE '%intimacy%'
+            WHERE length(content) > 50
             ORDER BY RANDOM()
             LIMIT 15
             """
         ).fetchall()
 
+        for j in journal_rows:
+            quotes = _polish_and_stitch_quotes(j["content"])
+            if quotes:
+                selected_quote = random.choice(quotes)
+                return {
+                    "source_type": "Journal",
+                    "title": j["title"],
+                    "quote": selected_quote,
+                    "date": j["created_at"][:10] if j["created_at"] else "",
+                    "link": f"/journal/{j['id']}",
+                }
+
+        # 2. Search ALL personal notes — zero blanket title exclusions
+        note_rows = conn.execute(
+            """
+            SELECT f.tmdb_id, f.title, f.year, uf.personal_notes
+            FROM user_films uf
+            JOIN films f ON uf.tmdb_id = f.tmdb_id
+            WHERE uf.personal_notes IS NOT NULL AND length(uf.personal_notes) > 35
+            ORDER BY RANDOM()
+            LIMIT 20
+            """
+        ).fetchall()
+
         for n in note_rows:
             raw = n["personal_notes"]
-            cleaned = re.sub(r'https?://\S+', '', raw)
-            cleaned = re.sub(r'[#*>`_]', '', cleaned).strip()
-
-            if any(p.search(cleaned) for p in DISQUALIFIED_PATTERNS):
-                continue
-            if any(w in cleaned.lower() for w in SENSITIVE_WORDS):
+            if any(p.search(raw) for p in DISQUALIFIED_PATTERNS):
                 continue
 
-            sentences = [
-                s.strip() for s in re.split(r'(?<=[.!?])\s+', cleaned)
-                if 42 <= len(s.strip()) <= 230
-                and not s.strip().startswith(('1.', '2.', '3.', '-', '•', 'Honourable', 'Mention', 'Hall of Fame', 'And ', 'Because '))
-                and s.strip()[0].isupper()
-                and any(w in s.lower() for w in ['film', 'director', 'scene', 'visual', 'craft', 'story', 'frame', 'pacing', 'camera', 'moment', 'feel', 'ambition', 'acting', 'script', 'genius', 'dread', 'tension', 'performance'])
-                and not any(w in s.lower() for w in SENSITIVE_WORDS)
-            ]
-            if sentences:
-                quote = re.sub(r'\s+', ' ', sentences[0]).strip()
-                if not quote.endswith(('.', '!', '?')):
-                    quote += '.'
+            quotes = _polish_and_stitch_quotes(raw)
+            if quotes:
+                selected_quote = random.choice(quotes)
                 return {
                     "source_type": "Personal Note",
                     "title": f"{n['title']} ({n['year']})" if n['year'] else n['title'],
-                    "quote": quote,
+                    "quote": selected_quote,
                     "date": "",
                     "link": f"/films/{n['tmdb_id']}",
                 }
