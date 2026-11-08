@@ -36,6 +36,20 @@
     {% endwith %}
     {% endif %}
 
+    {# Guest Watchlist Bookmark (Visible to non-owners) #}
+    {% if not is_owner %}
+    <div class="guest-bookmark-wrap" style="margin: 12px 0;">
+      <button type="button" class="btn-guest-bookmark" id="guest-bm-{{ film.tmdb_id }}"
+              data-tmdb-id="{{ film.tmdb_id }}"
+              data-title="{{ film.title }}"
+              data-year="{{ film.year or '' }}"
+              data-poster="{{ film.poster_url or '' }}"
+              onclick="handleGuestBookmarkClick(this)">
+        + Save to My List
+      </button>
+    </div>
+    {% endif %}
+
     {# Metadata #}
     <div class="detail-meta-list">
       {% if film.runtime %}<div class="detail-meta-item">⏱ {{ film.runtime }} min</div>{% endif %}

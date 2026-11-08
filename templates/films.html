@@ -18,6 +18,12 @@
           class="filter-btn{% if current_status == val %} active{% endif %}"
           onclick="setStatusFilter('{{ val }}')">{{ label }}</button>
         {% endfor %}
+        {% if not is_owner %}
+        <button type="button"
+          id="btn-filter-guest-wl"
+          class="filter-btn"
+          onclick="showGuestWatchlistView()">My Saved List (<span id="guest-tab-count">0</span>)</button>
+        {% endif %}
       </div>
       <input type="hidden" id="status-val" name="status" value="{{ current_status }}">
 

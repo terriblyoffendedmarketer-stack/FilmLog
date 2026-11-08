@@ -884,12 +884,23 @@ def tonight_generate():
     """HTMX endpoint: receive calibration answers, stream back the editorial."""
     from flask import g
     owner_pwd = request.form.get("owner_password", "").strip()
-    if owner_pwd and owner_pwd == os.getenv("FILMLOG_PASSWORD", "8544"):
+    visitor_key = (request.headers.get("X-Gemini-Key") or request.form.get("visitor_gemini_key", "")).strip()
+    is_owner_auth = session.get("owner", False) or (owner_pwd and owner_pwd == os.getenv("FILMLOG_PASSWORD", "8544"))
+
+    if is_owner_auth:
         session["owner"] = True
         session.permanent = True
         g.visitor_mode = False
-    elif g.get("visitor_mode"):
-        return '<div class="rec-result-error"><p>Please enter the owner password above to generate an issue.</p></div>'
+        custom_key = None
+        save_to_db = True
+    elif visitor_key:
+        custom_key = visitor_key
+        save_to_db = False
+    elif g.get("visitor_mode", True):
+        return render_template("partials/byok_prompt.html")
+    else:
+        custom_key = None
+        save_to_db = True
 
     from filmlog.recommend import generate_web_recommendation
 
@@ -898,7 +909,7 @@ def tonight_generate():
         "free_text": request.form.get("free_text", "").strip(),
     }
 
-    result = generate_web_recommendation(answers)
+    result = generate_web_recommendation(answers, api_key=custom_key, save_to_db=save_to_db)
 
     # Fetch referenced films for inline landscape banners + hero pick + companion doors
     film_cards = []

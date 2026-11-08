@@ -20,12 +20,16 @@ GEMINI_MODELS = [
 ]
 
 
-def call_ai(prompt: str, max_tokens: int = 2048, system_instruction: Optional[str] = None) -> str:
+def call_ai(prompt: str, max_tokens: int = 2048, system_instruction: Optional[str] = None, api_key: Optional[str] = None) -> str:
     """
     Call AI with automatic provider selection:
-    1. Gemini API (if GEMINI_API_KEY is set)
-    2. Anthropic API (if ANTHROPIC_API_KEY is set)
+    1. Explicit custom API key (BYOK / guest trial)
+    2. Gemini API (if GEMINI_API_KEY is set)
+    3. Anthropic API (if ANTHROPIC_API_KEY is set)
     """
+    if api_key:
+        return _call_gemini(prompt, api_key, max_tokens, system_instruction)
+
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         return _call_gemini(prompt, gemini_key, max_tokens, system_instruction)

@@ -106,6 +106,38 @@ If all cited evidence is gone, confidence drops to 0.15 (weakly supported). The 
 
 ---
 
+## Future Vision & Multi-User Architecture (Phase 8)
+
+### Local-First Architecture vs. Cloud Server
+- **Can it live entirely on the user's phone? YES.** A Local-First PWA architecture using browser IndexedDB / SQLite-WASM stores the user's entire library, ratings, and notes on their device.
+- **Why Local-First is ideal:**
+  - 100% private: User notes and tastes never touch an external database.
+  - $0 server cost: Zero infrastructure overhead for the project or the user.
+  - Blazing speed: Sub-millisecond queries run on device.
+  - Works offline: Browsing and logging works without internet; only Gemini API calls need network.
+- **Trade-offs of Phone-Only:**
+  - No automatic multi-device sync (iPhone ↔ Mac) without an export/import file or cloud sync bridge (e.g., iCloud/Google Drive backup).
+  - Browser cache eviction risk mitigated by requesting persistent storage (`navigator.storage.persist()`) and providing one-click JSON backup/restore.
+
+### Ephemeral Bring-Your-Own-Key (BYOK) for Visitors
+- Visitors can input their personal Google Gemini API key, stored exclusively in their device's `localStorage`.
+- When generating Tonight issues or recommendations, the server utilizes their key via temporary request headers (`X-Gemini-Key`).
+- Generated issues are rendered and cached in the visitor's local browser storage, with zero writes to Prashil's server database.
+- Owner API quota is 100% protected ($0 cost); owner taste model remains uncorrupted.
+
+### Cold Start Onboarding (Hybrid Approach)
+To eliminate blank-slate friction for new users:
+- **Option A (Seed Vault):** Pre-populate 30 curated classic/Criterion cornerstone films from Prashil's vault. The user reviews the list and quickly checks which ones they've seen.
+- **Option B (Cornerstone Calibration):** Pick and rate 5 favorite films immediately to establish Level 1.0 baseline taste vectors.
+- Both options work together in the onboarding flow.
+
+### Multimodal Ingestion Pipeline
+- **Photo/Screenshot OCR:** Direct upload of handwritten notebook pages or Google Keep screenshots parsed by Gemini Flash Multimodal.
+- **Raw Text Dump:** Messy, unpunctuated film lists and stream-of-consciousness rants parsed by Gemini to extract titles, dates, ratings, and sentiments.
+- **Universal Importer:** One-click CSV ingestion for Letterboxd (`watched.csv`), IMDb exports, and Jellyfin API connections.
+
+---
+
 ## Technical preferences
 
 - **Don't use Chrome automation tools** (Claude in Chrome extension) for testing. They drain API usage heavily. Use curl or ask Prashil to check the browser.

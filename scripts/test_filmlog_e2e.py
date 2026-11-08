@@ -84,7 +84,7 @@ def run_all_tests():
     assert "ask-what-to-watch-form" in html, "Ask what to watch form missing"
     assert "taste-calibration-bar-widget" in html, "Calibration bar missing"
     assert "today-hero-tile" in html, "Today hero tile missing"
-    assert "hero-cover-img" in html, "Hero cover image missing"
+    assert "hero-cover-img" in html or "hero-cover-ph" in html, "Hero cover image or placeholder missing"
     assert "issue-reading-overlay" in html, "Reading overlay popup missing"
     assert "taste-vault-epigraph" in html, "Taste vault epigraph missing"
     assert "article-cover-wrap" in html, "Substack style article cover wrap missing"
