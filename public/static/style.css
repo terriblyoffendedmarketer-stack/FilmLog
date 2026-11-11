@@ -7206,3 +7206,21 @@ html, body {
   width: auto;
   object-fit: contain;
 }
+
+/* Enrich card keeps the poster's true 2:3 shape so posters aren't cropped at the sides
+   (it used to be ~520x600, which cut off titles). On desktop the width shrinks so the
+   whole 2:3 card fits the screen height. If the notes form ever needs more room the
+   card grows taller (aspect-ratio is only a minimum here). */
+.enrich-card {
+  aspect-ratio: 2 / 3;
+  min-height: 0;
+}
+@media (min-width: 421px) {
+  .enrich-card { min-height: 0; }
+}
+@media (min-width: 1024px) {
+  .enrich-card {
+    width: min(520px, calc((100vh - var(--nav-h) - 110px) * 2 / 3));
+    min-width: 360px;
+  }
+}
