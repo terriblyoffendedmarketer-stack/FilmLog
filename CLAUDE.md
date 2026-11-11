@@ -3,7 +3,7 @@
 ## Status
 - **Current Phase:** Phase 6 — Enrich "Haven't Seen This" Failsafe, In-Place Film Inspector, Spacious Thematic Knowledge Graph & Issue Generation 500 Diagnostics Fixed
 - **In Progress:** Curated artwork pipeline (2026-11-11): textless covers, de-duplicated stills, distinct hero image, alt posters, Jellyfin artwork export
-- **What's Next:** Jellyfin artwork export DONE 2026-11-11 (2,186 images added, verified add-only with `scripts/verify_drive_snapshot.py`, 0 truncated). Leftovers: `All Movies/Asian Movies/Coming Out (2000)/backdrop1.jpg` is from the wrong film (user's call to delete); No One Killed Jessica on the drive has no subtitles since the user replaced the file. Then GitHub commit poller for web-generated notes
+- **What's Next:** Jellyfin artwork export DONE 2026-11-11 (2,186 images added, verified add-only with `scripts/verify_drive_snapshot.py`, 0 truncated). Leftover: No One Killed Jessica on the drive has no subtitles since the user replaced the file. Then GitHub commit poller for web-generated notes
 - **Known issues:** `scripts/test_filmlog_e2e.py` generates a REAL issue via Gemini and leaves it in `filmlog.db` — delete it after running. `public/style.css` is a stale orphan (the served file is `public/static/style.css`, a copy of `static/style.css`).
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
 - **Active AI:** Google Gemini API (REST, $0/month, BYOK + server fallback)
