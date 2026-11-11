@@ -2,8 +2,9 @@
 
 ## Status
 - **Current Phase:** Phase 6 — Enrich "Haven't Seen This" Failsafe, In-Place Film Inspector, Spacious Thematic Knowledge Graph & Issue Generation 500 Diagnostics Fixed
-- **In Progress:** Ready for next phase / user requests
-- **What's Next:** Automated background GitHub commit poller for web-generated notes
+- **In Progress:** Curated artwork pipeline (2026-11-11): textless covers, de-duplicated stills, distinct hero image, alt posters, Jellyfin artwork export
+- **What's Next:** Run `scripts/export_jellyfin_artwork.py --write --refresh` with the hard drive mounted; then GitHub commit poller for web-generated notes
+- **Known issues:** `scripts/test_filmlog_e2e.py` generates a REAL issue via Gemini and leaves it in `filmlog.db` — delete it after running. `public/style.css` is a stale orphan (the served file is `public/static/style.css`, a copy of `static/style.css`).
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
 - **Active AI:** Google Gemini API (REST, $0/month, BYOK + server fallback)
 
@@ -30,10 +31,14 @@
 - `filmlog/recommend.py` — Magazine editorial recommendation generator & anti-fatigue cooldowns
 - `filmlog/attributes.py` — Taste attribute extraction via Gemini
 - `filmlog/tmdb.py` — TMDB metadata and poster resolver
+- `filmlog/images.py` — Artwork curation: ranks TMDB stills/posters (textless first), drops near-duplicates (offline; needs Pillow+numpy)
+- `film_images` table — curated artwork per film (backdrop/poster/logo, rank 0 = best); films.backdrop_url = cover, secondary_backdrop_url = a DIFFERENT still (or NULL), alt_poster_url = a different poster
 - `filmlog.db` — SQLite database with 137 watched and 897 watchlist films
 - `public/` & `static/` — CSS, `visitor.js`, `manifest.json`, `sw.js`, and PWA icons
 - `scripts/sync_jellyfin.py` — Matches local Jellyfin library & merges personal comments into DB
 - `scripts/test_filmlog_e2e.py` — Comprehensive end-to-end verification test suite
+- `scripts/curate_film_images.py` — Backfills curated artwork for every film (resumable; commit filmlog.db after)
+- `scripts/export_jellyfin_artwork.py` — Writes poster/backdrops/landscape/logo into each movie folder for Jellyfin (dry run by default)
 - `taste_model.md` — Synthesized markdown taste profile for recommendation context
 
 ---
@@ -51,7 +56,17 @@ python3 scripts/sync_jellyfin.py
 
 # 4. End-to-end verification
 python3 scripts/test_filmlog_e2e.py
+
+# 5. Artwork (offline tools; Pillow+numpy are deliberately NOT in requirements.txt)
+uv pip install pillow numpy
+.venv/bin/python scripts/curate_film_images.py              # new/uncurated films only
+.venv/bin/python scripts/export_jellyfin_artwork.py         # dry run; add --write --refresh
 ```
+
+### How issue images are chosen
+Cover (top of issue + Tonight tile) = hero's `backdrop_url` (best textless still). The hero's own
+section in the essay uses `secondary_backdrop_url` only if it differs, else `alt_poster_url` on a
+blurred wash — never the cover again. Hero = `films_referenced[0]`, matched by id, not position.
 
 ### Environment Variables (.env / Vercel Settings)
 - `GEMINI_API_KEY`: Google Gemini API key

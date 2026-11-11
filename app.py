@@ -148,27 +148,30 @@ def _parse_film(film: dict, fetch_backdrop: bool = False) -> dict:
     else:
         f["tagline"] = ""
 
-    if f.get("tmdb_id") and fetch_backdrop:
+    # Curated artwork lives in the DB (scripts/curate_film_images.py). Only films that
+    # were never curated and have no still get a live TMDB lookup here — and the
+    # secondary still is only set when it's a genuinely different image.
+    if f.get("tmdb_id") and fetch_backdrop and not f.get("backdrop_url") and not f.get("images_curated_at"):
         try:
-            from filmlog import tmdb
-            m_type = f.get("media_type") or "movie"
-            if not f.get("backdrop_url") or not f.get("secondary_backdrop_url"):
-                backdrops = tmdb.fetch_film_backdrops(f["tmdb_id"], limit=3, media_type=m_type)
-                if backdrops:
-                    f["backdrop_url"] = backdrops[0]
-                    f["secondary_backdrop_url"] = backdrops[1] if len(backdrops) > 1 else backdrops[0]
-                    db.update_film_backdrops(
-                        f["tmdb_id"],
-                        f["backdrop_url"],
-                        f["secondary_backdrop_url"],
-                    )
+            from filmlog import images
+            _kind, imgs = images.fetch_images(
+                f["tmdb_id"], f.get("media_type") or "movie", f.get("title") or "", f.get("language")
+            )
+            ranked = images.rank_backdrops(imgs.get("backdrops") or [])
+            if ranked:
+                f["backdrop_url"] = images.url(ranked[0]["file_path"], "w1280")
+                f["secondary_backdrop_url"] = (
+                    images.url(ranked[1]["file_path"], "w1280") if len(ranked) > 1 else None
+                )
+                db.update_film_backdrops(f["tmdb_id"], f["backdrop_url"], f["secondary_backdrop_url"])
         except Exception:
             pass
 
     backdrop = f.get("backdrop_url")
     f["cover_url"] = backdrop or ""
-    if not f.get("secondary_backdrop_url"):
-        f["secondary_backdrop_url"] = backdrop or ""
+    # A "distinct" still for the hero's in-essay break: never the same image as the cover.
+    sec = f.get("secondary_backdrop_url")
+    f["hero_still_url"] = sec if sec and sec != backdrop else ""
 
     return f
 
@@ -282,28 +285,35 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
     rendered_blocks = []
     seen_film_ids = []
 
+    hero_id = film_cards[0].get("tmdb_id") if film_cards else None
+
+    def _n(x: str) -> str:
+        x = re.sub(r"\s*\(\d{4}\)\s*$", "", x or "").lower()
+        x = re.sub(r"^(the|a|an)\s+", "", x)
+        return re.sub(r"[^a-z0-9]", "", x)
+
+    def _title_matches(bold: str, title: str) -> bool:
+        b, t = _n(bold), _n(title)
+        if not b or not t:
+            return False
+        # exact, or one is a prefix of the other ("Oldboy" vs "Oldboy (2003)", subtitles)
+        return b == t or (len(t) >= 4 and b.startswith(t)) or (len(b) >= 4 and t.startswith(b))
+
     for i, p in enumerate(paragraphs):
         matches = bold_pattern.findall(p)
-        matched_fc = None
+        # Every recommended film bolded in this paragraph gets its own figure (two
+        # companions often share one paragraph).
+        matched_list = []
         for m in matches:
-            clean_m = re.sub(r"\s*\(\d{4}\)\s*$", "", m).strip().lower()
             for fc in film_cards:
-                t = (fc.get("title") or "").lower()
-                if t and (clean_m in t or t in clean_m) and fc.get("tmdb_id") not in seen_film_ids:
-                    matched_fc = fc
+                if fc.get("tmdb_id") not in seen_film_ids and _title_matches(m, fc.get("title") or ""):
+                    matched_list.append(fc)
                     seen_film_ids.append(fc["tmdb_id"])
                     break
-            if matched_fc:
-                break
-
-        # Fallback to sequential film_cards if a bold title didn't directly match
-        if not matched_fc and matches and len(seen_film_ids) < len(film_cards):
-            matched_fc = film_cards[len(seen_film_ids)]
-            seen_film_ids.append(matched_fc.get("tmdb_id"))
 
         figure_html = ""
-        if matched_fc:
-            is_hero = (len(seen_film_ids) == 1)
+        for matched_fc in matched_list:
+            is_hero = matched_fc.get("tmdb_id") == hero_id
             title = matched_fc.get("title", "")
             year = str(matched_fc.get("year") or "")
             tmdb_id = str(matched_fc.get("tmdb_id") or "")
@@ -315,12 +325,13 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
 
             # Hero in essay body gets a distinct landscape still (secondary_backdrop)
             # Companion doors get their authentic 16:9 landscape backdrop
+            poster_fallback = ""
             if is_hero:
-                cover = (
-                    matched_fc.get("secondary_backdrop_url")
-                    or matched_fc.get("backdrop_url")
-                    or matched_fc.get("cover_url")
-                )
+                # The cover at the top already shows backdrop_url, so the hero's own break
+                # must use a DIFFERENT still — or, failing that, an alternate poster.
+                cover = matched_fc.get("hero_still_url")
+                if not cover:
+                    poster_fallback = matched_fc.get("alt_poster_url") or ""
                 badge_class = "hero-pill"
                 badge_text = "★ TONIGHT'S ANCHOR"
                 figure_class = "hero-editorial-break"
@@ -333,13 +344,18 @@ def _parse_magazine_issue(issue_dict: dict, film_cards: list[dict]) -> dict:
                 badge_text = "✦ COMPANION DOOR"
                 figure_class = "companion-editorial-break"
 
-            img_tag = (
-                f'<img src="{cover}" alt="{title}" class="editorial-break-img" loading="lazy">'
-                if cover
-                else f'<div class="editorial-break-ph">{title[:2]}</div>'
-            )
+            if cover:
+                img_tag = f'<img src="{cover}" alt="{title}" class="editorial-break-img" loading="lazy">'
+            elif poster_fallback:
+                img_tag = (
+                    f'<div class="editorial-break-poster" style="--poster:url(\'{poster_fallback}\')">'
+                    f'<img src="{poster_fallback}" alt="{title}" loading="lazy"></div>'
+                )
+            else:
+                img_tag = f'<div class="editorial-break-ph">{title[:2]}</div>'
 
-            figure_html = (
+
+            figure_html += (
                 f'<figure class="editorial-landscape-break {figure_class}">'
                 f'<a href="/films/{tmdb_id}" class="editorial-break-frame" title="Explore {title}">'
                 f'{img_tag}'

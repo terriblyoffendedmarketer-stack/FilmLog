@@ -266,6 +266,25 @@ def _run_migrations(conn) -> None:
     if "public" not in j_cols:
         conn.execute("ALTER TABLE journals ADD COLUMN public INTEGER NOT NULL DEFAULT 0")
 
+    if "alt_poster_url" not in f_cols:
+        conn.execute("ALTER TABLE films ADD COLUMN alt_poster_url TEXT")
+    if "images_curated_at" not in f_cols:
+        conn.execute("ALTER TABLE films ADD COLUMN images_curated_at TEXT")
+
+    # Curated, de-duplicated TMDB artwork (see filmlog/images.py). rank 0 = best.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS film_images (
+            tmdb_id   INTEGER NOT NULL,
+            kind      TEXT NOT NULL,      -- 'backdrop' | 'poster' | 'logo'
+            rank      INTEGER NOT NULL,
+            file_path TEXT NOT NULL,      -- TMDB path, e.g. '/abc.jpg'
+            lang      TEXT,               -- iso_639_1, NULL = textless
+            width     INTEGER,
+            height    INTEGER,
+            PRIMARY KEY (tmdb_id, kind, rank)
+        )
+    """)
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS enrichment_skips (
             tmdb_id INTEGER PRIMARY KEY,
@@ -355,6 +374,49 @@ def update_film_backdrops(tmdb_id: int, backdrop_url: str, secondary_backdrop_ur
             (backdrop_url, secondary_backdrop_url, tmdb_id),
         )
         _fts_index_film(conn, tmdb_id)
+
+
+def save_curated_images(tmdb_id: int, curated: dict) -> None:
+    """
+    Persist output of images.curate_film(): replaces film_images rows and sets
+    backdrop_url (best textless still), secondary_backdrop_url (a DIFFERENT still,
+    or NULL — never a copy of the primary) and alt_poster_url (a different poster).
+    """
+    from datetime import datetime, timezone
+    B, P = "https://image.tmdb.org/t/p/w1280", "https://image.tmdb.org/t/p/w500"
+    backs, posters, logo = curated.get("backdrops") or [], curated.get("posters") or [], curated.get("logo")
+    with get_connection() as conn:
+        conn.execute("DELETE FROM film_images WHERE tmdb_id = ?", (tmdb_id,))
+        rows = [(tmdb_id, "backdrop", i, e) for i, e in enumerate(backs)]
+        rows += [(tmdb_id, "poster", i, e) for i, e in enumerate(posters)]
+        if logo:
+            rows.append((tmdb_id, "logo", 0, logo))
+        conn.executemany(
+            "INSERT INTO film_images (tmdb_id, kind, rank, file_path, lang, width, height) VALUES (?,?,?,?,?,?,?)",
+            [(t, k, r, e["file_path"], e.get("iso_639_1"), e.get("width"), e.get("height")) for t, k, r, e in rows],
+        )
+        sets = {"images_curated_at": datetime.now(timezone.utc).isoformat()}
+        if backs:
+            sets["backdrop_url"] = B + backs[0]["file_path"]
+            sets["secondary_backdrop_url"] = (B + backs[1]["file_path"]) if len(backs) > 1 else None
+        if posters:
+            sets["poster_url"] = P + posters[0]["file_path"]
+            sets["alt_poster_url"] = (P + posters[1]["file_path"]) if len(posters) > 1 else None
+        conn.execute(
+            f"UPDATE films SET {', '.join(k + ' = ?' for k in sets)} WHERE tmdb_id = ?",
+            (*sets.values(), tmdb_id),
+        )
+
+
+def get_film_images(tmdb_id: int, kind: str | None = None) -> list[dict]:
+    """Curated artwork rows for a film, best first."""
+    q = "SELECT * FROM film_images WHERE tmdb_id = ?"
+    args: list = [tmdb_id]
+    if kind:
+        q += " AND kind = ?"
+        args.append(kind)
+    with get_connection() as conn:
+        return [dict(r) for r in conn.execute(q + " ORDER BY kind, rank", args).fetchall()]
 
 
 def set_film_taste_attributes(tmdb_id: int, attributes: list[str]) -> None:
