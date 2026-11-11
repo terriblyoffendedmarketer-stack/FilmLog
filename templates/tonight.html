@@ -86,7 +86,7 @@
 
   {# ── Today's Feature Pick: Landscape Cover Hero Tile ────────────────────── #}
   {% if latest_issue %}
-  <div class="today-hero-tile" id="initial-hero-tile" onclick="openIssueOverlay('{{ latest_issue.id or 'latest' }}')">
+  <div class="today-hero-tile" id="initial-hero-tile" data-issue-number="{{ latest_issue.issue_number }}" onclick="openIssueOverlay('{{ latest_issue.id or 'latest' }}')">
     <div class="hero-cover-frame">
       {% if hero_film and hero_film.cover_url %}
       <img src="{{ hero_film.cover_url }}" alt="{{ hero_film.title }}" class="hero-cover-img" loading="eager">
@@ -191,7 +191,7 @@
     {# 1. Top 3 Recent Past Issues (Always Visible) #}
     <div id="past-issues-list">
       {% for issue in older_issues[:3] %}
-      <div class="past-issue-card" id="past-issue-card-{{ issue.id }}" onclick="openIssueOverlay('{{ issue.id }}')">
+      <div class="past-issue-card" id="past-issue-card-{{ issue.id }}" data-issue-number="{{ issue.issue_number }}" onclick="openIssueOverlay('{{ issue.id }}')">
         <div class="past-issue-meta">
           Issue #{{ issue.issue_number }}
           <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
@@ -241,7 +241,7 @@
     {% if older_issues | length > 3 %}
     <div id="earlier-issues-accordion" class="earlier-issues-drawer" style="display: none;">
       {% for issue in older_issues[3:] %}
-      <div class="past-issue-card" id="past-issue-card-{{ issue.id }}" onclick="openIssueOverlay('{{ issue.id }}')">
+      <div class="past-issue-card" id="past-issue-card-{{ issue.id }}" data-issue-number="{{ issue.issue_number }}" onclick="openIssueOverlay('{{ issue.id }}')">
         <div class="past-issue-meta">
           Issue #{{ issue.issue_number }}
           <span class="past-issue-date">· {{ issue.generated_at[:10] }}</span>
@@ -378,7 +378,44 @@ document.addEventListener('keydown', function(e) {
 })();
 
 // ── Archive Issue Action (Owner) ────────────────────────────────────────────
-window.archiveIssue = function(issueId) {
+// Archived issue NUMBERS remembered in the owner's browser. Needed on Vercel: its DB is a
+// /tmp copy that resets, which used to bring archived issues back. Re-applied on every load.
+var ARCHIVED_KEY = 'filmlog_archived_issue_numbers';
+function getArchivedNumbers() {
+  try { return JSON.parse(localStorage.getItem(ARCHIVED_KEY) || '[]').map(Number); } catch (e) { return []; }
+}
+function rememberArchived(num) {
+  if (!num) return;
+  var list = getArchivedNumbers();
+  if (list.indexOf(Number(num)) === -1) list.push(Number(num));
+  try { localStorage.setItem(ARCHIVED_KEY, JSON.stringify(list)); } catch (e) {}
+}
+window.getArchivedNumbers = getArchivedNumbers;
+
+(function applyRememberedArchives() {
+  var nums = getArchivedNumbers();
+  if (!nums.length) return;
+  var hidden = 0;
+  document.querySelectorAll('[data-issue-number]').forEach(function(el) {
+    if (nums.indexOf(Number(el.dataset.issueNumber)) !== -1) { el.style.display = 'none'; hidden++; }
+  });
+  fetch('/api/issues/archived-sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Owner-Password': localStorage.getItem('fl_owner_pwd') || '' },
+    body: JSON.stringify({ issue_numbers: nums })
+  }).then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+    // The server had forgotten some archives (container reset) — reload once so the page
+    // re-renders with the right latest issue instead of just hidden cards.
+    if (d && d.archived > 0 && hidden > 0 && !sessionStorage.getItem('fl_archive_reloaded')) {
+      sessionStorage.setItem('fl_archive_reloaded', '1');
+      window.location.reload();
+    } else {
+      sessionStorage.removeItem('fl_archive_reloaded');
+    }
+  }).catch(function() {});
+})();
+
+window.archiveIssue = function(issueId, issueNumber) {
   if (!issueId) return;
   if (!confirm('Archive this issue? It will be moved out of Tonight and linked recommendations, but can be restored anytime from Archived Issues.')) return;
 
@@ -390,6 +427,7 @@ window.archiveIssue = function(issueId) {
     }
   }).then(function(res) {
     if (res.ok) {
+      rememberArchived(issueNumber);
       closeIssueOverlay();
       window.location.href = '/tonight';
     } else {
@@ -511,7 +549,9 @@ function syncAndRehydrateIssues() {
   var stored = getStoredIssues();
   var missingOnServer = [];
 
+  var archivedNums = (window.getArchivedNumbers ? window.getArchivedNumbers() : []);
   stored.forEach(function(issue) {
+    if (archivedNums.indexOf(Number(issue.issue_number)) !== -1) return;   // archived: don't re-add
     var key = issue.id || ('issue-' + issue.issue_number);
     var tpl = document.getElementById('issue-full-' + key);
     if (!tpl && issue.full_html) {

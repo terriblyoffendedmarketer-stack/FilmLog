@@ -1167,6 +1167,21 @@ def tonight_archive(issue_id: int):
     return ""
 
 
+@app.route("/api/issues/archived-sync", methods=["POST"])
+def api_issues_archived_sync():
+    """
+    Re-apply archives the owner's browser remembers. On Vercel the DB is a /tmp copy of the
+    committed filmlog.db that resets when the container recycles, so an archive done on the
+    live site would silently come back. The browser keeps archived issue NUMBERS (stable,
+    unlike ids) and sends them on every Tonight load. Owner only.
+    """
+    from flask import g
+    if g.get("visitor_mode"):
+        return jsonify({"archived": 0}), 403
+    nums = (request.get_json(silent=True) or {}).get("issue_numbers") or []
+    return jsonify({"archived": db.archive_issues_by_number(nums), "ok": True})
+
+
 @app.route("/tonight/unarchive/<int:issue_id>", methods=["POST"])
 def tonight_unarchive(issue_id: int):
     """HTMX endpoint: restore an archived issue."""

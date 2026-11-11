@@ -39,22 +39,22 @@
     {# Full expanded view #}
     <div id="full-{{ issue.id }}" style="display:none" onclick="event.stopPropagation()">
       {% include "partials/magazine_issue.html" %}
-      {% if is_owner %}
-      <div class="past-issue-actions">
-        <button type="button" class="btn-rewrite"
-          hx-post="/tonight/unarchive/{{ issue.id }}"
-          hx-target="#archived-card-{{ issue.id }}"
-          hx-swap="outerHTML"
-          onclick="event.stopPropagation()">
-          Restore
-        </button>
-      </div>
-      {% endif %}
     </div>
 
     <button class="past-issue-toggle" onclick="event.stopPropagation(); toggleIssue({{ issue.id }}, this)">
       Read more
     </button>
+    {% if is_owner %}
+      <div class="past-issue-actions">
+        <button type="button" class="btn-rewrite"
+          hx-post="/tonight/unarchive/{{ issue.id }}"
+          hx-target="#archived-card-{{ issue.id }}"
+          hx-swap="outerHTML"
+          onclick="event.stopPropagation(); forgetArchived({{ issue.issue_number or 0 }})">
+          Restore
+        </button>
+      </div>
+      {% endif %}
   </div>
   {% endfor %}
 
@@ -75,4 +75,14 @@ function toggleIssue(id, btn) {
 }
 </script>
 
+<script>
+// Keep the browser's archived-issue list (see tonight.html) in step with Restore.
+function forgetArchived(num) {
+  try {
+    var key = 'filmlog_archived_issue_numbers';
+    var list = JSON.parse(localStorage.getItem(key) || '[]').map(Number).filter(function(n) { return n !== Number(num); });
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch (e) {}
+}
+</script>
 {% endblock %}

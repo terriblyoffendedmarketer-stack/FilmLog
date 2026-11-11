@@ -242,8 +242,8 @@ def _run_migrations(conn) -> None:
     if "archived" not in ri_cols:
         conn.execute("ALTER TABLE recommendation_issues ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
 
-    # Unarchive all existing recommendation issues so past editorial issues are never hidden
-    conn.execute("UPDATE recommendation_issues SET archived = 0")
+    # NOTE: this used to run "UPDATE recommendation_issues SET archived = 0" on EVERY startup,
+    # which silently undid every archive. Archive state is now respected.
 
     if "updated_at" not in uf_cols:
         conn.execute("ALTER TABLE user_films ADD COLUMN updated_at TEXT")
@@ -927,6 +927,19 @@ def unarchive_issue(issue_id: int) -> None:
             "UPDATE recommendation_issues SET archived = 0 WHERE id = ?",
             (issue_id,),
         )
+
+
+def archive_issues_by_number(issue_numbers: list[int]) -> int:
+    """Mark issues archived by issue_number (stable across Vercel /tmp resets, unlike id)."""
+    nums = [int(n) for n in issue_numbers if str(n).isdigit()]
+    if not nums:
+        return 0
+    with get_connection() as conn:
+        cur = conn.execute(
+            f"UPDATE recommendation_issues SET archived = 1 WHERE archived = 0 AND issue_number IN ({','.join('?' * len(nums))})",
+            nums,
+        )
+        return cur.rowcount
 
 
 def auto_archive_issues(keep: int = 2) -> int:
