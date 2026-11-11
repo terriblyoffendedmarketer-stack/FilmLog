@@ -3,7 +3,7 @@
 ## Status
 - **Current Phase:** Phase 6 — Enrich "Haven't Seen This" Failsafe, In-Place Film Inspector, Spacious Thematic Knowledge Graph & Issue Generation 500 Diagnostics Fixed
 - **In Progress:** Curated artwork pipeline (2026-11-11): textless covers, de-duplicated stills, distinct hero image, alt posters, Jellyfin artwork export
-- **What's Next:** With the hard drive mounted AND Jellyfin running: finish `scripts/export_jellyfin_artwork.py --write --refresh` (stopped at 340/550 on 2026-11-11), then diff the drive against `drive_snapshot_2026-11-11.txt` (gitignored; size/mtime/path of every file before any artwork was added) to confirm no existing file changed and no new image is truncated. Wrong file to remove (user's call): `All Movies/Asian Movies/Coming Out (2000)/backdrop1.jpg`; then GitHub commit poller for web-generated notes
+- **What's Next:** Jellyfin artwork export DONE 2026-11-11 (2,186 images added, verified add-only with `scripts/verify_drive_snapshot.py`, 0 truncated). Leftovers: `All Movies/Asian Movies/Coming Out (2000)/backdrop1.jpg` is from the wrong film (user's call to delete); No One Killed Jessica on the drive has no subtitles since the user replaced the file. Then GitHub commit poller for web-generated notes
 - **Known issues:** `scripts/test_filmlog_e2e.py` generates a REAL issue via Gemini and leaves it in `filmlog.db` — delete it after running. `public/style.css` is a stale orphan (the served file is `public/static/style.css`, a copy of `static/style.css`).
 - **Live URL:** https://film-log-tau.vercel.app/ (Owner password: `8544`)
 - **Active AI:** Google Gemini API (REST, $0/month, BYOK + server fallback)
@@ -38,6 +38,7 @@
 - `scripts/sync_jellyfin.py` — Matches local Jellyfin library & merges personal comments into DB
 - `scripts/test_filmlog_e2e.py` — Comprehensive end-to-end verification test suite
 - `scripts/curate_film_images.py` — Backfills curated artwork for every film (resumable; commit filmlog.db after)
+- `scripts/verify_drive_snapshot.py` — Proves a drive job only added files (diff vs a size/mtime snapshot, opens every new image)
 - `scripts/export_jellyfin_artwork.py` — Writes poster/backdrops/landscape/logo into each movie folder for Jellyfin (dry run by default)
 - `taste_model.md` — Synthesized markdown taste profile for recommendation context
 
