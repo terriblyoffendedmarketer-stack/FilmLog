@@ -12,7 +12,7 @@
 #   .venv/bin/python scripts/export_jellyfin_artwork.py                # dry run: prints the plan
 #   .venv/bin/python scripts/export_jellyfin_artwork.py --write        # download into folders
 #   .venv/bin/python scripts/export_jellyfin_artwork.py --write --refresh   # then ask Jellyfin to rescan
-#   options: --overwrite (replace existing files), --backdrops 4, --only "Oldboy", --limit 5,
+#   options: --backdrops 4 (target total backdrop*.jpg per folder), --only "Oldboy", --limit 5,
 #            --library some.json (skip the Jellyfin API; used for testing with a fake tree)
 #
 # Requires: TMDB_API_KEY in .env; curated images in filmlog.db (scripts/curate_film_images.py)
@@ -25,8 +25,10 @@
 # Gotchas:
 # - Jellyfin shows ONE primary poster per movie; extra poster files are ignored, so only
 #   one poster is written. Multiple backdrops ARE supported (backdrop1.jpg, backdrop2.jpg …).
-# - Existing files are skipped unless --overwrite: Jellyfin may already have saved its own
-#   poster.jpg there ("Save artwork into media folders"), and we don't clobber it silently.
+# - ADD-ONLY by design: never replaces, renames or deletes. Jellyfin already saves folder.jpg /
+#   backdrop.jpg / landscape.jpg / logo.png into most folders; adding poster.jpg next to
+#   folder.jpg could flip the poster Jellyfin shows, so no poster is written there, and new
+#   backdrops are compared to the existing ones so Jellyfin's backdrop.jpg isn't duplicated.
 # - Jellyfin only notices new local images on a library scan / metadata refresh (--refresh).
 
 import argparse
@@ -133,42 +135,87 @@ def artwork_for(tmdb_id: int, name: str) -> dict | None:
         return None
 
 
+POSTER_NAMES = ("folder.jpg", "poster.jpg", "cover.jpg", "folder.png", "poster.png")
+LANDSCAPE_RE = re.compile(r"^(backdrop\d*|fanart\d*|background\d*|landscape|thumb)\.(jpg|jpeg|png)$", re.I)
+
+
+def _local_thumb(path: Path):
+    from PIL import Image, ImageFilter
+    try:
+        with Image.open(path) as im:
+            im = im.convert("L")
+            im.thumbnail((300, 300))
+            return im.filter(ImageFilter.GaussianBlur(1.5))
+    except Exception:
+        return None
+
+
+def _is_dup(thumb, others) -> bool:
+    return thumb is not None and any(
+        o is not None and images._similarity(thumb, o, 63, 36) >= images.DUP_THRESHOLD for o in others
+    )
+
+
 def plan_files(video_path: Path, art: dict, n_backdrops: int) -> list[tuple[Path, str]]:
+    """
+    ADD-ONLY plan. Respects what Jellyfin already saved in the folder:
+      - no poster if folder.jpg/poster.jpg/cover.jpg (or <video>-poster.jpg) exists
+      - new backdrops are compared against every existing landscape image in the folder
+        (backdrop*.jpg, fanart*, landscape.jpg …) and skipped if they're the same picture
+      - new backdrops take the next FREE number; nothing is renamed or replaced
+    """
     folder = video_path.parent
-    videos = [p for p in folder.iterdir() if p.suffix.lower() in VIDEO_EXT] if folder.exists() else [video_path]
+    names = {p.name for p in folder.iterdir() if not p.name.startswith("._")}
+    videos = [n for n in names if Path(n).suffix.lower() in VIDEO_EXT]
     shared = len(videos) > 1
+    stem = video_path.stem
     backs, posters, logo = art.get("backdrops") or [], art.get("posters") or [], art.get("logo")
-    # Every file must be a different picture: the landscape/thumb is a titled still if
-    # there is one, else a still NOT used as a backdrop, else omitted (Jellyfin then
-    # falls back to the backdrop on its own).
-    titled = next((b for b in backs if b.get("iso_639_1")), None)
-    clean = [b for b in backs if b is not titled]
-    limit = 1 if shared else n_backdrops
-    landscape = titled or (clean[limit] if len(clean) > limit else None)
-    backs = clean
+
+    if shared:
+        existing_land = [folder / n for n in names
+                         if n.startswith(stem + "-") and re.search(r"-(fanart|backdrop\d*|landscape)\.(jpg|png)$", n)]
+        has_poster = f"{stem}-poster.jpg" in names
+        has_logo = f"{stem}-logo.png" in names
+        has_landscape = f"{stem}-landscape.jpg" in names
+        slots = [f"{stem}-fanart.jpg"] if not any(n in names for n in (f"{stem}-fanart.jpg", f"{stem}-backdrop.jpg")) else []
+    else:
+        existing_land = [folder / n for n in names if LANDSCAPE_RE.match(n)]
+        has_poster = any(n.lower() in POSTER_NAMES for n in names)
+        has_logo = "logo.png" in names
+        has_landscape = "landscape.jpg" in names
+        n_existing = sum(1 for n in names if re.match(r"^backdrop\d*\.(jpg|png)$", n, re.I))
+        free = (f"backdrop{i}.jpg" if i else "backdrop.jpg" for i in range(0, 100))
+        free = [n for n in free if n not in names]
+        slots = free[: max(0, n_backdrops - n_existing)]
 
     files: list[tuple[Path, str]] = []
-    if shared:
-        stem = video_path.stem
-        if posters:
-            files.append((folder / f"{stem}-poster.jpg", images.url(posters[0]["file_path"], "w780")))
-        if backs:
-            files.append((folder / f"{stem}-fanart.jpg", images.url(backs[0]["file_path"], "w1280")))
-        if landscape:
-            files.append((folder / f"{stem}-landscape.jpg", images.url(landscape["file_path"], "w1280")))
-        if logo:
-            files.append((folder / f"{stem}-logo.png", images.url(logo["file_path"], "w500")))
+    if posters and not has_poster:
+        files.append((folder / (f"{stem}-poster.jpg" if shared else "poster.jpg"),
+                      images.url(posters[0]["file_path"], "w780")))
+    if logo and not has_logo:
+        files.append((folder / (f"{stem}-logo.png" if shared else "logo.png"),
+                      images.url(logo["file_path"], "w500")))
+
+    need_landscape = not has_landscape
+    if not slots and not need_landscape:
         return files
 
-    if posters:
-        files.append((folder / "poster.jpg", images.url(posters[0]["file_path"], "w780")))
-    for i, b in enumerate(backs[:n_backdrops]):
-        files.append((folder / ("backdrop.jpg" if i == 0 else f"backdrop{i}.jpg"),
-                      images.url(b["file_path"], "w1280")))
-    if landscape:
-        files.append((folder / "landscape.jpg", images.url(landscape["file_path"], "w1280")))
-    if logo:
-        files.append((folder / "logo.png", images.url(logo["file_path"], "w500")))
+    # Compare candidates against what's already there and against each other.
+    seen = [_local_thumb(p) for p in existing_land]
+    titled = next((b for b in backs if b.get("iso_639_1")), None)
+    for b in backs:
+        if not slots and not need_landscape:
+            break
+        th = images._safe_thumb(b["file_path"], "w300")
+        if th is None or _is_dup(th, seen):
+            continue
+        seen.append(th)
+        if need_landscape and (b is titled or not slots):
+            files.append((folder / (f"{stem}-landscape.jpg" if shared else "landscape.jpg"),
+                          images.url(b["file_path"], "w1280")))
+            need_landscape = False
+        elif slots:
+            files.append((folder / slots.pop(0), images.url(b["file_path"], "w1280")))
     return files
 
 
@@ -177,7 +224,6 @@ def plan_files(video_path: Path, art: dict, n_backdrops: int) -> list[tuple[Path
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--write", action="store_true", help="actually download (default: dry run)")
-    ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--refresh", action="store_true", help="ask Jellyfin to rescan libraries afterwards")
     ap.add_argument("--backdrops", type=int, default=4)
     ap.add_argument("--only", help="substring filter on movie name")
@@ -214,7 +260,7 @@ def main():
             continue
         print(f"  {m['name']} ({m['year']}) → {vp.parent}")
         for dest, src in plan_files(vp, art, args.backdrops):
-            if dest.exists() and not args.overwrite:
+            if dest.exists():  # never replace anything on the drive
                 skipped += 1
                 print(f"      = {dest.name} (exists)")
                 continue
@@ -225,7 +271,8 @@ def main():
                 try:
                     r = requests.get(src, timeout=30)
                     r.raise_for_status()
-                    dest.write_bytes(r.content)
+                    with open(dest, "xb") as fh:  # 'x' = create only, fails if the file exists
+                        fh.write(r.content)
                     wrote += 1
                 except Exception as e:
                     print(f"      ! {dest.name}: {e}")
