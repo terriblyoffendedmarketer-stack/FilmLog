@@ -29,6 +29,9 @@
 #   backdrop.jpg / landscape.jpg / logo.png into most folders; adding poster.jpg next to
 #   folder.jpg could flip the poster Jellyfin shows, so no poster is written there, and new
 #   backdrops are compared to the existing ones so Jellyfin's backdrop.jpg isn't duplicated.
+# - Title/year matching (library.json fallback) picked the WRONG film for Coming Out, Samsara, Split and
+#   Pratidwandi (same title, different movie). Prefer running with Jellyfin up (exact ids); OVERRIDES
+#   fixes the rare case where Jellyfin itself is wrong (Shahid).
 # - Jellyfin only notices new local images on a library scan / metadata refresh (--refresh).
 
 import argparse
@@ -54,6 +57,18 @@ LIBRARY_JSON = Path.home() / "Documents" / "Claude Code" / "Jellyfin Mac" / "jel
 JF_URL = os.getenv("JELLYFIN_URL", "http://localhost:8096")
 JF_USER = os.getenv("JELLYFIN_USER", "")
 JF_PASS = os.getenv("JELLYFIN_PASS", "")  # never hard-code: this file is in a public-ish repo
+# Folder → TMDB id corrections, for films Jellyfin itself has identified wrongly (checked by hand:
+# folder name/location vs TMDB title, year, language, runtime). Fix in Jellyfin via "Identify" too.
+OVERRIDES = {
+    "/All Movies/Indian Films/Shahid/": 128206,   # Hansal Mehta, 2013 — Jellyfin says a 2024 German film
+    "/Asian Movies/Guilty Of Romance (2011)": 80662,      # TMDB only finds it with include_adult
+    "/Asian Movies/Daisy (2009)/": 18426,                 # Andrew Lau, Korean
+    "/Indian Films/Geek Out (Short Film))/": 702900,      # Vasan Bala
+    "/Asian Movies/Steins;Gate Live Stage Adptation /": 760827,
+    "/Asian Movies/To Jenny (2018)/": (80744, "tv"),      # 2-episode Korean drama
+    "/Asian Movies/Review Notebook of My Embarrassing Days/": (256938, "tv"),
+}
+
 VIDEO_EXT = {".mkv", ".mp4", ".avi", ".m4v", ".mov", ".wmv", ".ts", ".webm"}
 
 
@@ -119,7 +134,7 @@ def movies_from_library_json(path: Path = LIBRARY_JSON) -> list[dict]:
 
 # ── Artwork selection ───────────────────────────────────────────────────────
 
-def artwork_for(tmdb_id: int, name: str) -> dict | None:
+def artwork_for(tmdb_id: int, name: str, kind: str | None = None) -> dict | None:
     rows = db.get_film_images(tmdb_id)
     if rows:
         pick = lambda k: [{"file_path": r["file_path"], "iso_639_1": r["lang"]} for r in rows if r["kind"] == k]
@@ -127,7 +142,7 @@ def artwork_for(tmdb_id: int, name: str) -> dict | None:
         return {"backdrops": pick("backdrop"), "posters": pick("poster"), "logo": logo[0] if logo else None}
     film = db.get_film(tmdb_id)
     try:
-        return images.curate_film(tmdb_id, (film or {}).get("media_type") or "movie",
+        return images.curate_film(tmdb_id, kind or (film or {}).get("media_type") or "movie",
                                   (film or {}).get("title") or name,
                                   (film or {}).get("poster_url"), (film or {}).get("language"))
     except Exception as e:
@@ -240,6 +255,11 @@ def main():
         movies = movies_from_library_json(args.library or LIBRARY_JSON)
         print(f"Jellyfin offline — library.json: {len(movies)} movie paths (title/year matched)")
 
+    for m in movies:
+        for frag, tid in OVERRIDES.items():
+            if frag in (m["path"] or ""):
+                m["tmdb_id"], m["kind"] = (tid if isinstance(tid, tuple) else (tid, None))
+
     if args.only:
         movies = [m for m in movies if args.only.lower() in (m["name"] or "").lower()]
     if args.limit:
@@ -255,7 +275,7 @@ def main():
         if not vp.parent.exists():
             missing += 1
             continue
-        art = artwork_for(m["tmdb_id"], m["name"])
+        art = artwork_for(m["tmdb_id"], m["name"], m.get("kind"))
         if not art:
             continue
         print(f"  {m['name']} ({m['year']}) → {vp.parent}")
